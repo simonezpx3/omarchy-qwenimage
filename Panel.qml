@@ -45,7 +45,9 @@ Panel {
   property string generatedPath: ""
   property string previousGeneratedPath: ""
   property bool isGenerating: false
-  property string generatingMode: "generate" // "generate", "scale"
+  property string generatingMode: "generate" // "generate", "scale", "enhance"
+  property real currentScaleFactor: 0.0
+  property bool isInterrogating: false
   property string generationTelemetry: "1024x1024 | 25 STEPS | RTX 3070 (0 TOKENS)"
 
   // Telemetry from Host
@@ -180,6 +182,7 @@ Panel {
 
     isGenerating = true;
     generatingMode = "generate";
+    currentScaleFactor = 0.0;
     if (hostWidget) hostWidget.isBusy = true;
 
     var actualSeed = seedLocked ? Number(seedVal) : -1;
@@ -214,6 +217,7 @@ Panel {
 
     isGenerating = true;
     generatingMode = "enhance";
+    currentScaleFactor = 2.0;
     if (hostWidget) hostWidget.isBusy = true;
 
     var actualSeed = seedLocked ? Number(seedVal) : -1;
@@ -239,6 +243,7 @@ Panel {
     if (target === "" || isGenerating) return;
     isGenerating = true;
     generatingMode = "scale";
+    currentScaleFactor = factor;
     if (hostWidget) hostWidget.isBusy = true;
     scaleProc.command = [
       root.bridgeBin,
@@ -291,7 +296,8 @@ Panel {
   }
 
   function interrogateWd14() {
-    if (referencePath === "") return;
+    if (referencePath === "" || isInterrogating) return;
+    root.isInterrogating = true;
     tagProc.command = [root.bridgeBin, "interrogate", referencePath];
     tagProc.running = true;
   }
@@ -352,6 +358,7 @@ Panel {
       waitForEnd: true
       onStreamFinished: {
         root.isGenerating = false;
+        root.currentScaleFactor = 0.0;
         if (hostWidget) hostWidget.isBusy = false;
         try {
           var res = JSON.parse(text || "{}");
@@ -377,6 +384,7 @@ Panel {
       waitForEnd: true
       onStreamFinished: {
         root.isGenerating = false;
+        root.currentScaleFactor = 0.0;
         if (hostWidget) hostWidget.isBusy = false;
         try {
           var res = JSON.parse(text || "{}");
@@ -447,6 +455,7 @@ Panel {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        root.isInterrogating = false;
         try {
           var res = JSON.parse(text || "{}");
           if (res.status === "ok" && res.raw) {

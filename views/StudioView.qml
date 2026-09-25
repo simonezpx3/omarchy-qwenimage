@@ -77,6 +77,7 @@ Item {
       "snip": { "cs": "VÝŘEZ", "en": "SNIP" },
       "clear": { "cs": "SMAZAT", "en": "CLEAR" },
       "interrogate_wd14": { "cs": "TAGY WD14", "en": "INTERROGATE WD14" },
+      "tagging": { "cs": "TAGUJI...", "en": "TAGGING..." },
       "vision_prompt": { "cs": "VISION PROMPT", "en": "VISION PROMPT" },
       "analyzing": { "cs": "ANALYZUJI...", "en": "ANALYZING..." },
       "denoise": { "cs": "DENOISE: ", "en": "DENOISE: " },
@@ -230,10 +231,6 @@ Item {
       "help_generate": {
         "cs": "GENERATE (Ctrl+Enter): Spustí generování obrazu na lokální GPU NVIDIA RTX 3070 za 0 tokenů.",
         "en": "GENERATE (Ctrl+Enter): Starts image generation on local NVIDIA RTX 3070 GPU at 0 tokens."
-      },
-      "help_timer": {
-        "cs": "MĚŘIČ ČASU: Počítá sekundy během generování a po dokončení trvale zobrazuje celkový čas syntézy.",
-        "en": "TIMER: Counts seconds during generation and keeps total synthesis elapsed time after completion."
       }
     };
     if (strings[key] && strings[key][lang]) {
@@ -242,8 +239,11 @@ Item {
     return key;
   }
 
-  // Generation elapsed time in seconds
+  // Operation elapsed times in seconds
   property int genElapsedSeconds: 0
+  property int optElapsedSeconds: 0
+  property int wd14ElapsedSeconds: 0
+  property int visionElapsedSeconds: 0
 
   Timer {
     id: genSecondsTimer
@@ -252,6 +252,36 @@ Item {
     running: false
     onTriggered: {
       root.genElapsedSeconds += 1;
+    }
+  }
+
+  Timer {
+    id: optSecondsTimer
+    interval: 1000
+    repeat: true
+    running: false
+    onTriggered: {
+      root.optElapsedSeconds += 1;
+    }
+  }
+
+  Timer {
+    id: wd14SecondsTimer
+    interval: 1000
+    repeat: true
+    running: false
+    onTriggered: {
+      root.wd14ElapsedSeconds += 1;
+    }
+  }
+
+  Timer {
+    id: visionSecondsTimer
+    interval: 1000
+    repeat: true
+    running: false
+    onTriggered: {
+      root.visionElapsedSeconds += 1;
     }
   }
 
@@ -274,6 +304,30 @@ Item {
         genSecondsTimer.restart();
       } else {
         genSecondsTimer.stop();
+      }
+    }
+    function onIsOptimizingPromptChanged() {
+      if (panelRoot && panelRoot.isOptimizingPrompt) {
+        root.optElapsedSeconds = 0;
+        optSecondsTimer.restart();
+      } else {
+        optSecondsTimer.stop();
+      }
+    }
+    function onIsInterrogatingChanged() {
+      if (panelRoot && panelRoot.isInterrogating) {
+        root.wd14ElapsedSeconds = 0;
+        wd14SecondsTimer.restart();
+      } else {
+        wd14SecondsTimer.stop();
+      }
+    }
+    function onIsVisionLoadingChanged() {
+      if (panelRoot && panelRoot.isVisionLoading) {
+        root.visionElapsedSeconds = 0;
+        visionSecondsTimer.restart();
+      } else {
+        visionSecondsTimer.stop();
       }
     }
   }
@@ -331,21 +385,14 @@ Item {
               }
 
               Button {
-                visible: promptInput.text.trim() !== "" && !(panelRoot && panelRoot.isOptimizingPrompt)
-                text: root.tr("optimize")
+                visible: promptInput.text.trim() !== ""
+                text: (panelRoot && panelRoot.isOptimizingPrompt) ? ("󱫠 " + root.tr("optimizing") + " (" + root.optElapsedSeconds + "s)") : root.tr("optimize")
                 fontSize: Style.font.caption
                 bordered: true
+                active: panelRoot && panelRoot.isOptimizingPrompt
+                enabled: panelRoot && !panelRoot.isOptimizingPrompt
                 onHotChanged: root.setHelp(root.tr("help_optimize"), hot)
                 onClicked: if (panelRoot) panelRoot.optimizePrompt(promptInput.text)
-              }
-
-              Text {
-                visible: !!(panelRoot && panelRoot.isOptimizingPrompt)
-                text: "󱫠 " + root.tr("optimizing")
-                font.family: Style.font.family
-                font.pixelSize: Style.font.caption
-                font.bold: true
-                color: Color.accent
               }
 
               Text {
@@ -800,20 +847,22 @@ Item {
               }
 
               Button {
-                text: root.tr("interrogate_wd14")
+                text: (panelRoot && panelRoot.isInterrogating) ? (root.tr("tagging") + " (" + root.wd14ElapsedSeconds + "s)") : root.tr("interrogate_wd14")
                 fontSize: Style.font.caption
                 bordered: true
                 Layout.fillWidth: true
-                enabled: panelRoot && panelRoot.referencePath !== ""
+                active: panelRoot && panelRoot.isInterrogating
+                enabled: panelRoot && panelRoot.referencePath !== "" && !panelRoot.isInterrogating
                 onHotChanged: root.setHelp(root.tr("help_interrogate"), hot)
                 onClicked: if (panelRoot) panelRoot.interrogateWd14()
               }
 
               Button {
-                text: panelRoot && panelRoot.isVisionLoading ? root.tr("analyzing") : root.tr("vision_prompt")
+                text: (panelRoot && panelRoot.isVisionLoading) ? (root.tr("analyzing") + " (" + root.visionElapsedSeconds + "s)") : root.tr("vision_prompt")
                 fontSize: Style.font.caption
                 bordered: true
                 Layout.fillWidth: true
+                active: panelRoot && panelRoot.isVisionLoading
                 enabled: panelRoot && panelRoot.referencePath !== "" && !panelRoot.isVisionLoading
                 onHotChanged: root.setHelp(root.tr("help_vision"), hot)
                 onClicked: if (panelRoot) panelRoot.extractVisionPrompt()
@@ -967,50 +1016,55 @@ Item {
           }
 
           Button {
-            text: "2X"
+            text: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 2.0) ? ("2X (" + root.genElapsedSeconds + "s)") : "2X"
             fontSize: Style.font.caption
             bordered: true
             Layout.fillWidth: true
+            active: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 2.0)
             enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_2x"), hot)
             onClicked: if (panelRoot) panelRoot.scaleImage(2.0)
           }
 
           Button {
-            text: "4X"
+            text: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 4.0) ? ("4X (" + root.genElapsedSeconds + "s)") : "4X"
             fontSize: Style.font.caption
             bordered: true
             Layout.fillWidth: true
+            active: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 4.0)
             enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_4x"), hot)
             onClicked: if (panelRoot) panelRoot.scaleImage(4.0)
           }
 
           Button {
-            text: "AI 2X"
+            text: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "enhance") ? ("AI 2X (" + root.genElapsedSeconds + "s)") : "AI 2X"
             fontSize: Style.font.caption
             bordered: true
             Layout.fillWidth: true
+            active: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "enhance")
             enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_ai"), hot)
             onClicked: if (panelRoot) panelRoot.aiEnhance()
           }
 
           Button {
-            text: "0.5X"
+            text: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 0.5) ? ("0.5X (" + root.genElapsedSeconds + "s)") : "0.5X"
             fontSize: Style.font.caption
             bordered: true
             Layout.fillWidth: true
+            active: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 0.5)
             enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_half"), hot)
             onClicked: if (panelRoot) panelRoot.scaleImage(0.5)
           }
 
           Button {
-            text: "FIT 1K"
+            text: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === -1.0) ? ("FIT 1K (" + root.genElapsedSeconds + "s)") : "FIT 1K"
             fontSize: Style.font.caption
             bordered: true
             Layout.fillWidth: true
+            active: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === -1.0)
             enabled: ((panelRoot && panelRoot.referencePath !== "") || (panelRoot && panelRoot.generatedPath !== "")) && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_fit1k"), hot)
             onClicked: if (panelRoot) panelRoot.scaleImage(-1.0)
@@ -1146,46 +1200,18 @@ Item {
 
       Item { Layout.fillWidth: true }
 
-      // Generation Timer (Counts seconds during generation and keeps total time after)
-      Rectangle {
-        id: timerBadge
-        Layout.preferredHeight: Style.space(28)
-        implicitWidth: timerRow.implicitWidth + Style.spacing.sm * 2
-        color: panelRoot && panelRoot.isGenerating ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15) : Qt.darker(Color.background, 1.25)
-        border.color: panelRoot && panelRoot.isGenerating ? Color.accent : Color.menu.border
-        border.width: 1
-        radius: Style.cornerRadius
-
-        HoverHandler {
-          onHoveredChanged: root.setHelp(root.tr("help_timer"), hovered)
-        }
-
-        RowLayout {
-          id: timerRow
-          anchors.centerIn: parent
-          spacing: Style.spacing.xs
-
-          Text {
-            text: panelRoot && panelRoot.isGenerating ? "󱫠" : "⏱"
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
-            color: panelRoot && panelRoot.isGenerating ? Color.accent : Qt.darker(Color.foreground, 1.6)
-          }
-
-          Text {
-            text: root.genElapsedSeconds + "s"
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
-            font.bold: true
-            color: panelRoot && panelRoot.isGenerating ? Color.accent : (root.genElapsedSeconds > 0 ? Color.foreground : Qt.darker(Color.foreground, 1.8))
-          }
-        }
-      }
-
       Button {
-        text: panelRoot && panelRoot.isGenerating ? (panelRoot.generatingMode === "scale" ? root.tr("upscaling") : (panelRoot.generatingMode === "enhance" ? root.tr("enhancing") : root.tr("generating"))) : (panelRoot && panelRoot.isGameLocked ? root.tr("locked_game") : root.tr("generate"))
+        text: {
+          if (panelRoot && panelRoot.isGenerating) {
+            if (panelRoot.generatingMode === "scale") return root.tr("upscaling") + " (" + root.genElapsedSeconds + "s)";
+            if (panelRoot.generatingMode === "enhance") return root.tr("enhancing") + " (" + root.genElapsedSeconds + "s)";
+            return root.tr("generating") + " (" + root.genElapsedSeconds + "s)";
+          }
+          if (panelRoot && panelRoot.isGameLocked) return root.tr("locked_game");
+          return root.tr("generate");
+        }
         bordered: true
-        active: true
+        active: panelRoot && panelRoot.isGenerating
         foreground: Color.accent
         enabled: panelRoot && !panelRoot.isGenerating && !panelRoot.isGameLocked
         onHotChanged: root.setHelp(root.tr("help_generate"), hot)
