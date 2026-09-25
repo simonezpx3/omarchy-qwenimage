@@ -294,38 +294,31 @@ setup_ollama_models() {
 # UPDATER 1: Update QIS Plugin
 # ---------------------------------------------------------
 update_qis_plugin() {
-    log_info "Aktualizuji QIS Plugin z repozitáře..."
+    log_info "Kontrola a aktualizace QIS Pluginu..."
+    local target_dir="${HOME}/.config/omarchy/plugins/simonez.qwenimage"
+
+    if command -v omarchy >/dev/null 2>&1 && omarchy plugin list --json 2>/dev/null | grep -q "simonez.qwenimage"; then
+        log_info "Aktualizuji plugin přes oficiální správce Omarchy..."
+        omarchy plugin update simonez.qwenimage --yes 2>/dev/null || true
+    fi
+
+    # Rebuild native bridge if source changed in local repo
     local src_dir="${SCRIPT_DIR}"
-    if [[ ! -d "${src_dir}/.git" ]]; then
-        if [[ -d "${HOME}/Projects/omarchy-qwenimage/.git" ]]; then
-            src_dir="${HOME}/Projects/omarchy-qwenimage"
+    if [[ ! -d "${src_dir}/.git" ]] && [[ -d "${HOME}/Projects/omarchy-qwenimage/.git" ]]; then
+        src_dir="${HOME}/Projects/omarchy-qwenimage"
+    fi
+
+    if [[ -d "${src_dir}/rust-bridge" ]] && command -v cargo >/dev/null 2>&1; then
+        if [[ ! -f "${target_dir}/bin/qwen-bridge" ]] || [[ "${src_dir}/rust-bridge/src/main.rs" -nt "${target_dir}/bin/qwen-bridge" ]]; then
+            log_info "Aktualizuji nativní Rust můstek..."
+            (cd "${src_dir}/rust-bridge" && cargo build --release)
+            mkdir -p "${target_dir}/bin"
+            cp --remove-destination "${src_dir}/rust-bridge/target/release/qwen_bridge" "${target_dir}/bin/qwen-bridge"
+            chmod 0755 "${target_dir}/bin/qwen-bridge"
         fi
     fi
 
-    local pull_out=""
-    if [[ -d "${src_dir}/.git" ]]; then
-        pull_out=$(git -C "${src_dir}" pull --ff-only 2>&1 || true)
-        log_info "$pull_out"
-    fi
-
-    local target_bin="${HOME}/.config/omarchy/plugins/simonez.qwenimage/bin/qwen-bridge"
-    local need_install=0
-    if [[ "$pull_out" != *"Already up to date"* ]] || [[ ! -f "$target_bin" ]]; then
-        need_install=1
-    fi
-
-    if [[ "$need_install" -eq 1 ]]; then
-        if [[ -x "${src_dir}/install.sh" ]]; then
-            log_info "Překládám a instaluji novou verzi pluginu z ${src_dir}..."
-            "${src_dir}/install.sh" --no-restart
-        elif [[ -x "${SCRIPT_DIR}/install.sh" ]]; then
-            log_info "Překládám a instaluji novou verzi pluginu..."
-            "${SCRIPT_DIR}/install.sh" --no-restart
-        fi
-    else
-        log_ok "QIS Plugin a kódové soubory jsou již v nejnovější verzi."
-    fi
-    log_ok "QIS Plugin byl úspěšně ověřen/aktualizován."
+    log_ok "QIS Plugin a nativní komponenty jsou aktuální."
 }
 
 # ---------------------------------------------------------
