@@ -173,8 +173,8 @@ Item {
         "en": "VISION PROMPT: Reconstructs and describes scene in natural language via local multimodal Qwen-Vision on RTX 3070."
       },
       "help_denoise": {
-        "cs": "DENOISE: Míra přepracování referenčního obrázku (0.1 = jemná úprava, 0.65 = vyvážená změna, 1.0 = úplně nová syntéza).",
-        "en": "DENOISE: Modification strength of reference image (0.1 = subtle edit, 0.65 = balanced redesign, 1.0 = completely new synthesis)."
+        "cs": "DENOISE: Míra přepracování referenčního obrázku (0.10 = jemná úprava, 0.65 = vyvážená změna, 0.95 = maximální transformace při zachování předlohy).",
+        "en": "DENOISE: Modification strength of reference image (0.10 = subtle edit, 0.65 = balanced redesign, 0.95 = max transformation preserving reference)."
       },
       "help_scale_2x": {
         "cs": "2X: Bleskově zvětší rozlišení obrázku na 200% pomocí nativního SIMD Lanczos algoritmu.",
@@ -892,7 +892,7 @@ Item {
                 Layout.fillWidth: true
                 bar: panelRoot ? panelRoot.bar : null
                 minimum: 0.1
-                maximum: 1.0
+                maximum: 0.95
                 step: 0.05
                 enabled: panelRoot && panelRoot.referencePath !== ""
                 value: panelRoot ? panelRoot.denoise : 0.65

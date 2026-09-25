@@ -238,7 +238,8 @@ Panel {
 
     if (referencePath !== "") {
       args.push(referencePath);
-      args.push(String(denoise));
+      var clampedDenoise = Math.min(0.95, Math.max(0.05, denoise));
+      args.push(String(clampedDenoise));
     }
 
     genProc.command = args;

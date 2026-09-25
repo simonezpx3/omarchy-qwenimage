@@ -1578,7 +1578,8 @@ fn cmd_generate(
     }
     if let Some(img) = image_ref {
         if Path::new(img).exists() {
-            cmd.args(["--image", img, "--denoise", &denoise.to_string()]);
+            let clamped_denoise = denoise.clamp(0.05, 0.95);
+            cmd.args(["--image", img, "--denoise", &clamped_denoise.to_string()]);
         }
     }
 
@@ -1768,7 +1769,7 @@ fn main() {
             let seed = args.get(6).and_then(|s| s.parse::<i64>().ok()).unwrap_or(-1);
             let negative = args.get(7).map(|s| s.as_str()).unwrap_or("");
             let image_ref = args.get(8).map(|s| s.as_str());
-            let denoise = args.get(9).and_then(|s| s.parse::<f32>().ok()).unwrap_or(0.85);
+            let denoise = args.get(9).and_then(|s| s.parse::<f32>().ok()).unwrap_or(0.85).clamp(0.05, 0.95);
 
             cmd_generate(prompt, ratio, steps, cfg, seed, negative, image_ref, denoise);
         }
