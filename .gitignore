@@ -1,0 +1,5 @@
+rust-bridge/target/
+settings.json
+*.log
+.DS_Store
+bin/qwen-bridge

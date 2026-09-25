@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "simonez.qwenimage",
+  "name": "QIS",
+  "version": "1.0.0",
+  "author": "simonez & Arci",
+  "license": "MIT",
+  "description": "Native generative AI studio (Text-to-Image, Image-to-Image, WD14 Danbooru interrogator, Qwen3-VL vision reverse-engineering, Civitai explorer, SIMD Lanczos resizer, and 1-click wallpaper integration).",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "QIS",
+    "description": "Native generative AI studio (Text2Img, Img2Img, WD14, Civitai, Wallpaper).",
+    "category": "Tools",
+    "aliases": ["qis", "qwenimage", "qwen-image", "qwen", "aiimage", "diffuse", "image-gen"],
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "refreshIntervalSec": 3
+    },
+    "schema": [
+      {
+        "key": "refreshIntervalSec",
+        "type": "number",
+        "label": "Auto-refresh Interval (s)",
+        "description": "Scan frequency for status updates in seconds.",
+        "defaultValue": 3,
+        "min": 1,
+        "max": 60
+      }
+    ]
+  }
+}
