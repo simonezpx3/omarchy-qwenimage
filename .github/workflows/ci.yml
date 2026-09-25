@@ -1,0 +1,63 @@
+name: QIS CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  rust-check:
+    name: Rust Bridge Check & Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust-bridge
+
+      - name: Cargo Check
+        run: |
+          cd rust-bridge
+          cargo check --verbose
+
+      - name: Cargo Clippy
+        run: |
+          cd rust-bridge
+          cargo clippy -- -D warnings
+
+  scripts-and-manifest:
+    name: Shell Scripts & Manifest Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck & jq
+        run: sudo apt-get update && sudo apt-get install -y shellcheck jq
+
+      - name: Lint Shell Scripts
+        run: |
+          shellcheck install.sh
+          shellcheck uninstall.sh
+          shellcheck scripts/qis-stack.sh
+
+      - name: Validate Manifest JSON
+        run: |
+          jq empty manifest.json
+          echo "manifest.json is valid JSON"
+
+      - name: Check Executable Permissions
+        run: |
+          test -x install.sh || (echo "install.sh must be executable" && exit 1)
+          test -x uninstall.sh || (echo "uninstall.sh must be executable" && exit 1)
+          test -x scripts/qis-stack.sh || (echo "scripts/qis-stack.sh must be executable" && exit 1)
+          echo "All entrypoint scripts are executable"
