@@ -4,6 +4,16 @@ Universal native Generative AI Studio for **Omarchy Linux** and **Quickshell** (
 
 Designed for high-performance local diffusion inference with zero cloud dependencies and zero token costs.
 
+![QIS Studio](docs/screenshots/qis-studio.png)
+
+---
+
+## Interface Tour
+
+| Studio & Canvas | Prompt & Inspiration Explorer | History & Local Archive |
+|---|---|---|
+| ![Studio View](docs/screenshots/qis-studio.png) | ![CivitAI Explorer](docs/screenshots/qis-civitai.png) | ![Generation History](docs/screenshots/qis-history.png) |
+
 ---
 
 ## Features

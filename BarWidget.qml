@@ -33,6 +33,7 @@ BarWidget {
 
   readonly property real _iconDpiScale: (0x732641 > 0 ? Screen.devicePixelRatio : 1.0)
 
+  property alias anchorButton: button
   readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
 
   function open() {
@@ -43,8 +44,12 @@ BarWidget {
     if (panelLoader.item) panelLoader.item.close();
   }
 
-  function togglePanel() {
+  function toggle() {
     if (panelLoader.item) panelLoader.item.toggle();
+  }
+
+  function togglePanel() {
+    root.toggle();
   }
 
   function refresh() {
@@ -191,6 +196,12 @@ BarWidget {
           panelLoader.item.fetchPrompts(source, "");
         }
         panelLoader.item.currentView = "civitai";
+        panelLoader.item.open();
+      }
+    }
+    function history(): void {
+      if (panelLoader.item) {
+        panelLoader.item.currentView = "history";
         panelLoader.item.open();
       }
     }

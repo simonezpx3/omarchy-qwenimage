@@ -151,18 +151,25 @@ Panel {
   }
 
   function open() {
-    root.controller.show();
+    panel.open = true;
     root.checkBridge();
     root.refreshTelemetry();
   }
 
   function close() {
-    root.controller.hide();
+    panel.open = false;
   }
 
   function toggle() {
-    root.opened ? root.close() : root.open();
+    panel.open ? close() : open();
   }
+
+  function closeForPopoutSwitch() {
+    panel.closeForPopoutSwitch();
+  }
+
+  readonly property bool opened: panel.open
+  readonly property bool popoutSwitchClosing: panel.popoutSwitchClosing
 
   function paste() {
     root.pasteFromClipboard();
@@ -675,7 +682,6 @@ Panel {
     anchorItem: root.anchorItem
     owner: root.barIdentity
     bar: root.bar
-    open: root.opened
     centerOnBar: true
     contentWidth: panel.fittedContentWidth(Style.space(960))
     contentHeight: panel.fittedContentHeight(Style.space(720))
