@@ -11,6 +11,13 @@ COMFY_DIR="${HOME}/.local/share/comfyui"
 COMFY_VENV="${COMFY_DIR}/venv"
 CHECKPOINT_DIR="${COMFY_DIR}/.qis_checkpoints"
 
+# Deterministic & pinned upstream revisions (Omarchy Marketplace Security Baseline)
+COMFY_PINNED_COMMIT="2255709aa0be2deade91c7c80cda49d31b73906f" # ComfyUI v0.37.0
+NODE_GGUF_COMMIT="6ea2651e7df66d7585f6ffee804b20e92fb38b8a"
+NODE_QWEN3VL_COMMIT="81b1ceea2fc16e52faddfd5fd6a597e4356e2709"
+NODE_WD14_COMMIT="9e0a6e700299182fc05c58b62e7ad9f72182a78b"
+NODE_AUTOCOMPLETE_COMMIT="9cfd2aceb0205132942b6dc1e237a2377de92018"
+
 # Colors & Formatting
 BOLD="\033[1m"
 GREEN="\033[0;32m"
@@ -170,9 +177,20 @@ install_comfyui() {
     mkdir -p "${COMFY_DIR}" "${COMFY_DIR}/models/diffusion_models" "${COMFY_DIR}/models/text_encoders" "${COMFY_DIR}/models/vae" "${COMFY_DIR}/custom_nodes"
 
     if [[ ! -f "${COMFY_DIR}/main.py" ]]; then
-        log_info "Klonuji oficiální ComfyUI repozitář..."
+        log_info "Klonuji oficiální ComfyUI repozitář na prověřený commit ${COMFY_PINNED_COMMIT:0:7}..."
         git clone https://github.com/comfyanonymous/ComfyUI.git "${COMFY_DIR}"
+        git -C "${COMFY_DIR}" checkout -q "${COMFY_PINNED_COMMIT}"
+    else
+        git -C "${COMFY_DIR}" checkout -q "${COMFY_PINNED_COMMIT}" 2>/dev/null || true
     fi
+
+    local actual_comfy
+    actual_comfy=$(git -C "${COMFY_DIR}" rev-parse HEAD 2>/dev/null || echo "")
+    if [[ "${actual_comfy}" != "${COMFY_PINNED_COMMIT}" ]]; then
+        log_err "Chyba ověření integrity ComfyUI! Očekáván commit ${COMFY_PINNED_COMMIT}, ale nalezen ${actual_comfy}."
+        return 1
+    fi
+    log_ok "ComfyUI jádro ověřeno na prověřeném commitu (${actual_comfy:0:7})."
 
     if [[ ! -d "${COMFY_VENV}" ]]; then
         log_info "Vytvářím izolované virtuální prostředí Pythonu (${COMFY_VENV})..."
@@ -195,28 +213,37 @@ install_comfyui() {
         "${COMFY_VENV}/bin/pip" install -r "${COMFY_DIR}/requirements.txt"
     fi
 
-    # Clone required custom nodes
+    # Clone required custom nodes (pinned to verified immutable commit hashes)
     local nodes=(
-        "ComfyUI-GGUF|https://github.com/city96/ComfyUI-GGUF.git"
-        "ComfyUI-GGUF-Qwen3VL-TE|https://github.com/pottokao-dotcom/ComfyUI-GGUF-Qwen3VL-TE.git"
-        "ComfyUI-WD14-Tagger|https://github.com/pythongosssss/ComfyUI-WD14-Tagger.git"
-        "ComfyUI-Autocomplete-Plus|https://github.com/newtextdoc1111/ComfyUI-Autocomplete-Plus.git"
+        "ComfyUI-GGUF|https://github.com/city96/ComfyUI-GGUF.git|${NODE_GGUF_COMMIT}"
+        "ComfyUI-GGUF-Qwen3VL-TE|https://github.com/pottokao-dotcom/ComfyUI-GGUF-Qwen3VL-TE.git|${NODE_QWEN3VL_COMMIT}"
+        "ComfyUI-WD14-Tagger|https://github.com/pythongosssss/ComfyUI-WD14-Tagger.git|${NODE_WD14_COMMIT}"
+        "ComfyUI-Autocomplete-Plus|https://github.com/newtextdoc1111/ComfyUI-Autocomplete-Plus.git|${NODE_AUTOCOMPLETE_COMMIT}"
     )
 
     for item in "${nodes[@]}"; do
-        IFS="|" read -r node_name node_url <<< "$item"
+        IFS="|" read -r node_name node_url node_commit <<< "$item"
         local target_node="${COMFY_DIR}/custom_nodes/${node_name}"
         if [[ ! -d "$target_node" ]]; then
-            log_info "Klonuji uzel ${node_name}..."
+            log_info "Klonuji uzel ${node_name} na prověřený commit ${node_commit:0:7}..."
             git clone "$node_url" "$target_node"
+            git -C "$target_node" checkout -q "$node_commit"
             if [[ -f "${target_node}/requirements.txt" ]]; then
                 "${COMFY_VENV}/bin/pip" install -r "${target_node}/requirements.txt" || true
             fi
         else
-            log_ok "Uzel ${node_name} je přítomen."
+            git -C "$target_node" checkout -q "$node_commit" 2>/dev/null || true
         fi
+
+        local actual_node_commit
+        actual_node_commit=$(git -C "$target_node" rev-parse HEAD 2>/dev/null || echo "")
+        if [[ "${actual_node_commit}" != "${node_commit}" ]]; then
+            log_err "Chyba ověření integrity uzlu ${node_name}! Očekáván ${node_commit}, nalezen ${actual_node_commit}."
+            return 1
+        fi
+        log_ok "Uzel ${node_name} ověřen na prověřeném commitu (${node_commit:0:7})."
     done
-    log_ok "ComfyUI a custom nody jsou připraveny."
+    log_ok "ComfyUI a custom nody jsou připraveny na schválených commitech."
 }
 
 # ---------------------------------------------------------
@@ -339,28 +366,52 @@ update_comfyui() {
     echo "$cur_commit" > "${CHECKPOINT_DIR}/comfy_last_known_good_${ts}.txt"
     echo "$cur_commit" > "${CHECKPOINT_DIR}/latest_checkpoint.txt"
 
-    log_info "Aktualizuji ComfyUI jádro..."
-    git -C "${COMFY_DIR}" pull --ff-only || log_warn "ComfyUI core pull narazil na změny."
+    log_info "Ověřuji integritu ComfyUI jádra na prověřený commit ${COMFY_PINNED_COMMIT:0:7}..."
+    git -C "${COMFY_DIR}" fetch --tags origin 2>/dev/null || true
+    git -C "${COMFY_DIR}" checkout -q "${COMFY_PINNED_COMMIT}"
 
-    log_info "Aktualizuji custom nody..."
-    for node_dir in "${COMFY_DIR}/custom_nodes"/*; do
+    local actual_comfy
+    actual_comfy=$(git -C "${COMFY_DIR}" rev-parse HEAD 2>/dev/null || echo "")
+    if [[ "${actual_comfy}" != "${COMFY_PINNED_COMMIT}" ]]; then
+        log_err "Chyba ověření integrity ComfyUI po aktualizaci! Očekáván commit ${COMFY_PINNED_COMMIT}, ale nalezen ${actual_comfy}."
+        return 1
+    fi
+
+    log_info "Ověřuji integritu custom nodů..."
+    local nodes=(
+        "ComfyUI-GGUF|https://github.com/city96/ComfyUI-GGUF.git|${NODE_GGUF_COMMIT}"
+        "ComfyUI-GGUF-Qwen3VL-TE|https://github.com/pottokao-dotcom/ComfyUI-GGUF-Qwen3VL-TE.git|${NODE_QWEN3VL_COMMIT}"
+        "ComfyUI-WD14-Tagger|https://github.com/pythongosssss/ComfyUI-WD14-Tagger.git|${NODE_WD14_COMMIT}"
+        "ComfyUI-Autocomplete-Plus|https://github.com/newtextdoc1111/ComfyUI-Autocomplete-Plus.git|${NODE_AUTOCOMPLETE_COMMIT}"
+    )
+
+    for item in "${nodes[@]}"; do
+        IFS="|" read -r node_name node_url node_commit <<< "$item"
+        local node_dir="${COMFY_DIR}/custom_nodes/${node_name}"
         if [[ -d "${node_dir}/.git" ]]; then
-            local nname
-            nname=$(basename "$node_dir")
-            log_info "  -> ${nname}"
-            git -C "$node_dir" pull --ff-only || true
+            log_info "  -> ${node_name} (uzamčeno na ${node_commit:0:7})"
+            git -C "$node_dir" fetch --tags origin 2>/dev/null || true
+            git -C "$node_dir" checkout -q "$node_commit"
+
+            local actual_node_commit
+            actual_node_commit=$(git -C "$node_dir" rev-parse HEAD 2>/dev/null || echo "")
+            if [[ "${actual_node_commit}" != "${node_commit}" ]]; then
+                log_err "Chyba ověření integrity uzlu ${node_name} po aktualizaci! Očekáván ${node_commit}, nalezen ${actual_node_commit}."
+                return 1
+            fi
+
             if [[ -f "${node_dir}/requirements.txt" && -x "${COMFY_VENV}/bin/pip" ]]; then
-                "${COMFY_VENV}/bin/pip" install -U -r "${node_dir}/requirements.txt" || true
+                "${COMFY_VENV}/bin/pip" install -r "${node_dir}/requirements.txt" || true
             fi
         fi
     done
 
     # Re-install core requirements
     if [[ -f "${COMFY_DIR}/requirements.txt" && -x "${COMFY_VENV}/bin/pip" ]]; then
-        "${COMFY_VENV}/bin/pip" install -U -r "${COMFY_DIR}/requirements.txt" || true
+        "${COMFY_VENV}/bin/pip" install -r "${COMFY_DIR}/requirements.txt" || true
     fi
 
-    log_ok "ComfyUI a nody byly aktualizovány na nejnovější verzi."
+    log_ok "ComfyUI a custom nody jsou uzamčeny a ověřeny na schválených commitech."
 }
 
 # ---------------------------------------------------------
