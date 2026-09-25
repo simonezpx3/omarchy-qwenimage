@@ -365,7 +365,7 @@ rollback_comfyui() {
     local cp_file="${CHECKPOINT_DIR}/latest_checkpoint.txt"
     if [[ -f "$cp_file" ]]; then
         local target_commit
-        target_commit=$(cat "$cp_file" | xargs)
+        target_commit=$(xargs < "$cp_file")
         log_warn "Vracím ComfyUI do kontrolního bodu: ${target_commit}..."
         git -C "${COMFY_DIR}" checkout "$target_commit"
         log_ok "ComfyUI bylo úspěšně vráceno do předchozího funkčního stavu."
