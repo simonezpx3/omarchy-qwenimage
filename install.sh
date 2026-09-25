@@ -121,14 +121,27 @@ mkdir -p "${TARGET_PLUGIN_DIR}" "${PICTURES_DIR}" "${BIN_DIR}"
 # ---------------------------------------------------------
 # 4. Deploy Plugin Files
 # ---------------------------------------------------------
+copy_if_changed() {
+  local src="$1"
+  local dst="$2"
+  if [[ ! -e "$dst" ]] || ! cmp -s "$src" "$dst"; then
+    cp "$src" "$dst"
+  fi
+}
+
 echo "-> Deploying plugin files to ${TARGET_PLUGIN_DIR}..."
-cp "${SCRIPT_DIR}/manifest.json" "${TARGET_PLUGIN_DIR}/"
-cp "${SCRIPT_DIR}/BarWidget.qml" "${TARGET_PLUGIN_DIR}/"
-cp "${SCRIPT_DIR}/Panel.qml" "${TARGET_PLUGIN_DIR}/"
-cp -r "${SCRIPT_DIR}/views" "${TARGET_PLUGIN_DIR}/"
-cp -r "${SCRIPT_DIR}/assets" "${TARGET_PLUGIN_DIR}/"
+copy_if_changed "${SCRIPT_DIR}/manifest.json" "${TARGET_PLUGIN_DIR}/manifest.json"
+copy_if_changed "${SCRIPT_DIR}/BarWidget.qml" "${TARGET_PLUGIN_DIR}/BarWidget.qml"
+copy_if_changed "${SCRIPT_DIR}/Panel.qml" "${TARGET_PLUGIN_DIR}/Panel.qml"
+mkdir -p "${TARGET_PLUGIN_DIR}/views" "${TARGET_PLUGIN_DIR}/assets"
+for f in "${SCRIPT_DIR}"/views/*; do
+  [[ -f "$f" ]] && copy_if_changed "$f" "${TARGET_PLUGIN_DIR}/views/$(basename "$f")"
+done
+for f in "${SCRIPT_DIR}"/assets/*; do
+  [[ -f "$f" ]] && copy_if_changed "$f" "${TARGET_PLUGIN_DIR}/assets/$(basename "$f")"
+done
 mkdir -p "${TARGET_PLUGIN_DIR}/bin" "${TARGET_PLUGIN_DIR}/scripts"
-cp "${SCRIPT_DIR}/scripts/qis-stack.sh" "${TARGET_PLUGIN_DIR}/scripts/"
+copy_if_changed "${SCRIPT_DIR}/scripts/qis-stack.sh" "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
 chmod +x "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
 
 # ---------------------------------------------------------
@@ -215,10 +228,12 @@ echo "-> Refreshing Omarchy Shell..."
 if [[ "${NEWLY_REGISTERED}" == "1" ]] && [[ "${NO_RESTART}" != "1" ]] && [[ -x "/usr/share/omarchy/bin/omarchy-restart-shell" ]]; then
   echo "  [OK] Initial install: restarting shell to display new bar item..."
   /usr/share/omarchy/bin/omarchy-restart-shell || true
-elif command -v omarchy-shell >/dev/null 2>&1; then
+elif [[ "${NO_RESTART}" != "1" ]] && command -v omarchy-shell >/dev/null 2>&1; then
   echo "  [OK] Soft refreshing plugin in active shell session..."
   omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
   omarchy-shell simonez.qwenimage refresh >/dev/null 2>&1 || true
+else
+  echo "  [OK] In-app update mode: skipping shell rescan to preserve active panel."
 fi
 
 echo "=== QIS (Qwen Image Studio) installed successfully! ==="

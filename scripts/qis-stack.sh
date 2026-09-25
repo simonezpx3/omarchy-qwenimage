@@ -302,18 +302,30 @@ update_qis_plugin() {
         fi
     fi
 
+    local pull_out=""
     if [[ -d "${src_dir}/.git" ]]; then
-        git -C "${src_dir}" pull --ff-only || log_warn "Nepodařilo se provést fast-forward git pull."
+        pull_out=$(git -C "${src_dir}" pull --ff-only 2>&1 || true)
+        log_info "$pull_out"
     fi
 
-    if [[ -x "${src_dir}/install.sh" ]]; then
-        log_info "Překládám a instaluji novou verzi pluginu z ${src_dir}..."
-        "${src_dir}/install.sh" --no-restart
-    elif [[ -x "${SCRIPT_DIR}/install.sh" ]]; then
-        log_info "Překládám a instaluji novou verzi pluginu..."
-        "${SCRIPT_DIR}/install.sh" --no-restart
+    local target_bin="${HOME}/.config/omarchy/plugins/simonez.qwenimage/bin/qwen-bridge"
+    local need_install=0
+    if [[ "$pull_out" != *"Already up to date"* ]] || [[ ! -f "$target_bin" ]]; then
+        need_install=1
     fi
-    log_ok "QIS Plugin byl úspěšně aktualizován."
+
+    if [[ "$need_install" -eq 1 ]]; then
+        if [[ -x "${src_dir}/install.sh" ]]; then
+            log_info "Překládám a instaluji novou verzi pluginu z ${src_dir}..."
+            "${src_dir}/install.sh" --no-restart
+        elif [[ -x "${SCRIPT_DIR}/install.sh" ]]; then
+            log_info "Překládám a instaluji novou verzi pluginu..."
+            "${SCRIPT_DIR}/install.sh" --no-restart
+        fi
+    else
+        log_ok "QIS Plugin a kódové soubory jsou již v nejnovější verzi."
+    fi
+    log_ok "QIS Plugin byl úspěšně ověřen/aktualizován."
 }
 
 # ---------------------------------------------------------

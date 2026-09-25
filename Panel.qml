@@ -668,7 +668,7 @@ Panel {
       root.isUpdating = false;
       var totalTime = root.updateElapsedSeconds;
       if (exitCode === 0) {
-        root.updateStatusText = "󰄬 AKTUALIZOVÁNO (" + totalTime + "s)";
+        root.updateStatusText = "󰄬 HOTOVO (" + totalTime + "s)";
         root.refreshTelemetry();
         root.fetchHistory();
       } else {
@@ -690,6 +690,7 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
+      clip: true
 
       onCloseRequested: {
         if (root.currentView !== "studio") {
@@ -905,9 +906,10 @@ Panel {
 
           Button {
             id: updateBtn
+            Layout.preferredWidth: Style.space(110)
             text: {
               if (root.isUpdating) {
-                return "󰑮 AKTUALIZUJI " + (root.updateMode === "all" ? "STACK" : "PLUGIN") + "... (" + root.updateElapsedSeconds + "s)";
+                return "󰑮 " + (root.updateMode === "all" ? "STACK" : "UPDATE") + " (" + root.updateElapsedSeconds + "s)";
               }
               if (root.updateStatusText !== "") {
                 return root.updateStatusText;
