@@ -295,12 +295,24 @@ setup_ollama_models() {
 # ---------------------------------------------------------
 update_qis_plugin() {
     log_info "Aktualizuji QIS Plugin z repozitáře..."
-    if [[ -d "${SCRIPT_DIR}/.git" ]]; then
-        git -C "${SCRIPT_DIR}" pull --ff-only || log_warn "Nepodařilo se provést fast-forward git pull."
+    local src_dir="${SCRIPT_DIR}"
+    if [[ ! -d "${src_dir}/.git" ]]; then
+        if [[ -d "${HOME}/Projects/omarchy-qwenimage/.git" ]]; then
+            src_dir="${HOME}/Projects/omarchy-qwenimage"
+        fi
     fi
 
-    log_info "Překládám a instaluji novou verzi pluginu..."
-    "${SCRIPT_DIR}/install.sh"
+    if [[ -d "${src_dir}/.git" ]]; then
+        git -C "${src_dir}" pull --ff-only || log_warn "Nepodařilo se provést fast-forward git pull."
+    fi
+
+    if [[ -x "${src_dir}/install.sh" ]]; then
+        log_info "Překládám a instaluji novou verzi pluginu z ${src_dir}..."
+        "${src_dir}/install.sh"
+    elif [[ -x "${SCRIPT_DIR}/install.sh" ]]; then
+        log_info "Překládám a instaluji novou verzi pluginu..."
+        "${SCRIPT_DIR}/install.sh"
+    fi
     log_ok "QIS Plugin byl úspěšně aktualizován."
 }
 
