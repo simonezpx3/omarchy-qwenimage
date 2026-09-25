@@ -308,10 +308,10 @@ update_qis_plugin() {
 
     if [[ -x "${src_dir}/install.sh" ]]; then
         log_info "Překládám a instaluji novou verzi pluginu z ${src_dir}..."
-        "${src_dir}/install.sh"
+        "${src_dir}/install.sh" --no-restart
     elif [[ -x "${SCRIPT_DIR}/install.sh" ]]; then
         log_info "Překládám a instaluji novou verzi pluginu..."
-        "${SCRIPT_DIR}/install.sh"
+        "${SCRIPT_DIR}/install.sh" --no-restart
     fi
     log_ok "QIS Plugin byl úspěšně aktualizován."
 }

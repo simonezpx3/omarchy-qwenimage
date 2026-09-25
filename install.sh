@@ -10,6 +10,13 @@ PICTURES_DIR="${HOME}/Pictures/Qwen-Image"
 SHELL_CONFIG="${HOME}/.config/omarchy/shell.json"
 BIN_DIR="${HOME}/.local/bin"
 
+NO_RESTART=0
+for arg in "$@"; do
+  if [[ "$arg" == "--no-restart" ]]; then
+    NO_RESTART=1
+  fi
+done
+
 # ---------------------------------------------------------
 # CLI Routing for Lifecycle & Updates (Whitelisted arguments)
 # ---------------------------------------------------------
@@ -39,11 +46,11 @@ case "${1:-}" in
   --stack)
     exec "${SCRIPT_DIR}/scripts/qis-stack.sh"
     ;;
-  "")
+  --no-restart|"")
     # Pokračovat na standardní instalaci
     ;;
   *)
-    echo "[ERROR] Neznámý parametr: ${1}. Povolené volby: update, status, rollback, --full, --stack" >&2
+    echo "[ERROR] Neznámý parametr: ${1}. Povolené volby: update, status, rollback, --full, --stack, --no-restart" >&2
     exit 1
     ;;
 esac
@@ -130,14 +137,14 @@ chmod +x "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
 echo "-> Setting up native Rust bridge..."
 if [[ -f "${SCRIPT_DIR}/bin/qwen-bridge" ]]; then
   echo "  [OK] Found local binary"
-  cp "${SCRIPT_DIR}/bin/qwen-bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
+  cp --remove-destination "${SCRIPT_DIR}/bin/qwen-bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
 elif [[ -f "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge" ]]; then
   echo "  [OK] Found compiled target binary"
-  cp "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
+  cp --remove-destination "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
 elif command -v cargo >/dev/null 2>&1 && [[ -d "${SCRIPT_DIR}/rust-bridge" ]]; then
   echo "  -> Compiling rust-bridge from source (release mode)..."
   (cd "${SCRIPT_DIR}/rust-bridge" && cargo build --release)
-  cp "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
+  cp --remove-destination "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
   echo "  [OK] Compiled release binary successfully"
 else
   echo "  [ERROR] Rust toolchain (cargo) required to build native bridge on first install!" >&2
@@ -181,6 +188,7 @@ fi
 # ---------------------------------------------------------
 # 9. Register in shell.json if not present
 # ---------------------------------------------------------
+NEWLY_REGISTERED=0
 if [[ -f "$SHELL_CONFIG" ]] && command -v jq >/dev/null 2>&1; then
   if ! jq -e '.bar.layout.right[]? | select((.id? == "simonez.qwenimage") or (. == "simonez.qwenimage"))' "$SHELL_CONFIG" >/dev/null 2>&1; then
     echo "-> Adding simonez.qwenimage to bar.layout.right in shell.json..."
@@ -188,18 +196,21 @@ if [[ -f "$SHELL_CONFIG" ]] && command -v jq >/dev/null 2>&1; then
     chmod 0600 "$tmp_json"
     jq '.bar.layout.right = [{"id": "simonez.qwenimage"}] + .bar.layout.right' "$SHELL_CONFIG" > "$tmp_json" && mv "$tmp_json" "$SHELL_CONFIG"
     echo "  [OK] shell.json updated"
+    NEWLY_REGISTERED=1
   fi
 fi
 
 # ---------------------------------------------------------
-# 10. Reload / Restart Shell
+# 10. Reload / Refresh Shell
 # ---------------------------------------------------------
-echo "-> Reloading Omarchy Shell..."
-if [[ -x "/usr/share/omarchy/bin/omarchy-restart-shell" ]]; then
+echo "-> Refreshing Omarchy Shell..."
+if [[ "${NEWLY_REGISTERED}" == "1" ]] && [[ "${NO_RESTART}" != "1" ]] && [[ -x "/usr/share/omarchy/bin/omarchy-restart-shell" ]]; then
+  echo "  [OK] Initial install: restarting shell to display new bar item..."
   /usr/share/omarchy/bin/omarchy-restart-shell || true
 elif command -v omarchy-shell >/dev/null 2>&1; then
-  omarchy-shell shell rescanPlugins || true
-  omarchy-shell simonez.qwenimage refresh || true
+  echo "  [OK] Soft refreshing plugin in active shell session..."
+  omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+  omarchy-shell simonez.qwenimage refresh >/dev/null 2>&1 || true
 fi
 
 echo "=== QIS (Qwen Image Studio) installed successfully! ==="

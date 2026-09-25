@@ -664,16 +664,17 @@ Panel {
 
   Process {
     id: updateProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        root.isUpdating = false;
-        var totalTime = root.updateElapsedSeconds;
+    onExited: function(exitCode, exitStatus) {
+      root.isUpdating = false;
+      var totalTime = root.updateElapsedSeconds;
+      if (exitCode === 0) {
         root.updateStatusText = "󰄬 AKTUALIZOVÁNO (" + totalTime + "s)";
-        updateDoneTimer.restart();
         root.refreshTelemetry();
         root.fetchHistory();
+      } else {
+        root.updateStatusText = "󰅚 CHYBA (" + totalTime + "s)";
       }
+      updateDoneTimer.restart();
     }
   }
 
@@ -916,31 +917,26 @@ Panel {
             fontSize: Style.font.caption
             bordered: true
             active: root.isUpdating
-            foreground: root.updateStatusText !== "" ? "#4ade80" : (root.isUpdating ? Color.accent : Color.foreground)
+            foreground: root.updateStatusText !== ""
+              ? (root.updateStatusText.indexOf("CHYBA") !== -1 || root.updateStatusText.indexOf("ERROR") !== -1 ? Color.urgent : "#4ade80")
+              : (root.isUpdating ? Color.accent : Color.foreground)
             enabled: !root.isUpdating
             onClicked: {
               root.triggerUpdate("plugin");
             }
-
-            TapHandler {
-              acceptedButtons: Qt.RightButton
-              onTapped: {
-                if (!root.isUpdating) {
-                  root.showStackConfirm = !root.showStackConfirm;
-                }
+            onRightClicked: {
+              if (!root.isUpdating) {
+                root.showStackConfirm = !root.showStackConfirm;
               }
             }
-
-            HoverHandler {
-              onHoveredChanged: {
-                if (viewLoader.item && typeof viewLoader.item.setHelp === "function") {
-                  viewLoader.item.setHelp(
-                    root.currentLang === "cs"
-                      ? "UPDATE: Levý klik = Rychlý update pluginu | Pravý klik = Kompletní stack (ComfyUI & nody)"
-                      : "UPDATE: Left click = Quick plugin update | Right click = Full stack update (ComfyUI & nodes)",
-                    hovered
-                  );
-                }
+            onHovered: function(isHovered) {
+              if (viewLoader.item && typeof viewLoader.item.setHelp === "function") {
+                viewLoader.item.setHelp(
+                  root.currentLang === "cs"
+                    ? "UPDATE: Levý klik = Rychlý update pluginu | Pravý klik = Kompletní stack (ComfyUI & nody)"
+                    : "UPDATE: Left click = Quick plugin update | Right click = Full stack update (ComfyUI & nodes)",
+                  isHovered
+                );
               }
             }
           }
