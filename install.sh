@@ -190,6 +190,14 @@ fi
 # ---------------------------------------------------------
 NEWLY_REGISTERED=0
 if [[ -f "$SHELL_CONFIG" ]] && command -v jq >/dev/null 2>&1; then
+  # Ensure no rogue duplicates in center or left
+  tmp_json=$(mktemp)
+  chmod 0600 "$tmp_json"
+  jq '
+    if .bar.layout.center then .bar.layout.center |= map(select((type == "object" and .id != "simonez.qwenimage") or (type == "string" and . != "simonez.qwenimage"))) else . end |
+    if .bar.layout.left then .bar.layout.left |= map(select((type == "object" and .id != "simonez.qwenimage") or (type == "string" and . != "simonez.qwenimage"))) else . end
+  ' "$SHELL_CONFIG" > "$tmp_json" && mv "$tmp_json" "$SHELL_CONFIG"
+
   if ! jq -e '.bar.layout.right[]? | select((.id? == "simonez.qwenimage") or (. == "simonez.qwenimage"))' "$SHELL_CONFIG" >/dev/null 2>&1; then
     echo "-> Adding simonez.qwenimage to bar.layout.right in shell.json..."
     tmp_json=$(mktemp)
