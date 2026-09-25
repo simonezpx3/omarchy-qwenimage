@@ -11,21 +11,40 @@ SHELL_CONFIG="${HOME}/.config/omarchy/shell.json"
 BIN_DIR="${HOME}/.local/bin"
 
 # ---------------------------------------------------------
-# CLI Routing for Lifecycle & Updates
+# CLI Routing for Lifecycle & Updates (Whitelisted arguments)
 # ---------------------------------------------------------
 case "${1:-}" in
   --update|update)
     shift || true
-    exec "${SCRIPT_DIR}/scripts/qis-stack.sh" update "$@"
+    target_sub="${1:-all}"
+    case "${target_sub}" in
+      plugin|comfy|models|all)
+        exec "${SCRIPT_DIR}/scripts/qis-stack.sh" update "${target_sub}"
+        ;;
+      *)
+        echo "[ERROR] Neplatný cíl aktualizace: ${target_sub}. Povolené cíle: plugin, comfy, models, all." >&2
+        exit 1
+        ;;
+    esac
     ;;
   --status|status)
     exec "${SCRIPT_DIR}/scripts/qis-stack.sh" status
+    ;;
+  --rollback|rollback)
+    exec "${SCRIPT_DIR}/scripts/qis-stack.sh" rollback
     ;;
   --full)
     exec "${SCRIPT_DIR}/scripts/qis-stack.sh" --full
     ;;
   --stack)
     exec "${SCRIPT_DIR}/scripts/qis-stack.sh"
+    ;;
+  "")
+    # Pokračovat na standardní instalaci
+    ;;
+  *)
+    echo "[ERROR] Neznámý parametr: ${1}. Povolené volby: update, status, rollback, --full, --stack" >&2
+    exit 1
     ;;
 esac
 

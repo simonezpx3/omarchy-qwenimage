@@ -79,6 +79,8 @@ Panel {
   property string activePromptSource: "civitai"
   property bool isVisionLoading: false
   property var historyModel: []
+  property bool isHistoryLoading: false
+  property bool isBridgeAvailable: true
   property var promptHistory: []
   property int promptHistoryIndex: -1
   property bool isOptimizingPrompt: false
@@ -128,13 +130,29 @@ Panel {
     }
   }
 
+  Process {
+    id: checkBridgeProc
+    command: ["test", "-x", root.bridgeBin]
+    onExited: function(exitCode, exitStatus) {
+      root.isBridgeAvailable = (exitCode === 0);
+    }
+  }
+
+  function checkBridge() {
+    checkBridgeProc.running = true;
+  }
+
   function refreshTelemetry() {
-    panelStatusProc.running = true;
+    root.checkBridge();
+    if (root.isBridgeAvailable) {
+      panelStatusProc.running = true;
+    }
     if (hostWidget && hostWidget.refresh) hostWidget.refresh();
   }
 
   function open() {
     root.controller.show();
+    root.checkBridge();
     root.refreshTelemetry();
   }
 
@@ -178,6 +196,12 @@ Panel {
   }
 
   function startGeneration() {
+    if (!root.isBridgeAvailable) {
+      root.generationTelemetry = root.currentLang === "cs"
+        ? "CHYBA: bin/qwen-bridge chybí! Spusť install.sh"
+        : "ERROR: bin/qwen-bridge is missing! Run install.sh";
+      return;
+    }
     if (isGenerating || isGameLocked) return;
     var trimmed = promptText.trim();
     if (trimmed === "") return;
@@ -215,6 +239,7 @@ Panel {
   }
 
   function aiEnhance() {
+    if (!root.isBridgeAvailable) return;
     var target = generatedPath !== "" ? generatedPath : referencePath;
     if (target === "" || isGenerating || isGameLocked) return;
 
@@ -247,6 +272,7 @@ Panel {
   }
 
   function scaleImage(factor) {
+    if (!root.isBridgeAvailable) return;
     var target = generatedPath !== "" ? generatedPath : referencePath;
     if (target === "" || isGenerating) return;
     isGenerating = true;
@@ -304,14 +330,14 @@ Panel {
   }
 
   function interrogateWd14() {
-    if (referencePath === "" || isInterrogating) return;
+    if (!root.isBridgeAvailable || referencePath === "" || isInterrogating) return;
     root.isInterrogating = true;
     tagProc.command = [root.bridgeBin, "interrogate", referencePath];
     tagProc.running = true;
   }
 
   function extractVisionPrompt() {
-    if (referencePath === "" || isVisionLoading) return;
+    if (!root.isBridgeAvailable || referencePath === "" || isVisionLoading) return;
     root.isVisionLoading = true;
     visionProc.command = [root.bridgeBin, "vision", referencePath];
     visionProc.running = true;
@@ -337,6 +363,10 @@ Panel {
   }
 
   function fetchPrompts(source, query) {
+    if (!root.isBridgeAvailable) {
+      root.isCivitaiLoading = false;
+      return;
+    }
     root.isCivitaiLoading = true;
     root.activePromptSource = source || "civitai";
     civitaiProc.command = [
@@ -355,6 +385,11 @@ Panel {
   }
 
   function fetchHistory() {
+    if (!root.isBridgeAvailable) {
+      root.isHistoryLoading = false;
+      return;
+    }
+    root.isHistoryLoading = true;
     histProc.command = [root.bridgeBin, "history", "30"];
     histProc.running = true;
   }
@@ -539,6 +574,7 @@ Panel {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        root.isHistoryLoading = false;
         try {
           var res = JSON.parse(text || "{}");
           if (res.status === "ok" && res.items) {
@@ -916,6 +952,51 @@ Panel {
 
         PanelSeparator { Layout.fillWidth: true }
 
+        // Binary Degradation / Missing Guard Warning (#screens Error/Fallback State)
+        Rectangle {
+          Layout.fillWidth: true
+          visible: !root.isBridgeAvailable
+          implicitHeight: Style.space(34)
+          color: Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.15)
+          border.color: Color.urgent
+          border.width: 1
+          radius: Style.cornerRadius
+
+          RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: Style.spacing.sm
+            anchors.rightMargin: Style.spacing.sm
+            spacing: Style.spacing.xs
+
+            Text {
+              text: "󰅚"
+              color: Color.urgent
+              font.pixelSize: Style.font.body
+            }
+
+            Text {
+              Layout.fillWidth: true
+              text: root.currentLang === "cs"
+                ? "CHYBA MŮSTKU: bin/qwen-bridge chybí nebo není spustitelný. Spusť install.sh nebo cargo build --release."
+                : "BRIDGE ERROR: bin/qwen-bridge is missing or not executable. Run install.sh or cargo build --release."
+              color: Color.urgent
+              font.pixelSize: Style.font.caption
+              font.bold: true
+              elide: Text.ElideRight
+            }
+
+            Button {
+              text: root.currentLang === "cs" ? "ZKONTROLOVAT" : "RECHECK"
+              fontSize: Style.font.caption
+              bordered: true
+              onClicked: {
+                root.checkBridge();
+                root.refreshTelemetry();
+              }
+            }
+          }
+        }
+
         // MAIN VIEW CONTAINER
         Item {
           Layout.fillWidth: true
@@ -989,7 +1070,7 @@ Panel {
           Text {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            text: "[Esc: " + (root.currentLang === "cz" ? "Zavřít" : "Close") + "]"
+            text: "[Esc: " + (root.currentLang === "cs" ? "Zavřít" : "Close") + "]"
             font.family: root.bar ? root.bar.fontFamily : Style.font.family
             font.pixelSize: Style.font.caption
             color: Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 1.6)
@@ -1001,6 +1082,7 @@ Panel {
 
   Component.onCompleted: {
     loadLangProc.running = true;
+    checkBridge();
     refreshTelemetry();
     fetchHistory();
   }

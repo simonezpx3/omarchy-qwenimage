@@ -148,9 +148,64 @@ Item {
           }
         }
 
+        // Loading State (#screens standard: Loading / Processing State)
+        ColumnLayout {
+          anchors.centerIn: parent
+          spacing: Style.spacing.sm
+          visible: panelRoot && panelRoot.isHistoryLoading
+
+          Rectangle {
+            Layout.alignment: Qt.AlignHCenter
+            width: Style.space(48)
+            height: Style.space(48)
+            color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.12)
+            border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.45)
+            border.width: 1
+            radius: width / 2
+
+            Text {
+              anchors.centerIn: parent
+              text: "󱫠"
+              font.family: Style.font.family
+              font.pixelSize: Style.font.title * 1.5
+              color: Color.accent
+
+              RotationAnimation on rotation {
+                running: panelRoot && panelRoot.isHistoryLoading
+                loops: Animation.Infinite
+                from: 0
+                to: 360
+                duration: 1200
+              }
+            }
+          }
+
+          Text {
+            Layout.alignment: Qt.AlignHCenter
+            text: panelRoot && panelRoot.currentLang === "cs"
+              ? "Prohledávám galerii ~/Pictures/Qwen-Image/..."
+              : "Scanning ~/Pictures/Qwen-Image/ gallery..."
+            font.family: Style.font.family
+            font.pixelSize: Style.font.body
+            font.bold: true
+            color: Color.accent
+          }
+
+          Text {
+            Layout.alignment: Qt.AlignHCenter
+            text: panelRoot && panelRoot.currentLang === "cs"
+              ? "Načítám metadata, prompty a náhledy..."
+              : "Loading metadata, prompts and previews..."
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+            color: Qt.darker(Color.foreground, 1.8)
+          }
+        }
+
+        // Empty state
         Text {
           anchors.centerIn: parent
-          visible: historyList.count === 0
+          visible: historyList.count === 0 && !(panelRoot && panelRoot.isHistoryLoading)
           text: panelRoot && panelRoot.currentLang === "cs" ? "Žádné vygenerované obrázky v ~/Pictures/Qwen-Image/" : "No generated images found in ~/Pictures/Qwen-Image/"
           font.family: Style.font.family
           font.pixelSize: Style.font.body
