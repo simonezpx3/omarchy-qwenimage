@@ -1,11 +1,33 @@
 #!/usr/bin/env bash
-# QIS (Qwen Image Studio) — Universal Installation & Hardware Profiler for Omarchy Linux
+# ==============================================================================
+# QIS (Qwen Image Studio) — Universal Installation & Lifecycle Profiler
+# ==============================================================================
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET_PLUGIN_DIR="${HOME}/.config/omarchy/plugins/simonez.qwenimage"
 PICTURES_DIR="${HOME}/Pictures/Qwen-Image"
 SHELL_CONFIG="${HOME}/.config/omarchy/shell.json"
+BIN_DIR="${HOME}/.local/bin"
+
+# ---------------------------------------------------------
+# CLI Routing for Lifecycle & Updates
+# ---------------------------------------------------------
+case "${1:-}" in
+  --update|update)
+    shift || true
+    exec "${SCRIPT_DIR}/scripts/qis-stack.sh" update "$@"
+    ;;
+  --status|status)
+    exec "${SCRIPT_DIR}/scripts/qis-stack.sh" status
+    ;;
+  --full)
+    exec "${SCRIPT_DIR}/scripts/qis-stack.sh" --full
+    ;;
+  --stack)
+    exec "${SCRIPT_DIR}/scripts/qis-stack.sh"
+    ;;
+esac
 
 echo "=== Installing QIS (Qwen Image Studio) ==="
 
@@ -48,12 +70,30 @@ echo "  [Tier] Profile: ${TIER}"
 echo "  [Hint] ${PROFILE_HINT}"
 
 # ---------------------------------------------------------
-# 2. Ensure Directories
+# 2. Check for missing ComfyUI / Models on New Hardware
 # ---------------------------------------------------------
-mkdir -p "${TARGET_PLUGIN_DIR}" "${PICTURES_DIR}"
+COMFY_DIR="${HOME}/.local/share/comfyui"
+if [[ ! -d "$COMFY_DIR" || ! -f "${COMFY_DIR}/main.py" ]]; then
+  echo ""
+  echo "  [!] Nebyl nalezen lokální ComfyUI backend v ${COMFY_DIR}."
+  if [[ -t 0 ]]; then
+    read -rp "  Chcete nyní automaticky nainstalovat ComfyUI, nody a modely pro ${TIER}? [A/n]: " ans
+    if [[ "$ans" =~ ^[AaYy]$ || -z "$ans" ]]; then
+      "${SCRIPT_DIR}/scripts/qis-stack.sh" --full
+      echo "=== Pokračuji v nasazení QIS pluginu... ==="
+    fi
+  else
+    echo "  Pro instalaci backendu spusťte: ./install.sh --full"
+  fi
+fi
 
 # ---------------------------------------------------------
-# 3. Deploy Plugin Files
+# 3. Ensure Directories
+# ---------------------------------------------------------
+mkdir -p "${TARGET_PLUGIN_DIR}" "${PICTURES_DIR}" "${BIN_DIR}"
+
+# ---------------------------------------------------------
+# 4. Deploy Plugin Files
 # ---------------------------------------------------------
 echo "-> Deploying plugin files to ${TARGET_PLUGIN_DIR}..."
 cp "${SCRIPT_DIR}/manifest.json" "${TARGET_PLUGIN_DIR}/"
@@ -61,10 +101,12 @@ cp "${SCRIPT_DIR}/BarWidget.qml" "${TARGET_PLUGIN_DIR}/"
 cp "${SCRIPT_DIR}/Panel.qml" "${TARGET_PLUGIN_DIR}/"
 cp -r "${SCRIPT_DIR}/views" "${TARGET_PLUGIN_DIR}/"
 cp -r "${SCRIPT_DIR}/assets" "${TARGET_PLUGIN_DIR}/"
-mkdir -p "${TARGET_PLUGIN_DIR}/bin"
+mkdir -p "${TARGET_PLUGIN_DIR}/bin" "${TARGET_PLUGIN_DIR}/scripts"
+cp "${SCRIPT_DIR}/scripts/qis-stack.sh" "${TARGET_PLUGIN_DIR}/scripts/"
+chmod +x "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
 
 # ---------------------------------------------------------
-# 4. Native Bridge Binary (Source Compilation & Cache)
+# 5. Native Bridge Binary (Source Compilation & Cache)
 # ---------------------------------------------------------
 echo "-> Setting up native Rust bridge..."
 if [[ -f "${SCRIPT_DIR}/bin/qwen-bridge" ]]; then
@@ -86,7 +128,14 @@ fi
 chmod 0755 "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
 
 # ---------------------------------------------------------
-# 5. Initialize Settings
+# 6. Deploy CLI Tool `qis` into ~/.local/bin
+# ---------------------------------------------------------
+echo "-> Setting up 'qis' CLI command in ${BIN_DIR}/qis..."
+ln -sf "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" "${BIN_DIR}/qis"
+chmod +x "${BIN_DIR}/qis"
+
+# ---------------------------------------------------------
+# 7. Initialize Settings
 # ---------------------------------------------------------
 SETTINGS_FILE="${TARGET_PLUGIN_DIR}/settings.json"
 if [[ ! -f "$SETTINGS_FILE" ]]; then
@@ -98,11 +147,11 @@ fi
 # Permissions Hardening
 find "${TARGET_PLUGIN_DIR}" -type d -exec chmod 0755 {} +
 find "${TARGET_PLUGIN_DIR}" -type f -exec chmod 0644 {} +
-chmod 0755 "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
+chmod 0755 "${TARGET_PLUGIN_DIR}/bin/qwen-bridge" "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
 chmod 0600 "${SETTINGS_FILE}"
 
 # ---------------------------------------------------------
-# 6. Validate Plugin Schema
+# 8. Validate Plugin Schema
 # ---------------------------------------------------------
 echo "-> Validating plugin schema with Omarchy CLI..."
 if command -v omarchy >/dev/null 2>&1; then
@@ -111,7 +160,7 @@ if command -v omarchy >/dev/null 2>&1; then
 fi
 
 # ---------------------------------------------------------
-# 7. Register in shell.json if not present
+# 9. Register in shell.json if not present
 # ---------------------------------------------------------
 if [[ -f "$SHELL_CONFIG" ]] && command -v jq >/dev/null 2>&1; then
   if ! jq -e '.bar.layout.right[]? | select((.id? == "simonez.qwenimage") or (. == "simonez.qwenimage"))' "$SHELL_CONFIG" >/dev/null 2>&1; then
@@ -124,7 +173,7 @@ if [[ -f "$SHELL_CONFIG" ]] && command -v jq >/dev/null 2>&1; then
 fi
 
 # ---------------------------------------------------------
-# 8. Reload / Restart Shell
+# 10. Reload / Restart Shell
 # ---------------------------------------------------------
 echo "-> Reloading Omarchy Shell..."
 if [[ -x "/usr/share/omarchy/bin/omarchy-restart-shell" ]]; then
@@ -135,3 +184,4 @@ elif command -v omarchy-shell >/dev/null 2>&1; then
 fi
 
 echo "=== QIS (Qwen Image Studio) installed successfully! ==="
+echo "Tip: Run 'qis' or 'qis update' anytime to manage your AI stack."

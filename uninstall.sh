@@ -16,11 +16,12 @@ if [[ -f "$SHELL_CONFIG" ]] && command -v jq >/dev/null 2>&1; then
   echo "  [OK] shell.json updated"
 fi
 
-# 2. Remove Plugin Directory
+# 2. Remove Plugin Directory & CLI shortcut
 if [[ -d "${TARGET_PLUGIN_DIR}" ]]; then
   echo "-> Removing plugin files at ${TARGET_PLUGIN_DIR}..."
   rm -rf "${TARGET_PLUGIN_DIR}"
-  echo "  [OK] Plugin directory removed"
+  rm -f "${HOME}/.local/bin/qis"
+  echo "  [OK] Plugin directory and CLI symlink removed"
 fi
 
 # 3. Reload / Restart Shell

@@ -32,7 +32,7 @@ QIS automatically profiles your hardware on installation and suggests the optima
 
 ---
 
-## Installation
+## Installation & Setup
 
 ```bash
 git clone https://github.com/simonezpx3/omarchy-qwenimage.git
@@ -43,10 +43,26 @@ chmod +x install.sh
 
 The installer will:
 1. Profile GPU vendor (NVIDIA, AMD, Intel) and detect available VRAM.
-2. Deploy the verified native bridge binary `bin/qwen-bridge` (or compile from source if on a different architecture).
-3. Validate plugin schema via `omarchy plugin validate`.
-4. Register the plugin into Omarchy bar layout.
-5. Hot-reload the shell.
+2. Check for ComfyUI and diffusion models; if missing on new hardware, offer one-click automated stack installation.
+3. Deploy the native bridge binary `bin/qwen-bridge`.
+4. Deploy the `qis` management CLI into `~/.local/bin/qis`.
+5. Validate plugin schema via `omarchy plugin validate`.
+6. Register the plugin into Omarchy bar layout.
+7. Hot-reload the shell.
+
+---
+
+## Lifecycle & Updater CLI (`qis`)
+
+Once installed, manage the entire ecosystem with the `qis` command:
+
+```bash
+qis             # Interactive management menu (Setup, Update, Models, Rollback)
+qis status      # Displays dependency health matrix and hardware profile
+qis setup       # Automated installation of ComfyUI, custom nodes, and models
+qis update      # Check and update QIS plugin, ComfyUI core, and nodes
+qis rollback    # Revert ComfyUI to the previous working checkpoint
+```
 
 ---
 
