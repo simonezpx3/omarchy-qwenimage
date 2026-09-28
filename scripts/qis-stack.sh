@@ -18,6 +18,17 @@ NODE_QWEN3VL_COMMIT="81b1ceea2fc16e52faddfd5fd6a597e4356e2709"
 NODE_WD14_COMMIT="9e0a6e700299182fc05c58b62e7ad9f72182a78b"
 NODE_AUTOCOMPLETE_COMMIT="9cfd2aceb0205132942b6dc1e237a2377de92018"
 
+# Pinned Hugging Face model revisions & digests (Marketplace Supply Chain Baseline)
+HF_DIT_COMMIT="c9dd12108f53974cd1e0abd708df042d6df0ca8d"
+HF_DIT_Q4_SHA256="dc956c958fbfa1d5c64ec316d7e865283d17d97a9eb332a4a74a4d63afaae9a5"
+HF_DIT_Q3_SHA256="dc34f493dd56fdd665922163c94d51fbe28d2a1f61a941060e167b3a58b00167"
+
+HF_TE_COMMIT="4b783256015cca4020842afb7e636f24e0f8d447"
+HF_TE_SHA256="1338274ac7a6344f262a16c7a52d1bd7fe789307d252733b23ea421126e5d343"
+
+HF_VAE_COMMIT="9a44dbdb47cefd046be9c0a13476192f34c8db8e"
+HF_VAE_SHA256="bb21f7473051e1ac368515dd3f2e15cd44d7a11748ee8823e1ddca3e4876b7c9"
+
 # Colors & Formatting
 BOLD="\033[1m"
 GREEN="\033[0;32m"
@@ -257,12 +268,13 @@ install_comfyui() {
 # ---------------------------------------------------------
 # Step 3: Download Diffusion Models (Hugging Face with Resume)
 # ---------------------------------------------------------
-# Helper: Safe model downloader refusing symlinks and using atomic rename
+# Helper: Safe model downloader refusing symlinks, using exclusive tempfiles and verifying SHA-256
 safe_download_model() {
     local target_dir="$1"
     local file_name="$2"
     local url="$3"
     local desc="$4"
+    local expected_sha256="${5:-}"
 
     if [[ -L "$target_dir" ]]; then
         log_err "Cílový adresář modelů je symlink: $target_dir"
@@ -281,8 +293,20 @@ safe_download_model() {
     fi
 
     if [[ -f "$target_path" ]]; then
-        log_ok "${desc} (${file_name}) je již stažen."
-        return 0
+        if [[ -n "$expected_sha256" ]]; then
+            local curr_sha
+            curr_sha="$(sha256sum "$target_path" | awk '{print $1}')"
+            if [[ "$curr_sha" == "$expected_sha256" ]]; then
+                log_ok "${desc} (${file_name}) je již stažen a ověřen (SHA-256 OK)."
+                return 0
+            else
+                log_warn "${desc} (${file_name}) má neplatný otisk! Stahuji prověřenou verzi znovu..."
+                rm -f "$target_path"
+            fi
+        else
+            log_ok "${desc} (${file_name}) je již stažen."
+            return 0
+        fi
     fi
 
     log_info "Stahuji ${desc} (${file_name})..."
@@ -291,9 +315,21 @@ safe_download_model() {
     chmod 0644 "$tmp_part"
 
     if curl -L --fail --progress-bar -o "$tmp_part" "$url"; then
+        if [[ -n "$expected_sha256" ]]; then
+            local downloaded_sha
+            downloaded_sha="$(sha256sum "$tmp_part" | awk '{print $1}')"
+            if [[ "$downloaded_sha" != "$expected_sha256" ]]; then
+                log_err "Kritická chyba integrity: Kontrolní součet ${desc} neodpovídá prověřenému otisku!"
+                log_err "Očekáván SHA-256: ${expected_sha256}"
+                log_err "Zjištěn SHA-256:  ${downloaded_sha}"
+                rm -f "$tmp_part"
+                return 1
+            fi
+            log_ok "Kryptografický otisk ${desc} ověřen (SHA-256 OK)."
+        fi
         mv -f "$tmp_part" "$target_path"
         chmod 0644 "$target_path"
-        log_ok "${desc} úspěšně stažen."
+        log_ok "${desc} úspěšně stažen a integrován."
     else
         log_err "Chyba při stahování ${desc}!"
         rm -f "$tmp_part"
@@ -309,24 +345,26 @@ download_models() {
     local te_dir="${COMFY_DIR}/models/text_encoders"
     local vae_dir="${COMFY_DIR}/models/vae"
 
-    # 1. DiT Model (Q4_K_M for Tier S/A, Q3_K_S for Tier B)
+    # 1. DiT Model (Q4_K_M for Tier S/A, Q3_K_M for Tier B) - pinned to commit c9dd121
     local dit_file="qwen_image_2.1_Q4_K_M.gguf"
-    local dit_url="https://huggingface.co/city96/Qwen-Image-2.1-GGUF/resolve/main/qwen_image_2.1_Q4_K_M.gguf"
+    local dit_url="https://huggingface.co/Abiray/Qwen-Image-2.1-GGUF/resolve/${HF_DIT_COMMIT}/qwen_image_2.1_Q4_K_M.gguf"
+    local dit_sha="${HF_DIT_Q4_SHA256}"
     if [[ "$HW_TIER" == "B" ]]; then
-        dit_file="qwen_image_2.1_Q3_K_S.gguf"
-        dit_url="https://huggingface.co/city96/Qwen-Image-2.1-GGUF/resolve/main/qwen_image_2.1_Q3_K_S.gguf"
+        dit_file="qwen_image_2.1_Q3_K_M.gguf"
+        dit_url="https://huggingface.co/Abiray/Qwen-Image-2.1-GGUF/resolve/${HF_DIT_COMMIT}/qwen_image_2.1_Q3_K_M.gguf"
+        dit_sha="${HF_DIT_Q3_SHA256}"
     fi
-    safe_download_model "$diff_dir" "$dit_file" "$dit_url" "DiT model"
+    safe_download_model "$diff_dir" "$dit_file" "$dit_url" "DiT model" "$dit_sha"
 
-    # 2. Text Encoder (Qwen3-VL 8B Heretic)
+    # 2. Text Encoder (Qwen3-VL 8B Heretic Q4_K_M) - pinned to commit 4b78325
     local te_file="qwen3vl_8b_heretic-Q4_K_M.gguf"
-    local te_url="https://huggingface.co/maternion/Qwen3-VL-8B-Heretic-GGUF/resolve/main/qwen3vl_8b_heretic-Q4_K_M.gguf"
-    safe_download_model "$te_dir" "$te_file" "$te_url" "Text Encoder"
+    local te_url="https://huggingface.co/chfm/Qwen-Image-2.1-Text-Encoder-Heretic-GGUF/resolve/${HF_TE_COMMIT}/qwen3vl_8b_heretic-Q4_K_M.gguf"
+    safe_download_model "$te_dir" "$te_file" "$te_url" "Text Encoder" "${HF_TE_SHA256}"
 
-    # 3. VAE (BF16 Safetensors)
+    # 3. VAE (BF16 Safetensors) - pinned to commit 9a44dbd
     local vae_file="qwen_image_2.1_vae_bf16.safetensors"
-    local vae_url="https://huggingface.co/Comfy-Org/Qwen-Image-2.1_repackaged/resolve/main/split_files/vae/qwen_image_2.1_vae_bf16.safetensors"
-    safe_download_model "$vae_dir" "$vae_file" "$vae_url" "VAE"
+    local vae_url="https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/${HF_VAE_COMMIT}/vae/qwen_image_2.1_vae_bf16.safetensors"
+    safe_download_model "$vae_dir" "$vae_file" "$vae_url" "VAE" "${HF_VAE_SHA256}"
 }
 
 # ---------------------------------------------------------
