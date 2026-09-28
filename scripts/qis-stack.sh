@@ -300,8 +300,8 @@ safe_download_model() {
                 log_ok "${desc} (${file_name}) je již stažen a ověřen (SHA-256 OK)."
                 return 0
             else
-                log_warn "${desc} (${file_name}) má neplatný otisk! Stahuji prověřenou verzi znovu..."
-                rm -f "$target_path"
+                log_err "Cílový model ${target_path} již existuje, ale má odlišný kontrolní součet. Odmítám smazat nebo přepsat existující soubor uživatele."
+                return 1
             fi
         else
             log_ok "${desc} (${file_name}) je již stažen."
