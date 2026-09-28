@@ -156,9 +156,15 @@ if [[ -e "${TARGET_PLUGIN_DIR}" ]]; then
     [[ -n "$item" && "$item" != "settings.json" ]] && local_items+=("$item")
   done < <(ls -A "${TARGET_PLUGIN_DIR}" 2>/dev/null || true)
 
-  if [[ ${#local_items[@]} -gt 0 && ! -f "${TARGET_PLUGIN_DIR}/.installed_hashes" ]]; then
-    echo "  [ERROR] Target directory (${TARGET_PLUGIN_DIR}) is occupied without a trustworthy install receipt (.installed_hashes). Refusing to overwrite foreign directory." >&2
-    exit 1
+  if [[ ${#local_items[@]} -gt 0 ]]; then
+    if [[ -L "${TARGET_PLUGIN_DIR}/.installed_hashes" ]]; then
+      echo "  [ERROR] Refusing installation: .installed_hashes is a symlink in ${TARGET_PLUGIN_DIR}" >&2
+      exit 1
+    fi
+    if [[ ! -f "${TARGET_PLUGIN_DIR}/.installed_hashes" || ! -O "${TARGET_PLUGIN_DIR}/.installed_hashes" ]]; then
+      echo "  [ERROR] Target directory (${TARGET_PLUGIN_DIR}) is occupied without a trustworthy regular install receipt (.installed_hashes). Refusing to overwrite foreign directory." >&2
+      exit 1
+    fi
   fi
 fi
 
@@ -172,7 +178,17 @@ ensure_safe_dir "${BIN_DIR}"
 # Load prior install receipt if present to guarantee content identity before replacing any file
 declare -A prior_hashes=()
 has_prior_receipt=0
-if [[ -f "${TARGET_PLUGIN_DIR}/.installed_hashes" ]]; then
+
+RECEIPT_FILE="${TARGET_PLUGIN_DIR}/.installed_hashes"
+if [[ -L "$RECEIPT_FILE" ]]; then
+  echo "  [ERROR] Refusing symlinked install receipt: $RECEIPT_FILE" >&2
+  exit 1
+fi
+if [[ -f "$RECEIPT_FILE" ]]; then
+  if [[ ! -O "$RECEIPT_FILE" ]]; then
+    echo "  [ERROR] Install receipt is not owned by current user: $RECEIPT_FILE" >&2
+    exit 1
+  fi
   has_prior_receipt=1
   while IFS= read -r line || [[ -n "$line" ]]; do
     [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
@@ -182,7 +198,7 @@ if [[ -f "${TARGET_PLUGIN_DIR}/.installed_hashes" ]]; then
     prel="${prel#"${prel%%[![:space:]]*}"}"
     prel="${prel%"${prel##*[![:space:]]}"}"
     prior_hashes["$prel"]="$phash"
-  done < "${TARGET_PLUGIN_DIR}/.installed_hashes"
+  done < "$RECEIPT_FILE"
 fi
 
 copy_if_changed() {
@@ -337,7 +353,17 @@ fi
     hash_files+=(settings.json)
   fi
 
-  sha256sum "${hash_files[@]}" > .installed_hashes
+  # Refuse pre-existing symlink at .installed_hashes target
+  if [[ -L .installed_hashes ]]; then
+    echo "  [ERROR] Refusing pre-existing symlinked .installed_hashes target." >&2
+    exit 1
+  fi
+
+  # Create receipt via exclusive temporary file in plugin directory and atomic rename
+  tmp_receipt="$(mktemp .installed_hashes.tmp.XXXXXX)"
+  chmod 0600 "$tmp_receipt"
+  sha256sum "${hash_files[@]}" > "$tmp_receipt"
+  mv -f "$tmp_receipt" .installed_hashes
   chmod 0600 .installed_hashes
 
   # Permissions Hardening (strictly non-recursive, only installer-deployed assets)

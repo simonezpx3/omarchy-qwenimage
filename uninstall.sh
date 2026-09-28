@@ -74,7 +74,7 @@ if [[ -d "${TARGET_PLUGIN_DIR}" && ! -L "${TARGET_PLUGIN_DIR}" ]]; then
 
       # Build expected hash map if .installed_hashes is present and safe
       declare -A expected_hashes=()
-      if [[ -f "${HASHES_FILE}" && ! -L "${HASHES_FILE}" ]]; then
+      if [[ -f "${HASHES_FILE}" && ! -L "${HASHES_FILE}" && -O "${HASHES_FILE}" ]]; then
         while read -r hash rel || [[ -n "$hash" ]]; do
           [[ -z "$hash" || -z "$rel" ]] && continue
           # Strip leading ./, *, and whitespace
