@@ -193,25 +193,32 @@ fi
 # 7. Initialize Settings & Content Identity Receipt
 # ---------------------------------------------------------
 SETTINGS_FILE="${TARGET_PLUGIN_DIR}/settings.json"
+SETTINGS_NEWLY_CREATED=0
 if [[ ! -f "$SETTINGS_FILE" ]]; then
   echo '{"language": "cs", "backend_url": "http://127.0.0.1:8188"}' > "$SETTINGS_FILE"
   chmod 0600 "$SETTINGS_FILE"
   echo "  [OK] Initialized default settings (0600)"
+  SETTINGS_NEWLY_CREATED=1
+else
+  echo "  [INFO] Preserving pre-existing user settings in settings.json"
 fi
 
-# Generate cryptographic content identity hashes for safe, verified uninstallation
+# Generate cryptographic content identity hashes for only files actually created/replaced by this installer
 (
   cd "${TARGET_PLUGIN_DIR}"
-  sha256sum \
-    manifest.json \
-    BarWidget.qml \
-    Panel.qml \
-    settings.json \
-    bin/qwen-bridge \
-    scripts/qis-stack.sh \
-    views/* \
-    assets/* \
-    > .installed_hashes
+  hash_files=(
+    manifest.json
+    BarWidget.qml
+    Panel.qml
+    bin/qwen-bridge
+    scripts/qis-stack.sh
+    views/*
+    assets/*
+  )
+  if [[ "$SETTINGS_NEWLY_CREATED" -eq 1 ]]; then
+    hash_files+=(settings.json)
+  fi
+  sha256sum "${hash_files[@]}" > .installed_hashes
   chmod 0600 .installed_hashes
 )
 

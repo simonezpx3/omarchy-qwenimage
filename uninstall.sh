@@ -110,29 +110,23 @@ if [[ -d "${TARGET_PLUGIN_DIR}" && ! -L "${TARGET_PLUGIN_DIR}" ]]; then
           continue
         fi
 
-        # Content Identity verification:
-        # If an expected hash exists for this file, verify content matches untouched installer version.
-        # If user modified the file (e.g. customized settings.json or QML), preserve it!
+        # Fail-Closed Content Identity verification:
+        # Require a trusted recorded hash from installation. If absent, modified, or pre-existing,
+        # fail closed and leave the file completely untouched.
         exp_hash="${expected_hashes["$rel_path"]:-}"
-        if [[ -n "$exp_hash" ]]; then
-          curr_hash="$(sha256sum "$candidate_real" 2>/dev/null | awk '{print $1}')"
-          if [[ "$curr_hash" != "$exp_hash" ]]; then
-            echo "  [SKIP] Modified content detected in ${rel_path}, leaving intact."
-            continue
-          fi
-        elif [[ "$rel_path" == "settings.json" ]]; then
-          # Fallback if hash file missing: check if settings differ from default template
-          curr_hash="$(sha256sum "$candidate_real" 2>/dev/null | awk '{print $1}')"
-          default_hash="$(printf '{"language": "cs", "backend_url": "http://127.0.0.1:8188"}\n' | sha256sum | awk '{print $1}')"
-          default_hash_nolf="$(printf '{"language": "cs", "backend_url": "http://127.0.0.1:8188"}' | sha256sum | awk '{print $1}')"
-          if [[ "$curr_hash" != "$default_hash" && "$curr_hash" != "$default_hash_nolf" ]]; then
-            echo "  [SKIP] User-edited configuration detected in settings.json, leaving intact."
-            continue
-          fi
+        if [[ -z "$exp_hash" ]]; then
+          echo "  [SKIP] No trusted hash recorded for ${rel_path}, leaving intact."
+          continue
+        fi
+
+        curr_hash="$(sha256sum "$candidate_real" 2>/dev/null | awk '{print $1}')"
+        if [[ "$curr_hash" != "$exp_hash" ]]; then
+          echo "  [SKIP] Modified content detected in ${rel_path} (${curr_hash:0:8} != ${exp_hash:0:8}), leaving intact."
+          continue
         fi
 
         rm -f "$candidate_real"
-        echo "  [OK] Removed unmodified file: ${rel_path}"
+        echo "  [OK] Removed verified unmodified installer file: ${rel_path}"
       done
 
       # Remove hashes file after processing
