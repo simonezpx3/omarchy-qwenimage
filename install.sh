@@ -190,7 +190,7 @@ else
 fi
 
 # ---------------------------------------------------------
-# 7. Initialize Settings
+# 7. Initialize Settings & Installation Receipt
 # ---------------------------------------------------------
 SETTINGS_FILE="${TARGET_PLUGIN_DIR}/settings.json"
 if [[ ! -f "$SETTINGS_FILE" ]]; then
@@ -198,6 +198,26 @@ if [[ ! -f "$SETTINGS_FILE" ]]; then
   chmod 0600 "$SETTINGS_FILE"
   echo "  [OK] Initialized default settings (0600)"
 fi
+
+# Record installation receipt of installer-owned files for verified removal
+cat << 'EOF' > "${TARGET_PLUGIN_DIR}/.installed_files"
+manifest.json
+BarWidget.qml
+Panel.qml
+settings.json
+bin/qwen-bridge
+scripts/qis-stack.sh
+views/CivitaiView.qml
+views/CompareView.qml
+views/HistoryView.qml
+views/qmldir
+views/StudioView.qml
+assets/qwen-color.svg
+assets/qwen-heretic.svg
+assets/qwen-mono.svg
+.installed_files
+EOF
+chmod 0644 "${TARGET_PLUGIN_DIR}/.installed_files"
 
 # Permissions Hardening
 find "${TARGET_PLUGIN_DIR}" -type d -exec chmod 0755 {} +
