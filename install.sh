@@ -150,24 +150,15 @@ if [[ -e "${TARGET_PLUGIN_DIR}" ]]; then
     echo "  [ERROR] Refusing installation: TARGET_PLUGIN_DIR is not owned by current user." >&2
     exit 1
   fi
-  # If non-empty, ensure it is not a foreign directory
-  if [[ -f "${TARGET_PLUGIN_DIR}/manifest.json" ]]; then
-    if ! grep -q '"id": *"simonez.qwenimage"' "${TARGET_PLUGIN_DIR}/manifest.json" 2>/dev/null; then
-      echo "  [ERROR] Target directory contains a foreign plugin manifest. Refusing to overwrite." >&2
-      exit 1
-    fi
-  elif [[ ! -f "${TARGET_PLUGIN_DIR}/.installed_hashes" ]]; then
-    # Neither manifest nor .installed_hashes exists.
-    # Check if there are foreign files other than settings.json
-    foreign_items=()
-    while IFS= read -r item; do
-      [[ -n "$item" && "$item" != "settings.json" ]] && foreign_items+=("$item")
-    done < <(ls -A "${TARGET_PLUGIN_DIR}" 2>/dev/null || true)
+  # If non-empty, ensure it has a trustworthy install receipt or contains only settings.json
+  local_items=()
+  while IFS= read -r item; do
+    [[ -n "$item" && "$item" != "settings.json" ]] && local_items+=("$item")
+  done < <(ls -A "${TARGET_PLUGIN_DIR}" 2>/dev/null || true)
 
-    if [[ ${#foreign_items[@]} -gt 0 ]]; then
-      echo "  [ERROR] Target directory contains unverified foreign files (${foreign_items[*]}). Refusing to overwrite." >&2
-      exit 1
-    fi
+  if [[ ${#local_items[@]} -gt 0 && ! -f "${TARGET_PLUGIN_DIR}/.installed_hashes" ]]; then
+    echo "  [ERROR] Target directory (${TARGET_PLUGIN_DIR}) is occupied without a trustworthy install receipt (.installed_hashes). Refusing to overwrite foreign directory." >&2
+    exit 1
   fi
 fi
 
@@ -176,11 +167,28 @@ ensure_safe_dir "${PICTURES_DIR}"
 ensure_safe_dir "${BIN_DIR}"
 
 # ---------------------------------------------------------
-# 4. Deploy Plugin Files
+# 4. Deploy Plugin Files (with Prior Receipt Verification)
 # ---------------------------------------------------------
+# Load prior install receipt if present to guarantee content identity before replacing any file
+declare -A prior_hashes=()
+has_prior_receipt=0
+if [[ -f "${TARGET_PLUGIN_DIR}/.installed_hashes" ]]; then
+  has_prior_receipt=1
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    read -r phash prel <<< "$line"
+    prel="${prel#\./}"
+    prel="${prel#\*}"
+    prel="${prel#"${prel%%[![:space:]]*}"}"
+    prel="${prel%"${prel##*[![:space:]]}"}"
+    prior_hashes["$prel"]="$phash"
+  done < "${TARGET_PLUGIN_DIR}/.installed_hashes"
+fi
+
 copy_if_changed() {
   local src="$1"
   local dst="$2"
+  local rel_dst="${dst#"${TARGET_PLUGIN_DIR}/"}"
 
   # Refuse symlinked targets (catches valid and dangling symlinks)
   if [[ -L "$dst" ]]; then
@@ -188,7 +196,7 @@ copy_if_changed() {
     exit 1
   fi
 
-  # If destination exists, verify it is a regular file and owned by current user
+  # If destination exists, require matching prior-install receipt to prevent overwriting user or foreign files
   if [[ -e "$dst" ]]; then
     if [[ ! -f "$dst" ]]; then
       echo "  [ERROR] Destination exists and is not a regular file: $dst" >&2
@@ -196,6 +204,21 @@ copy_if_changed() {
     fi
     if [[ ! -O "$dst" ]]; then
       echo "  [ERROR] Destination is not owned by current user: $dst" >&2
+      exit 1
+    fi
+    if [[ "$has_prior_receipt" -ne 1 ]]; then
+      echo "  [ERROR] File already exists without prior install receipt: $rel_dst. Refusing to overwrite." >&2
+      exit 1
+    fi
+    local expected_phash="${prior_hashes["$rel_dst"]:-}"
+    if [[ -z "$expected_phash" ]]; then
+      echo "  [ERROR] Existing file $rel_dst is not recorded in prior install receipt. Refusing to overwrite." >&2
+      exit 1
+    fi
+    local curr_phash
+    curr_phash="$(sha256sum "$dst" | awk '{print $1}')"
+    if [[ "$curr_phash" != "$expected_phash" ]]; then
+      echo "  [ERROR] Existing file $rel_dst was modified since installation (${curr_phash:0:8} != ${expected_phash:0:8}). Refusing to overwrite user changes." >&2
       exit 1
     fi
   fi
@@ -298,7 +321,7 @@ else
   SETTINGS_NEWLY_CREATED=1
 fi
 
-# Generate cryptographic content identity hashes for only files actually created/replaced by this installer
+# Generate cryptographic content identity hashes and set granular non-recursive permissions
 (
   cd "${TARGET_PLUGIN_DIR}"
   hash_files=(
@@ -313,15 +336,18 @@ fi
   if [[ "$SETTINGS_NEWLY_CREATED" -eq 1 ]]; then
     hash_files+=(settings.json)
   fi
+
   sha256sum "${hash_files[@]}" > .installed_hashes
   chmod 0600 .installed_hashes
-)
 
-# Permissions Hardening
-find "${TARGET_PLUGIN_DIR}" -type d -exec chmod 0755 {} +
-find "${TARGET_PLUGIN_DIR}" -type f -exec chmod 0644 {} +
-chmod 0755 "${TARGET_PLUGIN_DIR}/bin/qwen-bridge" "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
-chmod 0600 "${SETTINGS_FILE}" "${TARGET_PLUGIN_DIR}/.installed_hashes"
+  # Permissions Hardening (strictly non-recursive, only installer-deployed assets)
+  chmod 0755 . views assets bin scripts 2>/dev/null || true
+  for hf in "${hash_files[@]}"; do
+    [[ -f "$hf" && ! -L "$hf" ]] && chmod 0644 "$hf"
+  done
+  chmod 0755 bin/qwen-bridge scripts/qis-stack.sh
+  chmod 0600 "${SETTINGS_FILE}" .installed_hashes
+)
 
 # ---------------------------------------------------------
 # 8. Validate Plugin Schema
