@@ -20,12 +20,24 @@ if [[ -f "$SHELL_CONFIG" ]] && command -v jq >/dev/null 2>&1; then
   echo "  [OK] shell.json updated"
 fi
 
-# 2. Remove Plugin Directory & CLI shortcut
+# 2. Remove Plugin Directory & CLI shortcut (with ownership verification)
+QIS_BIN="${HOME}/.local/bin/qis"
+if [[ -L "${QIS_BIN}" ]]; then
+  target_link="$(readlink -f "${QIS_BIN}" 2>/dev/null || true)"
+  if [[ "${target_link}" == "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" || "${target_link}" == *"/simonez.qwenimage/scripts/qis-stack.sh" ]]; then
+    rm -f "${QIS_BIN}"
+    echo "  [OK] Verified QIS CLI symlink removed from ${QIS_BIN}"
+  else
+    echo "  [SKIP] ${QIS_BIN} points to '${target_link}' (not QIS), keeping intact."
+  fi
+elif [[ -e "${QIS_BIN}" ]]; then
+  echo "  [SKIP] ${QIS_BIN} is a regular file/command, keeping intact."
+fi
+
 if [[ -d "${TARGET_PLUGIN_DIR}" ]]; then
   echo "-> Removing plugin files at ${TARGET_PLUGIN_DIR}..."
   rm -rf "${TARGET_PLUGIN_DIR}"
-  rm -f "${HOME}/.local/bin/qis"
-  echo "  [OK] Plugin directory and CLI symlink removed"
+  echo "  [OK] Plugin directory removed"
 fi
 
 # 3. Reload / Restart Shell
