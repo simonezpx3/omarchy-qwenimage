@@ -7,9 +7,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMFY_DIR="${HOME}/.local/share/comfyui"
-COMFY_VENV="${COMFY_DIR}/venv"
-CHECKPOINT_DIR="${COMFY_DIR}/.qis_checkpoints"
+COMFY_DIR="${COMFY_DIR:-${HOME}/.local/share/comfyui}"
+COMFY_VENV="${COMFY_VENV:-${COMFY_DIR}/venv}"
+CHECKPOINT_DIR="${CHECKPOINT_DIR:-${COMFY_DIR}/.qis_checkpoints}"
 
 # Deterministic & pinned upstream revisions (Omarchy Marketplace Security Baseline)
 COMFY_PINNED_COMMIT="2255709aa0be2deade91c7c80cda49d31b73906f" # ComfyUI v0.37.0
@@ -257,6 +257,53 @@ install_comfyui() {
 # ---------------------------------------------------------
 # Step 3: Download Diffusion Models (Hugging Face with Resume)
 # ---------------------------------------------------------
+# Helper: Safe model downloader refusing symlinks and using atomic rename
+safe_download_model() {
+    local target_dir="$1"
+    local file_name="$2"
+    local url="$3"
+    local desc="$4"
+
+    if [[ -L "$target_dir" ]]; then
+        log_err "Cílový adresář modelů je symlink: $target_dir"
+        return 1
+    fi
+    mkdir -p "$target_dir"
+    if [[ ! -O "$target_dir" ]]; then
+        log_err "Cílový adresář modelů není ve vlastnictví uživatele: $target_dir"
+        return 1
+    fi
+
+    local target_path="${target_dir}/${file_name}"
+    if [[ -L "$target_path" ]]; then
+        log_err "Cílová cesta modelu je symlink: $target_path. Odmítám stahování."
+        return 1
+    fi
+
+    if [[ -f "$target_path" ]]; then
+        log_ok "${desc} (${file_name}) je již stažen."
+        return 0
+    fi
+
+    log_info "Stahuji ${desc} (${file_name})..."
+    local tmp_part="${target_path}.part.$$"
+    if [[ -L "$tmp_part" ]]; then
+        log_err "Dočasný soubor modelu je symlink: $tmp_part. Odmítám."
+        return 1
+    fi
+    rm -f "$tmp_part"
+
+    if curl -L -C - --progress-bar -o "$tmp_part" "$url"; then
+        mv -f "$tmp_part" "$target_path"
+        chmod 0644 "$target_path"
+        log_ok "${desc} úspěšně stažen."
+    else
+        log_err "Chyba při stahování ${desc}!"
+        rm -f "$tmp_part"
+        return 1
+    fi
+}
+
 download_models() {
     detect_hardware
     log_info "Kontrola a stahování optimalizovaných modelů pro profil ${HW_TIER}..."
@@ -264,7 +311,6 @@ download_models() {
     local diff_dir="${COMFY_DIR}/models/diffusion_models"
     local te_dir="${COMFY_DIR}/models/text_encoders"
     local vae_dir="${COMFY_DIR}/models/vae"
-    mkdir -p "$diff_dir" "$te_dir" "$vae_dir"
 
     # 1. DiT Model (Q4_K_M for Tier S/A, Q3_K_S for Tier B)
     local dit_file="qwen_image_2.1_Q4_K_M.gguf"
@@ -273,36 +319,17 @@ download_models() {
         dit_file="qwen_image_2.1_Q3_K_S.gguf"
         dit_url="https://huggingface.co/city96/Qwen-Image-2.1-GGUF/resolve/main/qwen_image_2.1_Q3_K_S.gguf"
     fi
-
-    if [[ ! -f "${diff_dir}/${dit_file}" ]]; then
-        log_info "Stahuji DiT model ${dit_file} (~3.9 GB)..."
-        curl -L -C - --progress-bar -o "${diff_dir}/${dit_file}" "${dit_url}"
-        log_ok "DiT model stažen."
-    else
-        log_ok "DiT model ${dit_file} je již stažen."
-    fi
+    safe_download_model "$diff_dir" "$dit_file" "$dit_url" "DiT model"
 
     # 2. Text Encoder (Qwen3-VL 8B Heretic)
     local te_file="qwen3vl_8b_heretic-Q4_K_M.gguf"
     local te_url="https://huggingface.co/maternion/Qwen3-VL-8B-Heretic-GGUF/resolve/main/qwen3vl_8b_heretic-Q4_K_M.gguf"
-    if [[ ! -f "${te_dir}/${te_file}" ]]; then
-        log_info "Stahuji Text Encoder ${te_file} (~4.7 GB)..."
-        curl -L -C - --progress-bar -o "${te_dir}/${te_file}" "${te_url}"
-        log_ok "Text Encoder stažen."
-    else
-        log_ok "Text Encoder ${te_file} je již stažen."
-    fi
+    safe_download_model "$te_dir" "$te_file" "$te_url" "Text Encoder"
 
     # 3. VAE (BF16 Safetensors)
     local vae_file="qwen_image_2.1_vae_bf16.safetensors"
     local vae_url="https://huggingface.co/Comfy-Org/Qwen-Image-2.1_repackaged/resolve/main/split_files/vae/qwen_image_2.1_vae_bf16.safetensors"
-    if [[ ! -f "${vae_dir}/${vae_file}" ]]; then
-        log_info "Stahuji VAE ${vae_file} (~644 MB)..."
-        curl -L -C - --progress-bar -o "${vae_dir}/${vae_file}" "${vae_url}"
-        log_ok "VAE staženo."
-    else
-        log_ok "VAE ${vae_file} je již staženo."
-    fi
+    safe_download_model "$vae_dir" "$vae_file" "$vae_url" "VAE"
 }
 
 # ---------------------------------------------------------
@@ -344,12 +371,115 @@ update_qis_plugin() {
     fi
 
     if [[ -d "${src_dir}/rust-bridge" ]] && command -v cargo >/dev/null 2>&1; then
-        if [[ ! -f "${target_dir}/bin/qwen-bridge" ]] || [[ "${src_dir}/rust-bridge/src/main.rs" -nt "${target_dir}/bin/qwen-bridge" ]]; then
+        local target_bin="${target_dir}/bin/qwen-bridge"
+        local target_bin_dir="${target_dir}/bin"
+
+        # Verify target plugin directory
+        if [[ -L "${target_dir}" ]]; then
+            log_err "Cílový adresář pluginu je symlink: ${target_dir}. Aktualizace zrušena."
+            return 1
+        fi
+        if [[ -e "${target_dir}" ]]; then
+            if [[ ! -d "${target_dir}" || ! -O "${target_dir}" ]]; then
+                log_err "Cílový adresář pluginu není ve vlastnictví uživatele: ${target_dir}"
+                return 1
+            fi
+        fi
+
+        # Verify target bin directory
+        if [[ -L "${target_bin_dir}" ]]; then
+            log_err "Adresář bin/ v pluginu je symlink: ${target_bin_dir}. Aktualizace zrušena."
+            return 1
+        fi
+        if [[ -e "${target_bin_dir}" ]]; then
+            if [[ ! -d "${target_bin_dir}" || ! -O "${target_bin_dir}" ]]; then
+                log_err "Adresář bin/ v pluginu není ve vlastnictví uživatele: ${target_bin_dir}"
+                return 1
+            fi
+        else
+            mkdir -p "${target_bin_dir}"
+        fi
+
+        # Verify target binary
+        if [[ -L "${target_bin}" ]]; then
+            log_err "Cílová binárka je symlink: ${target_bin}. Aktualizace zrušena."
+            return 1
+        fi
+
+        # Prior receipt check before replacing existing binary
+        if [[ -e "${target_bin}" ]]; then
+            if [[ ! -f "${target_bin}" || ! -O "${target_bin}" ]]; then
+                log_err "Cílová binárka není regulérní soubor ve vlastnictví uživatele: ${target_bin}"
+                return 1
+            fi
+            local receipt="${target_dir}/.installed_hashes"
+            if [[ -L "$receipt" ]]; then
+                log_err "Stvrzenka .installed_hashes je symlink. Aktualizace zrušena."
+                return 1
+            fi
+            if [[ -f "$receipt" && -O "$receipt" ]]; then
+                local exp_bin_hash=""
+                while IFS= read -r rline || [[ -n "$rline" ]]; do
+                    [[ -z "$rline" || "$rline" =~ ^[[:space:]]*# ]] && continue
+                    read -r rhash rpath <<< "$rline"
+                    rpath="${rpath#\./}"
+                    rpath="${rpath#\*}"
+                    rpath="${rpath#"${rpath%%[![:space:]]*}"}"
+                    rpath="${rpath%"${rpath##*[![:space:]]}"}"
+                    if [[ "$rpath" == "bin/qwen-bridge" ]]; then
+                        exp_bin_hash="$rhash"
+                        break
+                    fi
+                done < "$receipt"
+
+                if [[ -n "$exp_bin_hash" ]]; then
+                    local curr_bin_hash
+                    curr_bin_hash="$(sha256sum "$target_bin" 2>/dev/null | awk '{print $1}')"
+                    if [[ "$curr_bin_hash" != "$exp_bin_hash" ]]; then
+                        log_warn "Cílová binárka bin/qwen-bridge byla upravena mimo instalátor. Ponechávám stávající."
+                        return 0
+                    fi
+                fi
+            fi
+        fi
+
+        if [[ ! -f "${target_bin}" ]] || [[ "${src_dir}/rust-bridge/src/main.rs" -nt "${target_bin}" ]]; then
             log_info "Aktualizuji nativní Rust můstek..."
             (cd "${src_dir}/rust-bridge" && cargo build --release)
-            mkdir -p "${target_dir}/bin"
-            cp --remove-destination "${src_dir}/rust-bridge/target/release/qwen_bridge" "${target_dir}/bin/qwen-bridge"
-            chmod 0755 "${target_dir}/bin/qwen-bridge"
+            local compiled_bin="${src_dir}/rust-bridge/target/release/qwen_bridge"
+            if [[ -f "$compiled_bin" ]]; then
+                local tmp_bin
+                tmp_bin="$(mktemp "${target_bin_dir}/qwen-bridge.tmp.XXXXXX")"
+                cp --remove-destination --no-dereference "$compiled_bin" "$tmp_bin"
+                chmod 0755 "$tmp_bin"
+                mv -f "$tmp_bin" "${target_bin}"
+                chmod 0755 "${target_bin}"
+
+                # Update hash in .installed_hashes if receipt exists
+                local receipt="${target_dir}/.installed_hashes"
+                if [[ -f "$receipt" && ! -L "$receipt" && -O "$receipt" ]]; then
+                    local new_hash
+                    new_hash="$(sha256sum "${target_bin}" | awk '{print $1}')"
+                    local tmp_receipt
+                    tmp_receipt="$(mktemp "${target_dir}/.installed_hashes.tmp.XXXXXX")"
+                    while IFS= read -r rline || [[ -n "$rline" ]]; do
+                        [[ -z "$rline" ]] && continue
+                        read -r rhash rpath <<< "$rline"
+                        rpath="${rpath#\./}"
+                        rpath="${rpath#\*}"
+                        rpath="${rpath#"${rpath%%[![:space:]]*}"}"
+                        rpath="${rpath%"${rpath##*[![:space:]]}"}"
+                        if [[ "$rpath" == "bin/qwen-bridge" ]]; then
+                            echo "${new_hash}  bin/qwen-bridge" >> "$tmp_receipt"
+                        else
+                            echo "$rline" >> "$tmp_receipt"
+                        fi
+                    done < "$receipt"
+                    chmod 0600 "$tmp_receipt"
+                    mv -f "$tmp_receipt" "$receipt"
+                    chmod 0600 "$receipt"
+                fi
+            fi
         fi
     fi
 
@@ -366,13 +496,38 @@ update_comfyui() {
     fi
 
     log_info "Vytvářím kontrolní bod před aktualizací ComfyUI..."
+    if [[ -L "${CHECKPOINT_DIR}" ]]; then
+        log_err "CHECKPOINT_DIR je symlink: ${CHECKPOINT_DIR}. Přerušuji."
+        return 1
+    fi
     mkdir -p "${CHECKPOINT_DIR}"
+    if [[ ! -O "${CHECKPOINT_DIR}" ]]; then
+        log_err "CHECKPOINT_DIR není ve vlastnictví uživatele: ${CHECKPOINT_DIR}"
+        return 1
+    fi
+
     local ts
     ts=$(date +%Y%m%d_%H%M%S)
     local cur_commit
     cur_commit=$(git -C "${COMFY_DIR}" rev-parse HEAD)
-    echo "$cur_commit" > "${CHECKPOINT_DIR}/comfy_last_known_good_${ts}.txt"
-    echo "$cur_commit" > "${CHECKPOINT_DIR}/latest_checkpoint.txt"
+
+    write_checkpoint() {
+        local target="$1"
+        local data="$2"
+        if [[ -L "$target" ]]; then
+            log_err "Odmítám zápis kontrolního bodu do symlinku: $target"
+            return 1
+        fi
+        local tmp_file
+        tmp_file="$(mktemp "${CHECKPOINT_DIR}/cp.tmp.XXXXXX")"
+        chmod 0600 "$tmp_file"
+        echo "$data" > "$tmp_file"
+        mv -f "$tmp_file" "$target"
+        chmod 0600 "$target"
+    }
+
+    write_checkpoint "${CHECKPOINT_DIR}/comfy_last_known_good_${ts}.txt" "$cur_commit" || return 1
+    write_checkpoint "${CHECKPOINT_DIR}/latest_checkpoint.txt" "$cur_commit" || return 1
 
     log_info "Ověřuji integritu ComfyUI jádra na prověřený commit ${COMFY_PINNED_COMMIT:0:7}..."
     git -C "${COMFY_DIR}" fetch --tags origin 2>/dev/null || true
@@ -515,42 +670,44 @@ interactive_menu() {
 # ---------------------------------------------------------
 # CLI Router
 # ---------------------------------------------------------
-case "${1:-}" in
-    status)
-        check_status
-        ;;
-    setup|install|--full)
-        install_system_deps
-        install_comfyui
-        download_models
-        setup_ollama_models
-        "${SCRIPT_DIR}/install.sh"
-        ;;
-    update|--update)
-        case "${2:-all}" in
-            plugin)
-                update_qis_plugin
-                ;;
-            comfy)
-                update_comfyui
-                ;;
-            models)
-                download_models
-                ;;
-            all|*)
-                update_qis_plugin
-                update_comfyui
-                setup_ollama_models
-                ;;
-        esac
-        ;;
-    rollback)
-        rollback_comfyui
-        ;;
-    models)
-        download_models
-        ;;
-    *)
-        interactive_menu
-        ;;
-esac
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    case "${1:-}" in
+        status)
+            check_status
+            ;;
+        setup|install|--full)
+            install_system_deps
+            install_comfyui
+            download_models
+            setup_ollama_models
+            "${SCRIPT_DIR}/install.sh"
+            ;;
+        update|--update)
+            case "${2:-all}" in
+                plugin)
+                    update_qis_plugin
+                    ;;
+                comfy)
+                    update_comfyui
+                    ;;
+                models)
+                    download_models
+                    ;;
+                all|*)
+                    update_qis_plugin
+                    update_comfyui
+                    setup_ollama_models
+                    ;;
+            esac
+            ;;
+        rollback)
+            rollback_comfyui
+            ;;
+        models)
+            download_models
+            ;;
+        *)
+            interactive_menu
+            ;;
+    esac
+fi

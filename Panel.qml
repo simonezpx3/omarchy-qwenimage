@@ -91,7 +91,7 @@ Panel {
   property int updateElapsedSeconds: 0
   property string updateStatusText: ""
   property bool showStackConfirm: false
-  property string qisScriptBin: userHome + "/Projects/omarchy-qwenimage/scripts/qis-stack.sh"
+  readonly property string qisScriptBin: Qt.resolvedUrl("scripts/qis-stack.sh").toString().replace(/^file:\/\//, "")
 
   // Language state (cs = Čeština, en = English)
   property string currentLang: "cs"
