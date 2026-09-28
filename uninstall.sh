@@ -2,8 +2,9 @@
 # QIS (Qwen Image Studio) — Uninstallation Script for Omarchy Linux
 set -euo pipefail
 
-TARGET_PLUGIN_DIR="${HOME}/.config/omarchy/plugins/simonez.qwenimage"
-SHELL_CONFIG="${HOME}/.config/omarchy/shell.json"
+TARGET_PLUGIN_DIR="${TARGET_PLUGIN_DIR:-${HOME}/.config/omarchy/plugins/simonez.qwenimage}"
+SHELL_CONFIG="${SHELL_CONFIG:-${HOME}/.config/omarchy/shell.json}"
+BIN_DIR="${BIN_DIR:-${HOME}/.local/bin}"
 
 echo "=== Uninstalling QIS (Qwen Image Studio) ==="
 
@@ -21,7 +22,7 @@ if [[ -f "$SHELL_CONFIG" ]] && command -v jq >/dev/null 2>&1; then
 fi
 
 # 2. Verify and remove CLI shortcut (strict ownership check)
-QIS_BIN="${HOME}/.local/bin/qis"
+QIS_BIN="${BIN_DIR}/qis"
 if [[ -L "${QIS_BIN}" ]]; then
   target_link="$(readlink -f "${QIS_BIN}" 2>/dev/null || true)"
   if [[ "${target_link}" == "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" ]]; then

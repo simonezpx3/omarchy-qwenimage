@@ -5,10 +5,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TARGET_PLUGIN_DIR="${HOME}/.config/omarchy/plugins/simonez.qwenimage"
-PICTURES_DIR="${HOME}/Pictures/Qwen-Image"
-SHELL_CONFIG="${HOME}/.config/omarchy/shell.json"
-BIN_DIR="${HOME}/.local/bin"
+TARGET_PLUGIN_DIR="${TARGET_PLUGIN_DIR:-${HOME}/.config/omarchy/plugins/simonez.qwenimage}"
+PICTURES_DIR="${PICTURES_DIR:-${HOME}/Pictures/Qwen-Image}"
+SHELL_CONFIG="${SHELL_CONFIG:-${HOME}/.config/omarchy/shell.json}"
+BIN_DIR="${BIN_DIR:-${HOME}/.local/bin}"
 
 NO_RESTART=0
 for arg in "$@"; do
@@ -114,9 +114,66 @@ if [[ ! -d "$COMFY_DIR" || ! -f "${COMFY_DIR}/main.py" ]]; then
 fi
 
 # ---------------------------------------------------------
-# 3. Ensure Directories
+# 3. Ensure Directories & Verify Safe Ownership
 # ---------------------------------------------------------
-mkdir -p "${TARGET_PLUGIN_DIR}" "${PICTURES_DIR}" "${BIN_DIR}"
+ensure_safe_dir() {
+  local dir="$1"
+  if [[ -L "$dir" ]]; then
+    echo "  [ERROR] Directory target is a symlink: $dir" >&2
+    exit 1
+  fi
+  if [[ -e "$dir" ]]; then
+    if [[ ! -d "$dir" ]]; then
+      echo "  [ERROR] Target exists and is not a directory: $dir" >&2
+      exit 1
+    fi
+    if [[ ! -O "$dir" ]]; then
+      echo "  [ERROR] Target directory is not owned by current user: $dir" >&2
+      exit 1
+    fi
+  else
+    mkdir -p "$dir"
+  fi
+}
+
+# Verify plugin directory: must not be a symlink and must be owned by user
+if [[ -L "${TARGET_PLUGIN_DIR}" ]]; then
+  echo "  [ERROR] Refusing installation: TARGET_PLUGIN_DIR is a symlink (${TARGET_PLUGIN_DIR})" >&2
+  exit 1
+fi
+if [[ -e "${TARGET_PLUGIN_DIR}" ]]; then
+  if [[ ! -d "${TARGET_PLUGIN_DIR}" ]]; then
+    echo "  [ERROR] Refusing installation: TARGET_PLUGIN_DIR exists and is not a directory." >&2
+    exit 1
+  fi
+  if [[ ! -O "${TARGET_PLUGIN_DIR}" ]]; then
+    echo "  [ERROR] Refusing installation: TARGET_PLUGIN_DIR is not owned by current user." >&2
+    exit 1
+  fi
+  # If non-empty, ensure it is not a foreign directory
+  if [[ -f "${TARGET_PLUGIN_DIR}/manifest.json" ]]; then
+    if ! grep -q '"id": *"simonez.qwenimage"' "${TARGET_PLUGIN_DIR}/manifest.json" 2>/dev/null; then
+      echo "  [ERROR] Target directory contains a foreign plugin manifest. Refusing to overwrite." >&2
+      exit 1
+    fi
+  elif [[ ! -f "${TARGET_PLUGIN_DIR}/.installed_hashes" ]]; then
+    # Neither manifest nor .installed_hashes exists.
+    # Check if there are foreign files other than settings.json
+    foreign_items=()
+    while IFS= read -r item; do
+      [[ -n "$item" && "$item" != "settings.json" ]] && foreign_items+=("$item")
+    done < <(ls -A "${TARGET_PLUGIN_DIR}" 2>/dev/null || true)
+
+    if [[ ${#foreign_items[@]} -gt 0 ]]; then
+      echo "  [ERROR] Target directory contains unverified foreign files (${foreign_items[*]}). Refusing to overwrite." >&2
+      exit 1
+    fi
+  fi
+fi
+
+ensure_safe_dir "${TARGET_PLUGIN_DIR}"
+ensure_safe_dir "${PICTURES_DIR}"
+ensure_safe_dir "${BIN_DIR}"
 
 # ---------------------------------------------------------
 # 4. Deploy Plugin Files
@@ -124,8 +181,27 @@ mkdir -p "${TARGET_PLUGIN_DIR}" "${PICTURES_DIR}" "${BIN_DIR}"
 copy_if_changed() {
   local src="$1"
   local dst="$2"
+
+  # Refuse symlinked targets (catches valid and dangling symlinks)
+  if [[ -L "$dst" ]]; then
+    echo "  [ERROR] Refusing to overwrite symlinked target: $dst" >&2
+    exit 1
+  fi
+
+  # If destination exists, verify it is a regular file and owned by current user
+  if [[ -e "$dst" ]]; then
+    if [[ ! -f "$dst" ]]; then
+      echo "  [ERROR] Destination exists and is not a regular file: $dst" >&2
+      exit 1
+    fi
+    if [[ ! -O "$dst" ]]; then
+      echo "  [ERROR] Destination is not owned by current user: $dst" >&2
+      exit 1
+    fi
+  fi
+
   if [[ ! -e "$dst" ]] || ! cmp -s "$src" "$dst"; then
-    cp "$src" "$dst"
+    cp --remove-destination --no-dereference "$src" "$dst"
   fi
 }
 
@@ -133,14 +209,18 @@ echo "-> Deploying plugin files to ${TARGET_PLUGIN_DIR}..."
 copy_if_changed "${SCRIPT_DIR}/manifest.json" "${TARGET_PLUGIN_DIR}/manifest.json"
 copy_if_changed "${SCRIPT_DIR}/BarWidget.qml" "${TARGET_PLUGIN_DIR}/BarWidget.qml"
 copy_if_changed "${SCRIPT_DIR}/Panel.qml" "${TARGET_PLUGIN_DIR}/Panel.qml"
-mkdir -p "${TARGET_PLUGIN_DIR}/views" "${TARGET_PLUGIN_DIR}/assets"
+
+ensure_safe_dir "${TARGET_PLUGIN_DIR}/views"
+ensure_safe_dir "${TARGET_PLUGIN_DIR}/assets"
 for f in "${SCRIPT_DIR}"/views/*; do
   [[ -f "$f" ]] && copy_if_changed "$f" "${TARGET_PLUGIN_DIR}/views/$(basename "$f")"
 done
 for f in "${SCRIPT_DIR}"/assets/*; do
   [[ -f "$f" ]] && copy_if_changed "$f" "${TARGET_PLUGIN_DIR}/assets/$(basename "$f")"
 done
-mkdir -p "${TARGET_PLUGIN_DIR}/bin" "${TARGET_PLUGIN_DIR}/scripts"
+
+ensure_safe_dir "${TARGET_PLUGIN_DIR}/bin"
+ensure_safe_dir "${TARGET_PLUGIN_DIR}/scripts"
 copy_if_changed "${SCRIPT_DIR}/scripts/qis-stack.sh" "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
 chmod +x "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
 
@@ -150,14 +230,14 @@ chmod +x "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
 echo "-> Setting up native Rust bridge..."
 if [[ -f "${SCRIPT_DIR}/bin/qwen-bridge" ]]; then
   echo "  [OK] Found local binary"
-  cp --remove-destination "${SCRIPT_DIR}/bin/qwen-bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
+  copy_if_changed "${SCRIPT_DIR}/bin/qwen-bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
 elif [[ -f "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge" ]]; then
   echo "  [OK] Found compiled target binary"
-  cp --remove-destination "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
+  copy_if_changed "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
 elif command -v cargo >/dev/null 2>&1 && [[ -d "${SCRIPT_DIR}/rust-bridge" ]]; then
   echo "  -> Compiling rust-bridge from source (release mode)..."
   (cd "${SCRIPT_DIR}/rust-bridge" && cargo build --release)
-  cp --remove-destination "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
+  copy_if_changed "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
   echo "  [OK] Compiled release binary successfully"
 else
   echo "  [ERROR] Rust toolchain (cargo) required to build native bridge on first install!" >&2
@@ -170,7 +250,7 @@ chmod 0755 "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
 # 6. Deploy CLI Tool `qis` into ~/.local/bin
 # ---------------------------------------------------------
 echo "-> Setting up 'qis' CLI command in ${BIN_DIR}/qis..."
-mkdir -p "${BIN_DIR}"
+ensure_safe_dir "${BIN_DIR}"
 if [[ -L "${BIN_DIR}/qis" ]]; then
   target_link="$(readlink -f "${BIN_DIR}/qis" 2>/dev/null || true)"
   if [[ "${target_link}" == "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" ]]; then
@@ -194,13 +274,28 @@ fi
 # ---------------------------------------------------------
 SETTINGS_FILE="${TARGET_PLUGIN_DIR}/settings.json"
 SETTINGS_NEWLY_CREATED=0
-if [[ ! -f "$SETTINGS_FILE" ]]; then
+
+# Refuse symlinked settings target (catches both valid and dangling symlinks)
+if [[ -L "$SETTINGS_FILE" ]]; then
+  echo "  [ERROR] Refusing symlinked settings target: $SETTINGS_FILE" >&2
+  exit 1
+fi
+
+if [[ -e "$SETTINGS_FILE" ]]; then
+  if [[ ! -f "$SETTINGS_FILE" ]]; then
+    echo "  [ERROR] Existing settings path is not a regular file: $SETTINGS_FILE" >&2
+    exit 1
+  fi
+  if [[ ! -O "$SETTINGS_FILE" ]]; then
+    echo "  [ERROR] Existing settings file is not owned by current user: $SETTINGS_FILE" >&2
+    exit 1
+  fi
+  echo "  [INFO] Preserving pre-existing user settings in settings.json"
+else
   echo '{"language": "cs", "backend_url": "http://127.0.0.1:8188"}' > "$SETTINGS_FILE"
   chmod 0600 "$SETTINGS_FILE"
   echo "  [OK] Initialized default settings (0600)"
   SETTINGS_NEWLY_CREATED=1
-else
-  echo "  [INFO] Preserving pre-existing user settings in settings.json"
 fi
 
 # Generate cryptographic content identity hashes for only files actually created/replaced by this installer
