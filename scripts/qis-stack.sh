@@ -286,14 +286,11 @@ safe_download_model() {
     fi
 
     log_info "Stahuji ${desc} (${file_name})..."
-    local tmp_part="${target_path}.part.$$"
-    if [[ -L "$tmp_part" ]]; then
-        log_err "Dočasný soubor modelu je symlink: $tmp_part. Odmítám."
-        return 1
-    fi
-    rm -f "$tmp_part"
+    local tmp_part
+    tmp_part="$(mktemp "${target_dir}/${file_name}.part.XXXXXX")"
+    chmod 0644 "$tmp_part"
 
-    if curl -L -C - --progress-bar -o "$tmp_part" "$url"; then
+    if curl -L --fail --progress-bar -o "$tmp_part" "$url"; then
         mv -f "$tmp_part" "$target_path"
         chmod 0644 "$target_path"
         log_ok "${desc} úspěšně stažen."
@@ -417,29 +414,35 @@ update_qis_plugin() {
                 log_err "Stvrzenka .installed_hashes je symlink. Aktualizace zrušena."
                 return 1
             fi
-            if [[ -f "$receipt" && -O "$receipt" ]]; then
-                local exp_bin_hash=""
-                while IFS= read -r rline || [[ -n "$rline" ]]; do
-                    [[ -z "$rline" || "$rline" =~ ^[[:space:]]*# ]] && continue
-                    read -r rhash rpath <<< "$rline"
-                    rpath="${rpath#\./}"
-                    rpath="${rpath#\*}"
-                    rpath="${rpath#"${rpath%%[![:space:]]*}"}"
-                    rpath="${rpath%"${rpath##*[![:space:]]}"}"
-                    if [[ "$rpath" == "bin/qwen-bridge" ]]; then
-                        exp_bin_hash="$rhash"
-                        break
-                    fi
-                done < "$receipt"
+            if [[ ! -f "$receipt" || ! -O "$receipt" ]]; then
+                log_err "Cílová binárka existuje, ale stvrzenka .installed_hashes chybí nebo není ve vlastnictví uživatele. Odmítám přepsat cizí soubor."
+                return 1
+            fi
 
-                if [[ -n "$exp_bin_hash" ]]; then
-                    local curr_bin_hash
-                    curr_bin_hash="$(sha256sum "$target_bin" 2>/dev/null | awk '{print $1}')"
-                    if [[ "$curr_bin_hash" != "$exp_bin_hash" ]]; then
-                        log_warn "Cílová binárka bin/qwen-bridge byla upravena mimo instalátor. Ponechávám stávající."
-                        return 0
-                    fi
+            local exp_bin_hash=""
+            while IFS= read -r rline || [[ -n "$rline" ]]; do
+                [[ -z "$rline" || "$rline" =~ ^[[:space:]]*# ]] && continue
+                read -r rhash rpath <<< "$rline"
+                rpath="${rpath#\./}"
+                rpath="${rpath#\*}"
+                rpath="${rpath#"${rpath%%[![:space:]]*}"}"
+                rpath="${rpath%"${rpath##*[![:space:]]}"}"
+                if [[ "$rpath" == "bin/qwen-bridge" ]]; then
+                    exp_bin_hash="$rhash"
+                    break
                 fi
+            done < "$receipt"
+
+            if [[ -z "$exp_bin_hash" ]]; then
+                log_err "Cílová binárka existuje, ale ve stvrzence .installed_hashes chybí záznam bin/qwen-bridge. Odmítám přepsat cizí soubor."
+                return 1
+            fi
+
+            local curr_bin_hash
+            curr_bin_hash="$(sha256sum "$target_bin" 2>/dev/null | awk '{print $1}')"
+            if [[ "$curr_bin_hash" != "$exp_bin_hash" ]]; then
+                log_warn "Cílová binárka bin/qwen-bridge byla upravena mimo instalátor. Ponechávám stávající."
+                return 0
             fi
         fi
 
