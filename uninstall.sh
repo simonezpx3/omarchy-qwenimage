@@ -131,7 +131,7 @@ if [[ -d "${TARGET_PLUGIN_DIR}" && ! -L "${TARGET_PLUGIN_DIR}" ]]; then
       done
 
       # Remove hashes file after processing
-      rm -f "${HASHES_FILE}" "${TARGET_PLUGIN_DIR}/.installed_files" 2>/dev/null || true
+      rm -f "${HASHES_FILE}" 2>/dev/null || true
 
       # Clean empty directories only (leaves foreign or user-created files intact)
       rmdir "${TARGET_PLUGIN_DIR}/bin" 2>/dev/null || true
