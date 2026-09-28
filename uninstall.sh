@@ -34,10 +34,12 @@ elif [[ -e "${QIS_BIN}" ]]; then
   echo "  [SKIP] ${QIS_BIN} is a regular user command/file, leaving in place."
 fi
 
-# 3. Verify and remove only installer-owned plugin files
+# 3. Verify and remove only installer-owned, unmodified plugin files
 if [[ -d "${TARGET_PLUGIN_DIR}" && ! -L "${TARGET_PLUGIN_DIR}" ]]; then
+  TARGET_REAL="$(realpath -q "${TARGET_PLUGIN_DIR}" 2>/dev/null || true)"
   MANIFEST_FILE="${TARGET_PLUGIN_DIR}/manifest.json"
-  if [[ -f "${MANIFEST_FILE}" && ! -L "${MANIFEST_FILE}" ]]; then
+
+  if [[ -n "${TARGET_REAL}" && -f "${MANIFEST_FILE}" && ! -L "${MANIFEST_FILE}" ]]; then
     is_qis=0
     if command -v jq >/dev/null 2>&1; then
       if [[ "$(jq -r '.id // empty' "${MANIFEST_FILE}" 2>/dev/null)" == "simonez.qwenimage" ]]; then
@@ -48,31 +50,93 @@ if [[ -d "${TARGET_PLUGIN_DIR}" && ! -L "${TARGET_PLUGIN_DIR}" ]]; then
     fi
 
     if [[ "$is_qis" -eq 1 ]]; then
-      echo "-> Removing verified installer-owned files..."
-      receipt_file="${TARGET_PLUGIN_DIR}/.installed_files"
-      if [[ -f "${receipt_file}" && ! -L "${receipt_file}" ]]; then
-        while IFS= read -r rel_path || [[ -n "$rel_path" ]]; do
-          [[ -z "$rel_path" || "$rel_path" == \#* ]] && continue
-          target_path="${TARGET_PLUGIN_DIR}/${rel_path}"
-          if [[ -f "${target_path}" && ! -L "${target_path}" ]]; then
-            rm -f "${target_path}"
-          fi
-        done < "${receipt_file}"
+      echo "-> Verifying content identity and removing unmodified installer-owned files..."
+      HASHES_FILE="${TARGET_PLUGIN_DIR}/.installed_hashes"
+
+      # Fixed whitelist of allowed relative paths deployed by installer
+      known_files=(
+        "manifest.json"
+        "BarWidget.qml"
+        "Panel.qml"
+        "settings.json"
+        "bin/qwen-bridge"
+        "scripts/qis-stack.sh"
+        "views/CivitaiView.qml"
+        "views/CompareView.qml"
+        "views/HistoryView.qml"
+        "views/qmldir"
+        "views/StudioView.qml"
+        "assets/qwen-color.svg"
+        "assets/qwen-heretic.svg"
+        "assets/qwen-mono.svg"
+      )
+
+      # Build expected hash map if .installed_hashes is present and safe
+      declare -A expected_hashes=()
+      if [[ -f "${HASHES_FILE}" && ! -L "${HASHES_FILE}" ]]; then
+        while read -r hash rel || [[ -n "$hash" ]]; do
+          [[ -z "$hash" || -z "$rel" ]] && continue
+          # Strip leading ./, *, and whitespace
+          rel="${rel#\./}"
+          rel="${rel#\*}"
+          rel="${rel#"${rel%%[![:space:]]*}"}"
+          rel="${rel%"${rel##*[![:space:]]}"}"
+          expected_hashes["$rel"]="$hash"
+        done < "${HASHES_FILE}"
       fi
 
-      # Also remove known default installer files in case receipt was deleted
-      for known_rel in \
-        "manifest.json" "BarWidget.qml" "Panel.qml" "settings.json" \
-        "bin/qwen-bridge" "scripts/qis-stack.sh" \
-        "views/CivitaiView.qml" "views/CompareView.qml" "views/HistoryView.qml" \
-        "views/qmldir" "views/StudioView.qml" \
-        "assets/qwen-color.svg" "assets/qwen-heretic.svg" "assets/qwen-mono.svg" \
-        ".installed_files"; do
-        target_path="${TARGET_PLUGIN_DIR}/${known_rel}"
-        if [[ -f "${target_path}" && ! -L "${target_path}" ]]; then
-          rm -f "${target_path}"
+      for rel_path in "${known_files[@]}"; do
+        # Enforce path traversal protection: reject '..' or leading '/'
+        if [[ "$rel_path" == /* || "$rel_path" == *..* ]]; then
+          continue
         fi
+
+        candidate="${TARGET_PLUGIN_DIR}/${rel_path}"
+
+        # Must exist as a regular file and NOT a symlink
+        if [[ ! -f "$candidate" || -L "$candidate" ]]; then
+          continue
+        fi
+
+        # Canonical path must strictly reside inside TARGET_REAL
+        candidate_real="$(realpath -q "$candidate" 2>/dev/null || true)"
+        if [[ -z "$candidate_real" || "$candidate_real" != "${TARGET_REAL}/"* ]]; then
+          continue
+        fi
+
+        # Parent directory must not be a symlink
+        parent_real="$(dirname "$candidate_real")"
+        if [[ -L "$parent_real" ]]; then
+          continue
+        fi
+
+        # Content Identity verification:
+        # If an expected hash exists for this file, verify content matches untouched installer version.
+        # If user modified the file (e.g. customized settings.json or QML), preserve it!
+        exp_hash="${expected_hashes["$rel_path"]:-}"
+        if [[ -n "$exp_hash" ]]; then
+          curr_hash="$(sha256sum "$candidate_real" 2>/dev/null | awk '{print $1}')"
+          if [[ "$curr_hash" != "$exp_hash" ]]; then
+            echo "  [SKIP] Modified content detected in ${rel_path}, leaving intact."
+            continue
+          fi
+        elif [[ "$rel_path" == "settings.json" ]]; then
+          # Fallback if hash file missing: check if settings differ from default template
+          curr_hash="$(sha256sum "$candidate_real" 2>/dev/null | awk '{print $1}')"
+          default_hash="$(printf '{"language": "cs", "backend_url": "http://127.0.0.1:8188"}\n' | sha256sum | awk '{print $1}')"
+          default_hash_nolf="$(printf '{"language": "cs", "backend_url": "http://127.0.0.1:8188"}' | sha256sum | awk '{print $1}')"
+          if [[ "$curr_hash" != "$default_hash" && "$curr_hash" != "$default_hash_nolf" ]]; then
+            echo "  [SKIP] User-edited configuration detected in settings.json, leaving intact."
+            continue
+          fi
+        fi
+
+        rm -f "$candidate_real"
+        echo "  [OK] Removed unmodified file: ${rel_path}"
       done
+
+      # Remove hashes file after processing
+      rm -f "${HASHES_FILE}" "${TARGET_PLUGIN_DIR}/.installed_files" 2>/dev/null || true
 
       # Clean empty directories only (leaves foreign or user-created files intact)
       rmdir "${TARGET_PLUGIN_DIR}/bin" 2>/dev/null || true

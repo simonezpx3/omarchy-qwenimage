@@ -190,7 +190,7 @@ else
 fi
 
 # ---------------------------------------------------------
-# 7. Initialize Settings & Installation Receipt
+# 7. Initialize Settings & Content Identity Receipt
 # ---------------------------------------------------------
 SETTINGS_FILE="${TARGET_PLUGIN_DIR}/settings.json"
 if [[ ! -f "$SETTINGS_FILE" ]]; then
@@ -199,31 +199,27 @@ if [[ ! -f "$SETTINGS_FILE" ]]; then
   echo "  [OK] Initialized default settings (0600)"
 fi
 
-# Record installation receipt of installer-owned files for verified removal
-cat << 'EOF' > "${TARGET_PLUGIN_DIR}/.installed_files"
-manifest.json
-BarWidget.qml
-Panel.qml
-settings.json
-bin/qwen-bridge
-scripts/qis-stack.sh
-views/CivitaiView.qml
-views/CompareView.qml
-views/HistoryView.qml
-views/qmldir
-views/StudioView.qml
-assets/qwen-color.svg
-assets/qwen-heretic.svg
-assets/qwen-mono.svg
-.installed_files
-EOF
-chmod 0644 "${TARGET_PLUGIN_DIR}/.installed_files"
+# Generate cryptographic content identity hashes for safe, verified uninstallation
+(
+  cd "${TARGET_PLUGIN_DIR}"
+  sha256sum \
+    manifest.json \
+    BarWidget.qml \
+    Panel.qml \
+    settings.json \
+    bin/qwen-bridge \
+    scripts/qis-stack.sh \
+    views/* \
+    assets/* \
+    > .installed_hashes
+  chmod 0600 .installed_hashes
+)
 
 # Permissions Hardening
 find "${TARGET_PLUGIN_DIR}" -type d -exec chmod 0755 {} +
 find "${TARGET_PLUGIN_DIR}" -type f -exec chmod 0644 {} +
 chmod 0755 "${TARGET_PLUGIN_DIR}/bin/qwen-bridge" "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
-chmod 0600 "${SETTINGS_FILE}"
+chmod 0600 "${SETTINGS_FILE}" "${TARGET_PLUGIN_DIR}/.installed_hashes"
 
 # ---------------------------------------------------------
 # 8. Validate Plugin Schema
