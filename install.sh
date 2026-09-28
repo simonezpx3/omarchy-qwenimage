@@ -171,27 +171,19 @@ chmod 0755 "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
 # ---------------------------------------------------------
 echo "-> Setting up 'qis' CLI command in ${BIN_DIR}/qis..."
 mkdir -p "${BIN_DIR}"
-if [[ -e "${BIN_DIR}/qis" || -L "${BIN_DIR}/qis" ]]; then
-  if [[ -L "${BIN_DIR}/qis" ]]; then
-    target_link="$(readlink -f "${BIN_DIR}/qis" 2>/dev/null || true)"
-    if [[ "${target_link}" == "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" ]]; then
-      # Already pointing to our script, safely re-link
-      ln -sf "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" "${BIN_DIR}/qis"
-      echo "  [OK] Refreshed existing QIS CLI symlink"
-    else
-      backup_file="${BIN_DIR}/qis.backup.$(date +%s)"
-      echo "[WARNING] Pre-existing symlink at ${BIN_DIR}/qis points to '${target_link}'. Backing up to ${backup_file}..."
-      mv "${BIN_DIR}/qis" "${backup_file}"
-      ln -s "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" "${BIN_DIR}/qis"
-      echo "  [OK] Created QIS CLI symlink with backup preserved"
-    fi
+if [[ -L "${BIN_DIR}/qis" ]]; then
+  target_link="$(readlink -f "${BIN_DIR}/qis" 2>/dev/null || true)"
+  if [[ "${target_link}" == "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" ]]; then
+    # Already points to this exact QIS installation, refresh symlink safely
+    ln -sf "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" "${BIN_DIR}/qis"
+    echo "  [OK] Refreshed existing QIS CLI symlink in ${BIN_DIR}/qis"
   else
-    backup_file="${BIN_DIR}/qis.backup.$(date +%s)"
-    echo "[WARNING] Pre-existing user file at ${BIN_DIR}/qis detected. Backing up to ${backup_file}..."
-    mv "${BIN_DIR}/qis" "${backup_file}"
-    ln -s "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" "${BIN_DIR}/qis"
-    echo "  [OK] Created QIS CLI symlink with user file safely backed up"
+    echo "  [SKIP] Pre-existing symlink at ${BIN_DIR}/qis points to '${target_link}'. Leaving foreign path in place."
+    echo "         To invoke QIS directly, run: ${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
   fi
+elif [[ -e "${BIN_DIR}/qis" ]]; then
+  echo "  [SKIP] Pre-existing user command/file detected at ${BIN_DIR}/qis. Leaving foreign path in place."
+  echo "         To invoke QIS directly, run: ${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
 else
   ln -s "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" "${BIN_DIR}/qis"
   echo "  [OK] Created QIS CLI symlink in ${BIN_DIR}/qis"
