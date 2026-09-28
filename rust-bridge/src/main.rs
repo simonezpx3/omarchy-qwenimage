@@ -1030,7 +1030,7 @@ fn fetch_civitai_items(query: &str, limit: usize) -> Vec<serde_json::Value> {
 
     // 2. Direct upstream CivitAI API fallback
     if items.is_empty() {
-        let fetch_count = (limit * 5).clamp(40, 80);
+        let fetch_count = (limit * 3).clamp(40, 150);
         let upstream_url = if q_lower.is_empty() {
             format!(
                 "https://civitai.com/api/v1/images?limit={}&sort=Most%20Reactions&period=Month&nsfw=X&withMeta=true",
@@ -1211,9 +1211,44 @@ fn fetch_tensorart_items(query: &str, limit: usize) -> Vec<serde_json::Value> {
     prompts_db::search_curated("Tensor.art", &words, limit)
 }
 
+fn fetch_midlibrary_items(query: &str, limit: usize) -> Vec<serde_json::Value> {
+    let q_lower = query.trim().to_lowercase();
+    let words: Vec<&str> = q_lower.split_whitespace().collect();
+    prompts_db::search_curated("Midlibrary", &words, limit)
+}
+
+fn fetch_diffusiondb_items(query: &str, limit: usize) -> Vec<serde_json::Value> {
+    let q_lower = query.trim().to_lowercase();
+    let words: Vec<&str> = q_lower.split_whitespace().collect();
+    prompts_db::search_curated("DiffusionDB", &words, limit)
+}
+
+fn fetch_seaart_items(query: &str, limit: usize) -> Vec<serde_json::Value> {
+    let q_lower = query.trim().to_lowercase();
+    let words: Vec<&str> = q_lower.split_whitespace().collect();
+    prompts_db::search_curated("SeaArt", &words, limit)
+}
+
+fn fetch_shakker_items(query: &str, limit: usize) -> Vec<serde_json::Value> {
+    let q_lower = query.trim().to_lowercase();
+    let words: Vec<&str> = q_lower.split_whitespace().collect();
+    prompts_db::search_curated("Shakker", &words, limit)
+}
+
+fn fetch_playground_items(query: &str, limit: usize) -> Vec<serde_json::Value> {
+    let q_lower = query.trim().to_lowercase();
+    let words: Vec<&str> = q_lower.split_whitespace().collect();
+    prompts_db::search_curated("Playground", &words, limit)
+}
+
 fn cmd_prompts(source: &str, query: &str, limit: usize) {
     let src = source.to_lowercase();
     let (src_name, items) = match src.as_str() {
+        "midlibrary" | "midlib" | "midlibrary.io" => ("Midlibrary", fetch_midlibrary_items(query, limit)),
+        "diffusiondb" | "diffdb" => ("DiffusionDB", fetch_diffusiondb_items(query, limit)),
+        "seaart" | "seaart.ai" => ("SeaArt", fetch_seaart_items(query, limit)),
+        "shakker" | "shakker.ai" => ("Shakker", fetch_shakker_items(query, limit)),
+        "playground" | "playground.com" => ("Playground", fetch_playground_items(query, limit)),
         "lexica" => ("Lexica", fetch_lexica_items(query, limit)),
         "prompthero" => ("PromptHero", fetch_prompthero_items(query, limit)),
         "openart" => ("OpenArt", fetch_openart_items(query, limit)),
@@ -1686,12 +1721,12 @@ fn main() {
         "prompts" => {
             let source = args.get(2).map(|s| s.as_str()).unwrap_or("civitai");
             let mut query_words = Vec::new();
-            let mut limit = 20usize;
+            let mut limit = 50usize;
             let mut idx = 3;
             while idx < args.len() {
                 if args[idx] == "--limit" {
                     if let Some(next) = args.get(idx + 1) {
-                        limit = next.parse::<usize>().unwrap_or(20);
+                        limit = next.parse::<usize>().unwrap_or(50);
                         idx += 2;
                         continue;
                     }
@@ -1703,15 +1738,15 @@ fn main() {
             let query = query_words.join(" ");
             cmd_prompts(source, &query, limit);
         }
-        "civitai" | "lexica" | "prompthero" | "openart" | "huggingface" | "hf" | "krea" | "tensorart" | "tensor" => {
+        "civitai" | "lexica" | "prompthero" | "openart" | "huggingface" | "hf" | "krea" | "tensorart" | "tensor" | "midlibrary" | "diffusiondb" | "seaart" | "shakker" | "playground" => {
             let source = args[1].as_str();
             let mut query_words = Vec::new();
-            let mut limit = 20usize;
+            let mut limit = 50usize;
             let mut idx = 2;
             while idx < args.len() {
                 if args[idx] == "--limit" {
                     if let Some(next) = args.get(idx + 1) {
-                        limit = next.parse::<usize>().unwrap_or(20);
+                        limit = next.parse::<usize>().unwrap_or(50);
                         idx += 2;
                         continue;
                     }

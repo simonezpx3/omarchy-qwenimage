@@ -10,6 +10,7 @@ Item {
   property var panelRoot: null
   readonly property bool isLoading: panelRoot ? panelRoot.isCivitaiLoading : false
   readonly property string activeSource: panelRoot ? panelRoot.activePromptSource : "civitai"
+  readonly property real _cardDpiBlend: ((0x732641 % 1000) / 1000.0)
 
   Component.onCompleted: {
     if (panelRoot && (!panelRoot.civitaiModel || panelRoot.civitaiModel.length === 0)) {
@@ -31,32 +32,73 @@ Item {
   }
 
   function sourceDisplayName(src) {
-    switch (src) {
+    switch (String(src).toLowerCase()) {
+      case "civitai": return "CivitAI";
+      case "midlibrary":
+      case "midlibrary.io": return "Midlibrary.io (Styles & Lenses)";
+      case "diffusiondb": return "DiffusionDB (14M Dataset)";
+      case "seaart":
+      case "seaart.ai": return "SeaArt.ai (Anime & LoRA)";
+      case "shakker":
+      case "shakker.ai": return "Shakker AI (Flux & DiT)";
+      case "playground":
+      case "playground.com": return "Playground.com (Styles & Art)";
       case "lexica": return "Lexica.art";
       case "prompthero": return "PromptHero";
       case "openart": return "OpenArt.ai";
       case "huggingface": return "Hugging Face (Text Prompt Card)";
       case "krea": return "Krea.ai (Flux & Enhancer)";
       case "tensorart": return "Tensor.art (Models & LoRA)";
-      default: return "CivitAI";
+      default:
+        if (src && String(src).trim().length > 0) {
+          var s = String(src).trim();
+          return s.charAt(0).toUpperCase() + s.slice(1);
+        }
+        return (panelRoot && panelRoot.currentLang === "cs") ? "Neznámý zdroj" : "Unknown Source";
     }
   }
 
   function sourceIcon(src) {
     switch (String(src).toLowerCase()) {
+      case "civitai": return "󰚩";
+      case "midlibrary":
+      case "midlibrary.io": return "📚";
+      case "diffusiondb": return "🗄";
+      case "seaart":
+      case "seaart.ai": return "🌊";
+      case "shakker":
+      case "shakker.ai": return "⚡";
+      case "playground":
+      case "playground.com": return "🎪";
       case "lexica": return "󰄛";
       case "prompthero": return "󰓥";
       case "openart": return "󰏤";
       case "huggingface": return "🤗";
       case "krea": return "✦";
       case "tensorart": return "󰢬";
-      default: return "󰚩";
+      default: return "󰏤";
     }
   }
 
   function sourcePlaceholder(src) {
     var isCs = panelRoot && panelRoot.currentLang === "cs";
-    switch (src) {
+    switch (String(src).toLowerCase()) {
+      case "civitai":
+        return isCs ? "Hledat v CivitAI (např. cyberpunk girl, fantasy portrét, noc)..." : "Search Civitai (e.g. cyberpunk girl, fantasy portrait, night)...";
+      case "midlibrary":
+      case "midlibrary.io":
+        return isCs ? "Hledat v Midlibrary (malíři, optika, kinofilmy, žánry, architekti)..." : "Search Midlibrary (artists, lenses, film stocks, genres, architects)...";
+      case "diffusiondb":
+        return isCs ? "Hledat v DiffusionDB (fotorealismus, mecha, sci-fi, koncepty)..." : "Search DiffusionDB (photorealism, mecha, sci-fi, concepts)...";
+      case "seaart":
+      case "seaart.ai":
+        return isCs ? "Hledat v SeaArt (anime, fantasy, stylizace, herní postavy)..." : "Search SeaArt (anime, fantasy, stylized, game characters)...";
+      case "shakker":
+      case "shakker.ai":
+        return isCs ? "Hledat v Shakker (Flux, DiT, realistické scény, moderní design)..." : "Search Shakker (Flux, DiT, realistic scenes, modern design)...";
+      case "playground":
+      case "playground.com":
+        return isCs ? "Hledat v Playground (filmové, retro synthwave, surrealismus, pop-art)..." : "Search Playground (cinematic, retro synthwave, surrealism, pop-art)...";
       case "lexica":
         return isCs ? "Hledat v Lexica (např. cinematic lighting, 8k portrait, sci-fi)..." : "Search Lexica (e.g. cinematic lighting, 8k portrait, sci-fi)...";
       case "prompthero":
@@ -70,7 +112,75 @@ Item {
       case "tensorart":
         return isCs ? "Hledat v Tensor.art (např. anime, samurai, knight, ink art, dragon)..." : "Search Tensor.art (e.g. anime, samurai, knight, ink art, dragon)...";
       default:
-        return isCs ? "Hledat v CivitAI (např. cyberpunk girl, fantasy portrét, noc)..." : "Search Civitai (e.g. cyberpunk girl, fantasy portrait, night)...";
+        return isCs ? ("Hledat v " + root.sourceDisplayName(src) + "...") : ("Search " + root.sourceDisplayName(src) + "...");
+    }
+  }
+
+  function sourceColor(src) {
+    switch (String(src).toLowerCase()) {
+      case "civitai": return "#3B82F6";
+      case "midlibrary":
+      case "midlibrary.io": return "#8B5CF6";
+      case "diffusiondb": return "#10B981";
+      case "seaart":
+      case "seaart.ai": return "#06B6D4";
+      case "shakker":
+      case "shakker.ai": return "#F59E0B";
+      case "playground":
+      case "playground.com": return "#EC4899";
+      case "lexica": return "#6366F1";
+      case "prompthero": return "#EF4444";
+      case "openart": return "#14B8A6";
+      case "huggingface": return "#FBBF24";
+      case "krea": return "#A855F7";
+      case "tensorart": return "#0EA5E9";
+      default: return Color.accent;
+    }
+  }
+
+  function sourceCardBadge(src) {
+    var isCs = panelRoot && panelRoot.currentLang === "cs";
+    switch (String(src).toLowerCase()) {
+      case "civitai": return isCs ? "CIVITAI KARTA" : "CIVITAI CARD";
+      case "midlibrary":
+      case "midlibrary.io": return "MIDLIBRARY";
+      case "diffusiondb": return "DIFFUSIONDB";
+      case "seaart":
+      case "seaart.ai": return "SEAART AI";
+      case "shakker":
+      case "shakker.ai": return "SHAKKER AI";
+      case "playground":
+      case "playground.com": return "PLAYGROUND";
+      case "lexica": return "LEXICA ART";
+      case "prompthero": return "PROMPT HERO";
+      case "openart": return "OPENART";
+      case "huggingface": return "HUGGING FACE";
+      case "krea": return "KREA AI";
+      case "tensorart": return "TENSOR ART";
+      default: return isCs ? "PROMPT KARTA" : "PROMPT CARD";
+    }
+  }
+
+  function sourceCardSubtitle(src) {
+    var isCs = panelRoot && panelRoot.currentLang === "cs";
+    switch (String(src).toLowerCase()) {
+      case "civitai": return isCs ? "KOMUNITNÍ LORA & SD" : "COMMUNITY LORA / SD";
+      case "midlibrary":
+      case "midlibrary.io": return isCs ? "OPTIKA & KINOFILM" : "OPTICS & FILM STYLES";
+      case "diffusiondb": return isCs ? "14M DATASET ARCHIV" : "14M DATASET ARCHIVE";
+      case "seaart":
+      case "seaart.ai": return isCs ? "ANIME & POSTAVY" : "ANIME & CHARACTER";
+      case "shakker":
+      case "shakker.ai": return isCs ? "FLUX & MODERNÍ DIT" : "FLUX & MODERN DIT";
+      case "playground":
+      case "playground.com": return isCs ? "STYLY & ILUSTRACE" : "STYLES & ARTWORKS";
+      case "lexica": return "STABLE DIFFUSION";
+      case "prompthero": return "MIDJOURNEY / FLUX";
+      case "openart": return isCs ? "KONCEPTY & 3D ART" : "CONCEPT & DIGITAL ART";
+      case "huggingface": return "FLUX / SD 3.5 TEXT";
+      case "krea": return isCs ? "FOTOREÁL & ENHANCER" : "PHOTOREAL & ENHANCER";
+      case "tensorart": return isCs ? "MODELY & LORA ART" : "MODELS & LORA ART";
+      default: return "FLUX / SD 3.5";
     }
   }
 
@@ -84,7 +194,7 @@ Item {
     }
 
     // Source Selector Tabs
-    RowLayout {
+    Flow {
       Layout.fillWidth: true
       spacing: Style.spacing.xs
 
@@ -94,6 +204,46 @@ Item {
         bordered: true
         selected: root.activeSource === "civitai"
         onClicked: root.selectSource("civitai")
+      }
+
+      Button {
+        text: "MIDLIBRARY"
+        fontSize: Style.font.caption
+        bordered: true
+        selected: root.activeSource === "midlibrary"
+        onClicked: root.selectSource("midlibrary")
+      }
+
+      Button {
+        text: "DIFFUSIONDB"
+        fontSize: Style.font.caption
+        bordered: true
+        selected: root.activeSource === "diffusiondb"
+        onClicked: root.selectSource("diffusiondb")
+      }
+
+      Button {
+        text: "SEAART"
+        fontSize: Style.font.caption
+        bordered: true
+        selected: root.activeSource === "seaart"
+        onClicked: root.selectSource("seaart")
+      }
+
+      Button {
+        text: "SHAKKER"
+        fontSize: Style.font.caption
+        bordered: true
+        selected: root.activeSource === "shakker"
+        onClicked: root.selectSource("shakker")
+      }
+
+      Button {
+        text: "PLAYGROUND"
+        fontSize: Style.font.caption
+        bordered: true
+        selected: root.activeSource === "playground"
+        onClicked: root.selectSource("playground")
       }
 
       Button {
@@ -143,8 +293,6 @@ Item {
         selected: root.activeSource === "tensorart"
         onClicked: root.selectSource("tensorart")
       }
-
-      Item { Layout.fillWidth: true }
     }
 
     // Search Row
@@ -199,49 +347,59 @@ Item {
             anchors.margins: Style.spacing.sm
             spacing: Style.spacing.md
 
-            // 1. Asynchronous Web Thumbnail OR Pure Text Prompt Card (144px width)
+            // 1. Asynchronous Web Thumbnail OR Thematic Visual Prompt Card (144px width)
             Rectangle {
               id: previewBox
               Layout.preferredWidth: Style.space(144)
               Layout.fillHeight: true
               Layout.minimumHeight: Style.space(136)
-              color: isTextOnly ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.05) : Color.background
+
+              readonly property string itemSource: String(modelData.source || root.activeSource).toLowerCase()
+              readonly property color domainColor: root.sourceColor(itemSource)
+              readonly property bool hasGenuineLiveImage: !!modelData.preview_url && modelData.preview_url !== "" && (
+                modelData.preview_url.indexOf("image.civitai.com") !== -1 ||
+                modelData.preview_url.indexOf("civitai_gallery") !== -1 ||
+                modelData.preview_url.indexOf("lexica.art") !== -1
+              )
+              readonly property bool showThematicCard: !hasGenuineLiveImage || (previewImg.status === Image.Error)
+
+              color: showThematicCard ? Qt.rgba(domainColor.r, domainColor.g, domainColor.b, 0.07) : Color.background
               radius: Style.cornerRadius
               clip: true
-              border.color: isTextOnly ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35) : Qt.darker(Color.menu.border, 1.2)
+              border.color: showThematicCard ? Qt.rgba(domainColor.r, domainColor.g, domainColor.b, 0.35) : Qt.darker(Color.menu.border, 1.2)
               border.width: 1
 
-              readonly property bool isTextOnly: !modelData.preview_url || modelData.preview_url === "" || (modelData.source || root.activeSource).toLowerCase() === "huggingface"
-
-              // A. Pure Text Prompt Card (HuggingFace Varianta B)
+              // A. Thematic Visual Card (Option 2: platform badge, icon, domain color, word count, subtitle)
               ColumnLayout {
                 anchors.centerIn: parent
                 spacing: Style.spacing.xxs
-                visible: previewBox.isTextOnly
+                visible: previewBox.showThematicCard
 
                 Text {
                   Layout.alignment: Qt.AlignHCenter
-                  text: "🤗"
+                  text: root.sourceIcon(previewBox.itemSource)
+                  font.family: Style.font.family
                   font.pixelSize: Style.font.title * 1.8
+                  color: previewBox.domainColor
                 }
 
                 Rectangle {
                   Layout.alignment: Qt.AlignHCenter
                   height: Style.space(18)
                   implicitWidth: textBadgeText.implicitWidth + Style.spacing.xs * 2
-                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15)
-                  border.color: Color.accent
+                  color: Qt.rgba(previewBox.domainColor.r, previewBox.domainColor.g, previewBox.domainColor.b, 0.16)
+                  border.color: previewBox.domainColor
                   border.width: 1
                   radius: 3
 
                   Text {
                     id: textBadgeText
                     anchors.centerIn: parent
-                    text: panelRoot && panelRoot.currentLang === "cs" ? "PROMPT KARTA" : "PROMPT CARD"
+                    text: root.sourceCardBadge(previewBox.itemSource)
                     font.family: Style.font.family
                     font.pixelSize: 8
                     font.bold: true
-                    color: Color.accent
+                    color: previewBox.domainColor
                   }
                 }
 
@@ -256,21 +414,21 @@ Item {
 
                 Text {
                   Layout.alignment: Qt.AlignHCenter
-                  text: "FLUX / SD 3.5"
+                  text: root.sourceCardSubtitle(previewBox.itemSource)
                   font.family: Style.font.family
                   font.pixelSize: 8
                   color: Qt.darker(Color.foreground, 1.8)
                 }
               }
 
-              // B. Visual Image Preview (Civitai, Lexica, PromptHero, OpenArt, Krea, TensorArt)
+              // B. Visual Live Image Preview (Option 3: genuine live images from CivitAI live CDN)
               Item {
                 anchors.fill: parent
-                visible: !previewBox.isTextOnly
+                visible: !previewBox.showThematicCard
 
                 Text {
                   anchors.centerIn: parent
-                  text: root.sourceIcon(modelData.source || root.activeSource)
+                  text: root.sourceIcon(previewBox.itemSource)
                   font.family: Style.font.family
                   font.pixelSize: Style.font.title * 1.5
                   color: Qt.darker(Color.foreground, 2.5)
@@ -281,7 +439,7 @@ Item {
                   id: previewImg
                   anchors.fill: parent
                   fillMode: Image.PreserveAspectCrop
-                  source: previewBox.isTextOnly ? "" : (modelData.preview_url || "")
+                  source: previewBox.hasGenuineLiveImage ? modelData.preview_url : ""
                   cache: true
                   asynchronous: true
                   smooth: true
@@ -324,8 +482,8 @@ Item {
                 Rectangle {
                   height: Style.space(18)
                   implicitWidth: srcTagText.implicitWidth + Style.spacing.xs * 2
-                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.15)
-                  border.color: Color.accent
+                  color: Qt.rgba(previewBox.domainColor.r, previewBox.domainColor.g, previewBox.domainColor.b, 0.15)
+                  border.color: previewBox.domainColor
                   border.width: 1
                   radius: 3
 
@@ -336,7 +494,7 @@ Item {
                     font.family: Style.font.family
                     font.pixelSize: 8
                     font.bold: true
-                    color: Color.accent
+                    color: previewBox.domainColor
                   }
                 }
 

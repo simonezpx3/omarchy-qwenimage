@@ -126,6 +126,15 @@ qis rollback    # Revert ComfyUI to the previous working checkpoint
 
 ---
 
+## Security & Supply-Chain Baseline
+
+This plugin strictly complies with the Omarchy Marketplace Security Baseline:
+- **Pinned Git Commits:** ComfyUI core and all custom nodes are pinned to immutable commit SHAs.
+- **Cryptographic Hash Verification:** All Python packages and sub-dependencies are locked with strict SHA-256 hashes (`pip install --require-hashes`) across CUDA 12.8, ROCm 6.2, and CPU architectures in `locks/`.
+- **Zero Unpinned Execution:** No unhashed or arbitrary code is downloaded during clone, install, or update operations.
+
+---
+
 ## Uninstallation
 
 ```bash

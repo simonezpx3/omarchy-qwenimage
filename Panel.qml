@@ -383,7 +383,7 @@ Panel {
       root.activePromptSource,
       query || "",
       "--limit",
-      "25"
+      "50"
     ];
     civitaiProc.running = true;
   }

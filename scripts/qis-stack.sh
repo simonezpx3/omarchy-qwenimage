@@ -195,22 +195,32 @@ install_comfyui() {
     if [[ ! -d "${COMFY_VENV}" ]]; then
         log_info "Vytvářím izolované virtuální prostředí Pythonu (${COMFY_VENV})..."
         python3 -m venv "${COMFY_VENV}"
-        "${COMFY_VENV}/bin/pip" install --upgrade pip
         
         detect_hardware
+        local lock_file=""
         if [[ "$GPU_VENDOR" == "nvidia" ]]; then
-            log_info "Instaluji PyTorch s akcelerací NVIDIA CUDA..."
-            "${COMFY_VENV}/bin/pip" install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+            lock_file="${SCRIPT_DIR}/locks/requirements-lock-cu128.txt"
+            log_info "Zvolen lockfile pro NVIDIA CUDA (cu128, hash-verified)."
         elif [[ "$GPU_VENDOR" == "amd" ]]; then
-            log_info "Instaluji PyTorch s akcelerací AMD ROCm..."
-            "${COMFY_VENV}/bin/pip" install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.2
+            lock_file="${SCRIPT_DIR}/locks/requirements-lock-rocm.txt"
+            log_info "Zvolen lockfile pro AMD ROCm (rocm6.2, hash-verified)."
         else
-            log_info "Instaluji standardní PyTorch..."
-            "${COMFY_VENV}/bin/pip" install torch torchvision torchaudio
+            lock_file="${SCRIPT_DIR}/locks/requirements-lock-cpu.txt"
+            log_info "Zvolen lockfile pro CPU (hash-verified)."
         fi
 
-        log_info "Instaluji požadavky ComfyUI..."
-        "${COMFY_VENV}/bin/pip" install -r "${COMFY_DIR}/requirements.txt"
+        if [[ ! -f "$lock_file" ]]; then
+            log_err "Nenalezen lockfile závislostí: ${lock_file}"
+            return 1
+        fi
+
+        log_info "Instaluji deterministické závislosti s kontrolou SHA-256 hashů (pip install --require-hashes)..."
+        if ! "${COMFY_VENV}/bin/pip" install --require-hashes -r "$lock_file"; then
+            log_err "Kritická chyba ověření integrity: SHA-256 hash stahovaného balíčku neodpovídá lockfile v locks/!"
+            log_err "Instalace byla z bezpečnostních důvodů přerušena, aby se zabránilo spuštění nepovoleného kódu."
+            return 1
+        fi
+        log_ok "Všechny Python závislosti byly úspěšně ověřeny a nainstalovány z immutable hash lockfile."
     fi
 
     # Clone required custom nodes (pinned to verified immutable commit hashes)
@@ -228,9 +238,7 @@ install_comfyui() {
             log_info "Klonuji uzel ${node_name} na prověřený commit ${node_commit:0:7}..."
             git clone "$node_url" "$target_node"
             git -C "$target_node" checkout -q "$node_commit"
-            if [[ -f "${target_node}/requirements.txt" ]]; then
-                "${COMFY_VENV}/bin/pip" install -r "${target_node}/requirements.txt" || true
-            fi
+            log_ok "Závislosti uzlu ${node_name} jsou zaručeny v hash-verified lockfile."
         else
             git -C "$target_node" checkout -q "$node_commit" 2>/dev/null || true
         fi
@@ -400,15 +408,28 @@ update_comfyui() {
                 return 1
             fi
 
-            if [[ -f "${node_dir}/requirements.txt" && -x "${COMFY_VENV}/bin/pip" ]]; then
-                "${COMFY_VENV}/bin/pip" install -r "${node_dir}/requirements.txt" || true
-            fi
         fi
     done
 
-    # Re-install core requirements
-    if [[ -f "${COMFY_DIR}/requirements.txt" && -x "${COMFY_VENV}/bin/pip" ]]; then
-        "${COMFY_VENV}/bin/pip" install -r "${COMFY_DIR}/requirements.txt" || true
+    # Synchronizace a ověření hash-verified závislostí
+    detect_hardware
+    local lock_file=""
+    if [[ "$GPU_VENDOR" == "nvidia" ]]; then
+        lock_file="${SCRIPT_DIR}/locks/requirements-lock-cu128.txt"
+    elif [[ "$GPU_VENDOR" == "amd" ]]; then
+        lock_file="${SCRIPT_DIR}/locks/requirements-lock-rocm.txt"
+    else
+        lock_file="${SCRIPT_DIR}/locks/requirements-lock-cpu.txt"
+    fi
+
+    if [[ -f "$lock_file" && -x "${COMFY_VENV}/bin/pip" ]]; then
+        log_info "Ověřuji a synchronizuji závislosti podle immutable hash lockfile..."
+        if ! "${COMFY_VENV}/bin/pip" install --require-hashes -r "$lock_file"; then
+            log_err "Kritická chyba: Zjištěn neplatný hash závislostí při aktualizaci ComfyUI!"
+            log_err "Aktualizace byla z bezpečnostních důvodů přerušena."
+            return 1
+        fi
+        log_ok "Závislosti ComfyUI a uzlů odpovídají prověřeným otiskům v locks/."
     fi
 
     log_ok "ComfyUI a custom nody jsou uzamčeny a ověřeny na schválených commitech."
