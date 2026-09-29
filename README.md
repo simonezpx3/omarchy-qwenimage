@@ -145,6 +145,20 @@ chmod +x uninstall.sh
 
 ---
 
+## Acknowledgments & Upstream Credits
+
+QIS stands on the shoulders of giants. We express our gratitude to the open-source creators and AI researchers whose technologies make local, zero-token generation possible:
+
+- **[ComfyUI](https://github.com/comfyanonymous/ComfyUI)** by [@comfyanonymous](https://github.com/comfyanonymous) – The revolutionary node-based engine powering our local diffusion pipeline.
+- **[ComfyUI-GGUF](https://github.com/city96/ComfyUI-GGUF)** by [@city96](https://github.com/city96) – Essential GGUF quantization loader enabling DiT models to run smoothly within consumer VRAM limits.
+- **[Qwen-Image / Qwen2.5-VL](https://github.com/QwenLM)** by the **Qwen Team (Alibaba Cloud)** – Groundbreaking foundation models for generative image synthesis and visual understanding.
+- **[Quickshell](https://github.com/outfoxxed/quickshell)** by [@outfoxxed](https://github.com/outfoxxed) – The lightning-fast, reactive QtQuick/Wayland environment that gives QIS its sub-millisecond desktop responsiveness.
+- **[WD14 Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger)** by [@pythongosssss](https://github.com/pythongosssss) & [@SmilingWolf](https://github.com/SmilingWolf) – State-of-the-art anime & photography tag interrogation models.
+- **[Civitai](https://civitai.com/)** – For fostering a vibrant community of prompt artists, checkpoint creators, and open model sharing.
+- **[Omarchy Linux & Hyprland](https://github.com/hyprwm/Hyprland)** – For providing the premier Wayland tiling desktop ecosystem.
+
+---
+
 ## License
 
-[MIT License](LICENSE). Developed by simonez.
+[MIT License](LICENSE). Developed by simonez & Arci.
