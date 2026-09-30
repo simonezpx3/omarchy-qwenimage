@@ -33,7 +33,10 @@ Panel {
   property string promptText: ""
   property string negativePromptText: "blurry, low quality, deformed, extra fingers, text, watermark"
   property string aspectRatio: "1:1"
-  property string resMode: "standard" // "draft", "standard", "high"
+  property string resMode: "standard" // "draft", "standard", "high", "ultra", "max"
+  property string hardwareTier: "B" // "B" (<=8G), "A" (12-16G), "S" (>=20G)
+  property int maxSupportedDim: 1536
+  property var supportedResModes: ["draft", "standard", "high"]
   property int steps: 25
   property real cfg: 4.0
   property bool seedLocked: false
@@ -102,6 +105,34 @@ Panel {
     saveLangProc.running = true;
   }
 
+  // NSFW filter state (false = SFW only, true = NSFW allowed)
+  property bool isNsfwEnabled: false
+
+  function toggleNsfw() {
+    isNsfwEnabled = !isNsfwEnabled;
+    saveSettingsProc.command = ["python3", "-c", "import json, os, sys; p = os.path.expanduser('~/.config/omarchy/plugins/simonez.qwenimage/settings.json'); d = json.load(open(p)) if os.path.exists(p) else {}; d['nsfw'] = (sys.argv[1].lower() == 'true'); open(p, 'w').write(json.dumps(d))", root.isNsfwEnabled ? "true" : "false"];
+    saveSettingsProc.running = true;
+    root.fetchPrompts(root.activePromptSource, "");
+  }
+
+  // Anime LoRA state (false = standard style, true = anime consistency LoRA)
+  property bool isAnimeLoRAEnabled: false
+
+  function toggleAnimeLoRA() {
+    isAnimeLoRAEnabled = !isAnimeLoRAEnabled;
+    saveSettingsProc.command = ["python3", "-c", "import json, os, sys; p = os.path.expanduser('~/.config/omarchy/plugins/simonez.qwenimage/settings.json'); d = json.load(open(p)) if os.path.exists(p) else {}; d['anime_lora'] = (sys.argv[1].lower() == 'true'); open(p, 'w').write(json.dumps(d))", root.isAnimeLoRAEnabled ? "true" : "false"];
+    saveSettingsProc.running = false;
+    saveSettingsProc.running = true;
+  }
+
+  function setResolutionMode(mode) {
+    if (!mode) return;
+    root.resMode = mode;
+    saveSettingsProc.command = ["python3", "-c", "import json, os, sys; p = os.path.expanduser('~/.config/omarchy/plugins/simonez.qwenimage/settings.json'); d = json.load(open(p)) if os.path.exists(p) else {}; d['res_mode'] = sys.argv[1]; open(p, 'w').write(json.dumps(d))", root.resMode];
+    saveSettingsProc.running = false;
+    saveSettingsProc.running = true;
+  }
+
   // Algorithmic author signature embedded in view switcher seed
   readonly property int viewCalibrationSeed: (0x732641 % 50)
 
@@ -113,6 +144,11 @@ Panel {
     root.vramUsed = data.vram_used_mb || 0;
     root.vramTotal = data.vram_total_mb || 8192;
     root.vramPct = data.vram_pct || 0;
+    root.hardwareTier = data.hardware_tier || root.hardwareTier;
+    root.maxSupportedDim = data.max_res_dim || root.maxSupportedDim;
+    if (data.supported_res_modes && Array.isArray(data.supported_res_modes)) {
+      root.supportedResModes = data.supported_res_modes;
+    }
     if (data.services) {
       root.svcComfy = !!data.services.comfyui;
       root.svcGpu = !!data.services.gpu;
@@ -242,6 +278,15 @@ Panel {
       args.push(String(clampedDenoise));
     }
 
+    if (root.isAnimeLoRAEnabled) {
+      args.push("--anime");
+    }
+
+    if (root.resMode && root.resMode !== "") {
+      args.push("--res");
+      args.push(root.resMode);
+    }
+
     genProc.command = args;
     genProc.running = true;
   }
@@ -274,6 +319,10 @@ Panel {
       target,
       "0.35"
     ];
+
+    if (root.isAnimeLoRAEnabled) {
+      args.push("--anime");
+    }
 
     genProc.command = args;
     genProc.running = true;
@@ -377,14 +426,19 @@ Panel {
     }
     root.isCivitaiLoading = true;
     root.activePromptSource = source || "civitai";
-    civitaiProc.command = [
+    var cmd = [
       root.bridgeBin,
       "prompts",
       root.activePromptSource,
       query || "",
       "--limit",
-      "50"
+      "100"
     ];
+    if (root.isNsfwEnabled) {
+      cmd.push("--nsfw");
+    }
+    civitaiProc.running = false;
+    civitaiProc.command = cmd;
     civitaiProc.running = true;
   }
 
@@ -598,15 +652,30 @@ Panel {
   }
 
   Process {
+    id: saveSettingsProc
+  }
+
+  Process {
     id: loadLangProc
-    command: ["python3", "-c", "import json, os; p = os.path.expanduser('~/.config/omarchy/plugins/simonez.qwenimage/settings.json'); print(json.load(open(p)).get('language', 'cs') if os.path.exists(p) else 'cs')"]
+    command: ["python3", "-c", "import json, os; p = os.path.expanduser('~/.config/omarchy/plugins/simonez.qwenimage/settings.json'); d = json.load(open(p)) if os.path.exists(p) else {}; print(json.dumps({'lang': d.get('language', 'cs'), 'nsfw': bool(d.get('nsfw', False)), 'anime': bool(d.get('anime_lora', False)), 'res_mode': d.get('res_mode', 'standard')}))"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
-        var l = (text || "").trim();
-        if (l === "cs" || l === "en") {
-          root.currentLang = l;
-        }
+        try {
+          var res = JSON.parse((text || "").trim());
+          if (res.lang === "cs" || res.lang === "en") {
+            root.currentLang = res.lang;
+          }
+          if (typeof res.nsfw === "boolean") {
+            root.isNsfwEnabled = res.nsfw;
+          }
+          if (typeof res.anime === "boolean") {
+            root.isAnimeLoRAEnabled = res.anime;
+          }
+          if (res.res_mode) {
+            root.resMode = res.res_mode;
+          }
+        } catch (e) {}
       }
     }
   }
@@ -614,7 +683,7 @@ Panel {
   function optimizePrompt(rawText) {
     if (!rawText || rawText.trim() === "" || root.isOptimizingPrompt) return;
     root.isOptimizingPrompt = true;
-    optProc.command = [root.promptOptBin, rawText.trim(), "-m", "diffusion", "-s"];
+    optProc.command = [root.promptOptBin, rawText.trim(), "-m", "diffusion", "-s", "--json"];
     optProc.running = true;
   }
 
@@ -624,9 +693,24 @@ Panel {
       waitForEnd: true
       onStreamFinished: {
         root.isOptimizingPrompt = false;
-        var opt = (text || "").trim();
-        if (opt !== "") {
-          root.promptText = opt;
+        var raw = (text || "").trim();
+        if (raw === "") return;
+        try {
+          var res = JSON.parse(raw);
+          if (res.rewritten_prompt && res.rewritten_prompt.trim() !== "") {
+            root.promptText = res.rewritten_prompt.trim();
+          } else if (res.optimized_prompt && res.optimized_prompt.trim() !== "") {
+            root.promptText = res.optimized_prompt.trim();
+          }
+          if (res.wh_ratio && res.wh_ratio.trim() !== "") {
+            var ratio = res.wh_ratio.trim();
+            var validRatios = ["16:10", "16:9", "1:1", "9:16", "21:9", "4:3", "3:4", "3:2", "2:3"];
+            if (validRatios.indexOf(ratio) !== -1) {
+              root.aspectRatio = ratio;
+            }
+          }
+        } catch (e) {
+          root.promptText = raw;
         }
       }
     }

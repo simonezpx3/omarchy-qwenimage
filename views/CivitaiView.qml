@@ -331,7 +331,15 @@ Item {
         anchors.fill: parent
         anchors.margins: Style.spacing.xs
         spacing: Style.spacing.sm
-        model: panelRoot ? panelRoot.civitaiModel : []
+        model: {
+          if (!panelRoot || !panelRoot.civitaiModel) return [];
+          if (panelRoot.isNsfwEnabled) return panelRoot.civitaiModel;
+          return panelRoot.civitaiModel.filter(function(item) {
+            if (!item) return false;
+            var n = String(item.nsfw || "None").toLowerCase();
+            return n === "none" || n === "1" || n === "";
+          });
+        }
 
         delegate: Rectangle {
           width: promptList.width - Style.spacing.sm
@@ -638,6 +646,17 @@ Item {
     RowLayout {
       Layout.fillWidth: true
       spacing: Style.spacing.sm
+
+      // NSFW Switcher matching LANG button design
+      Button {
+        text: panelRoot && panelRoot.currentLang === "cs"
+              ? (panelRoot.isNsfwEnabled ? "NSFW: ZAP" : "NSFW: VYP")
+              : (panelRoot.isNsfwEnabled ? "NSFW: ON" : "NSFW: OFF")
+        fontSize: Style.font.caption
+        bordered: true
+        selected: panelRoot && panelRoot.isNsfwEnabled
+        onClicked: if (panelRoot) panelRoot.toggleNsfw()
+      }
 
       Item { Layout.fillWidth: true }
 

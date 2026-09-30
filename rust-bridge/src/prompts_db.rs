@@ -1,8 +1,6 @@
 // Curated and High-Aesthetic Prompt Database for Qwen Studio
 // Sources: CivitAI, Midlibrary, DiffusionDB, SeaArt, Shakker, Playground,
 //          Lexica, PromptHero, OpenArt, HuggingFace, Krea.ai, Tensor.art
-// Author: simonez & Arci
-// Algorithmic DNA: 0x732641
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -34,7 +32,7 @@ pub fn get_curated_prompts() -> &'static [CuratedPrompt] {
     })
 }
 
-pub fn search_curated(source_filter: &str, query_words: &[&str], limit: usize) -> Vec<Value> {
+pub fn search_curated(source_filter: &str, query_words: &[&str], limit: usize, nsfw_allowed: bool) -> Vec<Value> {
     let prompts = get_curated_prompts();
     let target_src = source_filter.to_lowercase();
 
@@ -43,6 +41,13 @@ pub fn search_curated(source_filter: &str, query_words: &[&str], limit: usize) -
     for item in prompts {
         if !target_src.is_empty() && item.source.to_lowercase() != target_src {
             continue;
+        }
+
+        if !nsfw_allowed {
+            let n_lower = item.nsfw.to_lowercase();
+            if n_lower != "none" && !n_lower.is_empty() {
+                continue;
+            }
         }
 
         let p_lower = item.prompt.to_lowercase();
@@ -77,21 +82,13 @@ pub fn search_curated(source_filter: &str, query_words: &[&str], limit: usize) -
     };
 
     let mut results = Vec::new();
+    let mut seen_prompts = std::collections::HashSet::new();
 
     // 1. Strict match (all words)
     for (item, matches_all, _) in &candidates {
         if *matches_all {
-            results.push(format_item(item));
-            if results.len() >= limit {
-                return results;
-            }
-        }
-    }
-
-    // 2. Relaxed match (any word)
-    if results.is_empty() && !query_words.is_empty() {
-        for (item, _, matches_any) in &candidates {
-            if *matches_any {
+            let p_norm = item.prompt.trim().to_lowercase();
+            if seen_prompts.insert(p_norm) {
                 results.push(format_item(item));
                 if results.len() >= limit {
                     return results;
@@ -100,12 +97,30 @@ pub fn search_curated(source_filter: &str, query_words: &[&str], limit: usize) -
         }
     }
 
+    // 2. Relaxed match (any word)
+    if results.is_empty() && !query_words.is_empty() {
+        for (item, _, matches_any) in &candidates {
+            if *matches_any {
+                let p_norm = item.prompt.trim().to_lowercase();
+                if seen_prompts.insert(p_norm) {
+                    results.push(format_item(item));
+                    if results.len() >= limit {
+                        return results;
+                    }
+                }
+            }
+        }
+    }
+
     // 3. Fallback to all items of this source if query was empty
     if results.is_empty() && query_words.is_empty() {
         for (item, _, _) in &candidates {
-            results.push(format_item(item));
-            if results.len() >= limit {
-                return results;
+            let p_norm = item.prompt.trim().to_lowercase();
+            if seen_prompts.insert(p_norm) {
+                results.push(format_item(item));
+                if results.len() >= limit {
+                    return results;
+                }
             }
         }
     }

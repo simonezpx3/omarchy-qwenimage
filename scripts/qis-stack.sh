@@ -287,20 +287,29 @@ safe_download_model() {
     fi
 
     local target_path="${target_dir}/${file_name}"
+    local real_target="$target_path"
     if [[ -L "$target_path" ]]; then
-        log_err "Cílová cesta modelu je symlink: $target_path. Odmítám stahování."
-        return 1
+        real_target="$(realpath -q "$target_path" || true)"
+        if [[ -z "$real_target" || ! -f "$real_target" ]]; then
+            log_err "Cílová cesta modelu je neplatný symlink: $target_path. Odmítám stahování."
+            return 1
+        fi
+        if [[ ! -O "$real_target" ]]; then
+            log_err "Cíl symlinku není ve vlastnictví uživatele: $real_target"
+            return 1
+        fi
+        log_info "Cílový model je existující symlink odkazující na: $real_target"
     fi
 
-    if [[ -f "$target_path" ]]; then
+    if [[ -f "$real_target" ]]; then
         if [[ -n "$expected_sha256" ]]; then
             local curr_sha
-            curr_sha="$(sha256sum "$target_path" | awk '{print $1}')"
+            curr_sha="$(sha256sum "$real_target" | awk '{print $1}')"
             if [[ "$curr_sha" == "$expected_sha256" ]]; then
                 log_ok "${desc} (${file_name}) je již stažen a ověřen (SHA-256 OK)."
                 return 0
             else
-                log_err "Cílový model ${target_path} již existuje, ale má odlišný kontrolní součet. Odmítám smazat nebo přepsat existující soubor uživatele."
+                log_err "Cílový model ${real_target} již existuje, ale má odlišný kontrolní součet. Odmítám smazat nebo přepsat existující soubor uživatele."
                 return 1
             fi
         else

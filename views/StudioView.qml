@@ -59,6 +59,8 @@ Item {
       "draft": { "cs": "NÁVRH (512)", "en": "DRAFT (512)" },
       "std": { "cs": "STD (1024)", "en": "STD (1024)" },
       "high": { "cs": "VYSOKÉ (1536)", "en": "HIGH (1536)" },
+      "ultra": { "cs": "ULTRA (2048)", "en": "ULTRA (2048)" },
+      "max": { "cs": "MAX (2560)", "en": "MAX (2560)" },
 
       // Seed & Steps
       "seed_random": { "cs": "SEED [NÁHODNÝ]", "en": "SEED [RANDOM]" },
@@ -130,6 +132,7 @@ Item {
       },
       "help_ratio_1_1": { "cs": "1:1: Standardní čtvercový formát 1024×1024 px.", "en": "1:1: Standard square format 1024×1024 px." },
       "help_ratio_16_9": { "cs": "16:9: Širokoúhlý monitorový formát (1344×768 px).", "en": "16:9: Widescreen monitor format (1344×768 px)." },
+      "help_ratio_16_10": { "cs": "16:10: Širokoúhlý formát pro monitory a notebooky (1280×800 px).", "en": "16:10: Widescreen PC & laptop display ratio (1280×800 px)." },
       "help_ratio_9_16": { "cs": "9:16: Vertikální poměr stran 768×1344 px pro mobilní obrazovky.", "en": "9:16: Vertical 768×1344 px aspect ratio for mobile screens." },
       "help_ratio_21_9": { "cs": "21:9: Ultraširokoúhlý filmový poměr (1536×640 px).", "en": "21:9: Ultrawide cinematic aspect ratio (1536×640 px)." },
       "help_res_draft": {
@@ -143,6 +146,22 @@ Item {
       "help_res_high": {
         "cs": "HIGH: Zvýšené rozlišení 1536 px pro maximální ostrost a detailní kresbu.",
         "en": "HIGH: Increased 1536 px resolution for maximum sharpness and fine rendering."
+      },
+      "help_res_ultra": {
+        "cs": "ULTRA (2048): Špičkové rozlišení 2048 px pro GPU s 12+ GB VRAM.",
+        "en": "ULTRA (2048): High-end 2048 px resolution for GPUs with 12+ GB VRAM."
+      },
+      "help_res_ultra_locked": {
+        "cs": "ULTRA (2048): Uzamčeno pro ochranu VRAM (vyžaduje GPU s 12+ GB VRAM).",
+        "en": "ULTRA (2048): Locked to protect VRAM (requires GPU with 12+ GB VRAM)."
+      },
+      "help_res_max": {
+        "cs": "MAX (2560): Maximální 2.5K/4K rozlišení pro stanice s 20+ GB VRAM.",
+        "en": "MAX (2560): Maximum 2.5K/4K resolution for workstations with 20+ GB VRAM."
+      },
+      "help_res_max_locked": {
+        "cs": "MAX (2560): Uzamčeno pro ochranu VRAM (vyžaduje GPU s 20+ GB VRAM).",
+        "en": "MAX (2560): Locked to protect VRAM (requires GPU with 20+ GB VRAM)."
       },
       "help_seed": {
         "cs": "SEED: Přepíná mezi náhodným generováním nového díla a fixací konkrétního seedu.",
@@ -215,6 +234,10 @@ Item {
       "help_civitai_prompts": {
         "cs": "PROMPTY: Procházení a vyhledávání tisíců promptů z CivitAI, Lexica, PromptHero, OpenArt a Hugging Face.",
         "en": "PROMPTS: Browse and search thousands of prompts from CivitAI, Lexica, PromptHero, OpenArt, and Hugging Face."
+      },
+      "help_anime_lora": {
+        "cs": "ANIME LORA: Zapne specializovaný styl pro anime a ilustrace (SD_Tutorial).",
+        "en": "ANIME LORA: Toggles specialized anime & illustration style model (SD_Tutorial)."
       },
       "help_history": {
         "cs": "HISTORY: Otevře archiv dříve vygenerovaných děl v ~/Pictures/Qwen-Image/ s obnovením parametrů.",
@@ -603,6 +626,15 @@ Item {
             onClicked: if (panelRoot) panelRoot.aspectRatio = "16:9"
           }
           Button {
+            text: "16:10" + (panelRoot && panelRoot.referencePath !== "" && panelRoot.referenceMatchedRatio === "16:10" ? " • REF" : "")
+            fontSize: Style.font.caption
+            bordered: true
+            selected: panelRoot && panelRoot.aspectRatio === "16:10"
+            Layout.fillWidth: true
+            onHotChanged: root.setHelp(root.tr("help_ratio_16_10"), hot)
+            onClicked: if (panelRoot) panelRoot.aspectRatio = "16:10"
+          }
+          Button {
             text: "9:16" + (panelRoot && panelRoot.referencePath !== "" && panelRoot.referenceMatchedRatio === "9:16" ? " • REF" : "")
             fontSize: Style.font.caption
             bordered: true
@@ -622,7 +654,7 @@ Item {
           }
         }
 
-        // 5. Resolution Mode
+        // 5. Resolution Mode (Hardware Tier Adaptive: 8GB -> High 1536, 12GB+ -> Ultra 2048, 20GB+ -> Max 2560)
         RowLayout {
           Layout.fillWidth: true
           spacing: Style.spacing.xs
@@ -634,7 +666,7 @@ Item {
             selected: panelRoot && panelRoot.resMode === "draft"
             Layout.fillWidth: true
             onHotChanged: root.setHelp(root.tr("help_res_draft"), hot)
-            onClicked: if (panelRoot) panelRoot.resMode = "draft"
+            onClicked: if (panelRoot) panelRoot.setResolutionMode("draft")
           }
           Button {
             text: root.tr("std")
@@ -643,7 +675,7 @@ Item {
             selected: panelRoot && panelRoot.resMode === "standard"
             Layout.fillWidth: true
             onHotChanged: root.setHelp(root.tr("help_res_std"), hot)
-            onClicked: if (panelRoot) panelRoot.resMode = "standard"
+            onClicked: if (panelRoot) panelRoot.setResolutionMode("standard")
           }
           Button {
             text: root.tr("high")
@@ -652,7 +684,31 @@ Item {
             selected: panelRoot && panelRoot.resMode === "high"
             Layout.fillWidth: true
             onHotChanged: root.setHelp(root.tr("help_res_high"), hot)
-            onClicked: if (panelRoot) panelRoot.resMode = "high"
+            onClicked: if (panelRoot) panelRoot.setResolutionMode("high")
+          }
+          Button {
+            readonly property bool isAllowed: panelRoot && panelRoot.maxSupportedDim >= 2048
+            text: root.tr("ultra")
+            fontSize: Style.font.caption
+            bordered: true
+            enabled: isAllowed
+            opacity: isAllowed ? 1.0 : 0.4
+            selected: panelRoot && panelRoot.resMode === "ultra"
+            Layout.fillWidth: true
+            onHotChanged: root.setHelp(isAllowed ? root.tr("help_res_ultra") : root.tr("help_res_ultra_locked"), hot)
+            onClicked: if (isAllowed && panelRoot) panelRoot.setResolutionMode("ultra")
+          }
+          Button {
+            readonly property bool isAllowed: panelRoot && panelRoot.maxSupportedDim >= 2560
+            text: root.tr("max")
+            fontSize: Style.font.caption
+            bordered: true
+            enabled: isAllowed
+            opacity: isAllowed ? 1.0 : 0.4
+            selected: panelRoot && panelRoot.resMode === "max"
+            Layout.fillWidth: true
+            onHotChanged: root.setHelp(isAllowed ? root.tr("help_res_max") : root.tr("help_res_max_locked"), hot)
+            onClicked: if (isAllowed && panelRoot) panelRoot.setResolutionMode("max")
           }
         }
 
@@ -1169,6 +1225,18 @@ Item {
         bordered: true
         onHotChanged: root.setHelp(root.tr("help_civitai_prompts"), hot)
         onClicked: if (panelRoot) panelRoot.currentView = "civitai"
+      }
+
+      // Anime Style LoRA Switcher
+      Button {
+        text: panelRoot && panelRoot.currentLang === "cs"
+              ? (panelRoot.isAnimeLoRAEnabled ? "ANIME: ZAP" : "ANIME: VYP")
+              : (panelRoot.isAnimeLoRAEnabled ? "ANIME: ON" : "ANIME: OFF")
+        fontSize: Style.font.caption
+        bordered: true
+        selected: panelRoot && panelRoot.isAnimeLoRAEnabled
+        onHotChanged: root.setHelp(root.tr("help_anime_lora"), hot)
+        onClicked: if (panelRoot) panelRoot.toggleAnimeLoRA()
       }
 
       Button {
