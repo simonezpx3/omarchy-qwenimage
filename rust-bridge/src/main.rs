@@ -1679,57 +1679,73 @@ fn cmd_generate(
     }
 
     let t0 = Instant::now();
-    let res = cmd.output();
-    let elapsed = t0.elapsed().as_secs_f32();
+    cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
 
-    if let Ok(o) = res {
-        if gallery_out.exists() && gallery_out.metadata().map(|m| m.len() > 1024).unwrap_or(false) {
-            // Embed metadata into PNG chunks natively
-            let seed_str = seed.to_string();
-            let steps_str = steps.to_string();
-            let cfg_str = cfg.to_string();
-            let auth_dna = format!("0x{:x}", SA_SIGNATURE_DNA);
-
-            let pairs = [
-                ("prompt", prompt),
-                ("prompt_en", &final_prompt),
-                ("negative_prompt", negative),
-                ("seed", &seed_str),
-                ("steps", &steps_str),
-                ("cfg", &cfg_str),
-                ("ratio", ratio),
-                ("author_dna", &auth_dna),
-            ];
-            let _ = embed_png_metadata(&gallery_out, &pairs);
-
-            play_chime();
-            send_notification("Generation Complete", &format!("{} image rendered in {:.1}s", ratio, elapsed), Some(gallery_out.to_str().unwrap()));
-
-            println!(
-                "{}",
-                serde_json::json!({
-                    "status": "ok",
-                    "path": gallery_out.to_string_lossy(),
-                    "prompt": prompt,
-                    "prompt_en": final_prompt,
-                    "ratio": ratio,
-                    "seed": seed,
-                    "steps": steps,
-                    "elapsed": (elapsed * 10.0).round() / 10.0
-                })
-            );
+    let mut child = match cmd.spawn() {
+        Ok(c) => c,
+        Err(e) => {
+            println!("{}", serde_json::json!({"status": "error", "message": format!("Failed to spawn ai-worker: {}", e)}));
             return;
         }
-        let err_msg = String::from_utf8_lossy(&o.stderr);
+    };
+
+    if let Some(out) = child.stdout.take() {
+        let reader = BufReader::new(out);
+        for line in reader.lines().map_while(Result::ok) {
+            let trimmed = line.trim();
+            if trimmed.starts_with("{\"event\":") {
+                println!("{}", trimmed);
+                let _ = std::io::stdout().flush();
+            }
+        }
+    }
+
+    let _ = child.wait();
+    let elapsed = t0.elapsed().as_secs_f32();
+
+    if gallery_out.exists() && gallery_out.metadata().map(|m| m.len() > 1024).unwrap_or(false) {
+        // Embed metadata into PNG chunks natively
+        let seed_str = seed.to_string();
+        let steps_str = steps.to_string();
+        let cfg_str = cfg.to_string();
+        let auth_dna = format!("0x{:x}", SA_SIGNATURE_DNA);
+
+        let pairs = [
+            ("prompt", prompt),
+            ("prompt_en", &final_prompt),
+            ("negative_prompt", negative),
+            ("seed", &seed_str),
+            ("steps", &steps_str),
+            ("cfg", &cfg_str),
+            ("ratio", ratio),
+            ("author_dna", &auth_dna),
+        ];
+        let _ = embed_png_metadata(&gallery_out, &pairs);
+
+        play_chime();
+        send_notification("Generation Complete", &format!("{} image rendered in {:.1}s", ratio, elapsed), Some(gallery_out.to_str().unwrap()));
+
         println!(
             "{}",
-            serde_json::json!({"status": "error", "message": if err_msg.is_empty() { "Generation failed" } else { &err_msg }})
+            serde_json::json!({
+                "status": "ok",
+                "path": gallery_out.to_string_lossy(),
+                "prompt": prompt,
+                "prompt_en": final_prompt,
+                "ratio": ratio,
+                "seed": seed,
+                "steps": steps,
+                "elapsed": (elapsed * 10.0).round() / 10.0
+            })
         );
+        let _ = std::io::stdout().flush();
     } else {
         println!(
             "{}",
-            serde_json::json!({"status": "error", "message": "Failed to invoke ai-worker"})
+            serde_json::json!({"status": "error", "message": "Generation failed or output missing"})
         );
+        let _ = std::io::stdout().flush();
     }
 }
 

@@ -66,6 +66,7 @@ Item {
       "seed_random": { "cs": "SEED [NÁHODNÝ]", "en": "SEED [RANDOM]" },
       "seed_locked": { "cs": "SEED [ZAMČENÝ: ", "en": "SEED [LOCKED: " },
       "steps": { "cs": "KROKY: ", "en": "STEPS: " },
+      "step": { "cs": "KROK", "en": "STEP" },
 
       // Reference & Buffer
       "ref_title": {
@@ -766,6 +767,43 @@ Item {
               onHoveredChanged: root.setHelp(root.tr("help_steps"), hovered)
             }
           }
+
+          // Quick Step Presets (15 Fast, 25 Standard, 35 Detail)
+          Row {
+            spacing: 3
+            Layout.alignment: Qt.AlignVCenter
+            Repeater {
+              model: [15, 25, 35]
+              delegate: Rectangle {
+                width: Style.space(26)
+                height: Style.space(20)
+                radius: Style.cornerRadius - 2
+                readonly property bool active: panelRoot && panelRoot.steps === modelData
+                color: active ? Style.selectedFillFor(Color.foreground, Color.accent) : (chipMouse.containsMouse ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : "transparent")
+                border.color: active ? Color.accent : Qt.rgba(Color.menu.border.r, Color.menu.border.g, Color.menu.border.b, 0.5)
+                border.width: 1
+
+                Text {
+                  anchors.centerIn: parent
+                  text: String(modelData)
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.caption - 1
+                  font.bold: active
+                  color: active ? Color.accent : Qt.darker(Color.foreground, 1.3)
+                }
+
+                MouseArea {
+                  id: chipMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    if (panelRoot) panelRoot.steps = modelData;
+                  }
+                }
+              }
+            }
+          }
         }
 
         // 7. Static Reference & Buffer Card (Reorganized: Large Preview Above Buttons, No Icons)
@@ -1030,13 +1068,70 @@ Item {
                 source: panelRoot && panelRoot.generatedPath !== "" ? "file://" + panelRoot.generatedPath : ""
                 cache: false
                 asynchronous: true
+                visible: !(panelRoot && panelRoot.isGenerating && panelRoot.livePreviewPath !== "")
+              }
+
+              // Live TAEQI / Diffusion Preview Image
+              Image {
+                id: livePreview
+                anchors.fill: parent
+                anchors.margins: Style.spacing.xxs
+                fillMode: Image.PreserveAspectFit
+                source: (panelRoot && panelRoot.isGenerating && panelRoot.livePreviewPath !== "")
+                  ? ("file://" + panelRoot.livePreviewPath + "?v=" + panelRoot.livePreviewTick)
+                  : ""
+                cache: false
+                asynchronous: false
+                visible: panelRoot && panelRoot.isGenerating && panelRoot.livePreviewPath !== ""
+              }
+
+              // Live Diffusion Step Badge (Omarchy X-Ray Style)
+              Rectangle {
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.margins: Style.spacing.sm
+                visible: panelRoot && panelRoot.isGenerating && panelRoot.livePreviewStep > 0
+                height: Style.space(24)
+                width: liveStepRow.implicitWidth + Style.space(16)
+                radius: Style.space(12)
+                color: Qt.rgba(Color.background.r, Color.background.g, Color.background.b, 0.85)
+                border.color: Color.accent
+                border.width: 1
+                z: 10
+
+                RowLayout {
+                  id: liveStepRow
+                  anchors.centerIn: parent
+                  spacing: Style.space(6)
+
+                  Rectangle {
+                    width: Style.space(6)
+                    height: Style.space(6)
+                    radius: Style.space(3)
+                    color: Color.accent
+                    SequentialAnimation on opacity {
+                      loops: Animation.Infinite
+                      running: panelRoot && panelRoot.isGenerating
+                      PropertyAnimation { to: 0.25; duration: 350 }
+                      PropertyAnimation { to: 1.0; duration: 350 }
+                    }
+                  }
+
+                  Text {
+                    text: root.tr("step") + " " + (panelRoot ? panelRoot.livePreviewStep : 0) + "/" + (panelRoot ? panelRoot.livePreviewMaxSteps : 25)
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.caption
+                    font.bold: true
+                    color: Color.foreground
+                  }
+                }
               }
 
               // Placeholder when no image generated
               Column {
                 anchors.centerIn: parent
                 spacing: Style.spacing.xs
-                visible: !mainPreview.source || mainPreview.status !== Image.Ready
+                visible: (!mainPreview.source || mainPreview.status !== Image.Ready) && !(panelRoot && panelRoot.isGenerating && panelRoot.livePreviewPath !== "")
 
                 Text {
                   anchors.horizontalCenter: parent.horizontalCenter

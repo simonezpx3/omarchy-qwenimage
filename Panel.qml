@@ -53,6 +53,12 @@ Panel {
   property bool isInterrogating: false
   property string generationTelemetry: "1024x1024 | 25 STEPS | RTX 3070 (0 TOKENS)"
 
+  // Live TAEQI / Diffusion Preview State
+  property string livePreviewPath: ""
+  property int livePreviewStep: 0
+  property int livePreviewMaxSteps: 25
+  property int livePreviewTick: 0
+
   // Telemetry from Host
   property string studioStatus: "READY"
   property int vramUsed: 0
@@ -258,6 +264,10 @@ Panel {
     isGenerating = true;
     generatingMode = "generate";
     currentScaleFactor = 0.0;
+    livePreviewPath = "";
+    livePreviewStep = 0;
+    livePreviewMaxSteps = steps;
+    livePreviewTick = 0;
     if (hostWidget) hostWidget.isBusy = true;
 
     var actualSeed = seedLocked ? Number(seedVal) : -1;
@@ -304,6 +314,10 @@ Panel {
     isGenerating = true;
     generatingMode = "enhance";
     currentScaleFactor = 2.0;
+    livePreviewPath = "";
+    livePreviewStep = 0;
+    livePreviewMaxSteps = steps;
+    livePreviewTick = 0;
     if (hostWidget) hostWidget.isBusy = true;
 
     var actualSeed = seedLocked ? Number(seedVal) : -1;
@@ -456,28 +470,54 @@ Panel {
     histProc.running = true;
   }
 
+  function handleGenLine(line) {
+    var trimmed = (line || "").trim();
+    if (!trimmed || trimmed === "") return;
+    try {
+      var res = JSON.parse(trimmed);
+      if (res.event === "preview") {
+        root.livePreviewPath = res.path || "/run/user/1000/qis_live_preview.jpg";
+        root.livePreviewStep = res.step || 0;
+        root.livePreviewMaxSteps = res.max_steps || root.steps;
+        root.livePreviewTick += 1;
+      } else if (res.status === "ok" && res.path) {
+        root.isGenerating = false;
+        root.currentScaleFactor = 0.0;
+        root.livePreviewPath = "";
+        root.previousGeneratedPath = root.generatedPath;
+        root.generatedPath = res.path;
+        var elapsedSec = (typeof res.elapsed === "number") ? res.elapsed.toFixed(1) : String(res.elapsed || "0");
+        root.generationTelemetry = (res.ratio || "1:1") + " | " + (res.steps || root.steps) + " STEPS | " + elapsedSec + "s | SEED: " + (res.seed >= 0 ? res.seed : "RANDOM");
+        if (hostWidget) hostWidget.isBusy = false;
+        root.fetchHistory();
+      } else if (res.status === "error") {
+        root.isGenerating = false;
+        root.currentScaleFactor = 0.0;
+        root.livePreviewPath = "";
+        if (hostWidget) hostWidget.isBusy = false;
+        root.generationTelemetry = "CHYBA: " + (res.message || "Generování selhalo");
+      }
+    } catch (e) {}
+  }
+
   // Backend Processes
   Process {
     id: genProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
+    stdout: SplitParser {
+      onRead: function(line) {
+        root.handleGenLine(line);
+      }
+    }
+    onExited: function(exitCode) {
+      if (root.isGenerating) {
         root.isGenerating = false;
         root.currentScaleFactor = 0.0;
+        root.livePreviewPath = "";
         if (hostWidget) hostWidget.isBusy = false;
-        try {
-          var res = JSON.parse(text || "{}");
-          if (res.status === "ok" && res.path) {
-            root.previousGeneratedPath = root.generatedPath;
-            root.generatedPath = res.path;
-            var elapsedSec = (typeof res.elapsed === "number") ? res.elapsed.toFixed(1) : String(res.elapsed || "0");
-            root.generationTelemetry = (res.ratio || "1:1") + " | " + (res.steps || 25) + " STEPS | " + elapsedSec + "s | SEED: " + (res.seed >= 0 ? res.seed : "RANDOM");
-            root.fetchHistory();
-          } else if (res.status === "error") {
-            root.generationTelemetry = "CHYBA: " + (res.message || "Generování selhalo");
-          }
-        } catch (e) {
-          root.generationTelemetry = "CHYBA ZPRACOVÁNÍ VÝSTUPU";
+        if (exitCode !== 0) {
+          root.generationTelemetry = root.currentLang === "cs"
+            ? "CHYBA: Proces byl ukončen (" + exitCode + ")"
+            : "ERROR: Process exited (" + exitCode + ")";
         }
       }
     }
