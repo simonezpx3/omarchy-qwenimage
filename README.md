@@ -56,13 +56,19 @@ graph LR
 ## Features
 
 - **Text-to-Image (DiT Diffusion):** Native high-resolution generation via local ComfyUI backend.
+- **Live TAEQI 2.1 Previews:** Real-time intermediate diffusion preview streaming over WebSocket directly from ComfyUI (0 VRAM overhead, decoded via ultra-fast TAEQI into RAM-disk tmpfs).
+- **Quick Step Presets:** Instant step selection (`15`, `25`, `35`) with active state highlight and live elapsed timer.
+- **Universal Wayland Clipboard Engine:** Deep Rust integration decoding raw image formats (PNG, JPEG, WebP, BMP, TIFF), file manager URIs (`file://` from Nemo, Thunar, Nautilus), and web image URLs directly into the reference buffer.
 - **Image-to-Image & Auto Aspect Match:** Automatic aspect ratio extraction (`21:9`, `16:9`, `4:3`, `1:1`, `3:4`, `9:16`) preventing image distortion.
+- **Anime LoRA & Adaptive Resolution Profiling:** Instant anime style injection and VRAM-aware resolution presets (`standard`, `performance`, `high`).
 - **WD14 Tag Interrogator:** Fast Danbooru tag extraction via ONNX / ViT models.
 - **Vision Prompt Engineering:** Reverse-engineering existing scenes into rich diffusion prompts.
-- **Civitai Explorer:** Curated prompts, negative prompts, and generation settings browser.
-- **Fast Rust Bridge:** High-performance native bridge (`bin/qwen-bridge`) executing telemetry, PNG metadata chunk manipulation, and system monitoring in sub-millisecond speeds.
+- **Civitai Explorer:** Curated prompts, negative prompts, and generation settings browser with single-click apply and double-click instant generation.
+- **Fast Rust Bridge:** High-performance native bridge (`bin/qwen-bridge`) executing telemetry, PNG metadata chunk manipulation, clipboard decoding, and system monitoring in sub-millisecond speeds.
+- **Omarchy X-Ray Visual Instrument Architecture:** Pixel-perfect geometric harmony with `Style.cornerRadius`, concentric surface depth, cybernetic reticle corners, and zero box-clutter.
+- **Tabular Numerals & Optical Stability:** OpenType `tnum` tabular numerals across diffusion step badges, timers, and VRAM telemetry eliminating horizontal layout jitter.
 - **Live System Telemetry:** Header badges showing connected Qwen model, ComfyUI, Ollama, CUDA, Quickshell, and VRAM utilization.
-- **In-Button Live Timers:** Dynamic, non-intrusive second counters inside active buttons (`GENERATE`, `UPDATE`, `OPTIMIZE`, `TAGS`).
+- **In-Button Live Timers:** Dynamic, non-intrusive second counters inside active buttons (`GENERATE`, `UPDATE`, `OPTIMIZE`, `TAGS`, `SCALE`).
 - **Wallpaper Integration:** One-click wallpaper deployment to Omarchy and Hyprland.
 
 ---
@@ -72,6 +78,11 @@ graph LR
 | Action / Gesture | Trigger | Result |
 |---|---|---|
 | **Toggle Studio Panel** | Click on bar widget or `omarchy-shell simonez.qwenimage toggle` | Opens/closes the floating studio window |
+| **Instant Generation** | `Ctrl + Enter` in prompt or negative prompt | Immediately launches diffusion synthesis |
+| **Paste Reference Image** | Click on reference preview box or `Ctrl + V` | Decodes image, file path, or URL from Wayland clipboard |
+| **CivitAI Quick Apply** | Single click on any prompt card | Loads prompt and parameters into Studio |
+| **CivitAI Direct Synthesize** | Double click on any prompt card | Loads prompt and triggers immediate generation |
+| **Return to Studio** | `Esc` from A/B Compare or History views | Navigates back to main Studio view |
 | **Quick Plugin Update** | Left Click on `󰑐 UPDATE` in header | Updates plugin & Rust bridge without restarting the shell (`< 1s`) |
 | **Full Stack Update** | Right Click on `󰑐 UPDATE` in header | Opens confirmation banner to update ComfyUI core, custom nodes, and models |
 | **Close Studio** | `Esc` or click outside | Smoothly closes the window and frees viewport |
@@ -154,6 +165,7 @@ QIS stands on the shoulders of giants. We express our gratitude to the open-sour
 - **[Qwen-Image / Qwen2.5-VL](https://github.com/QwenLM)** by the **Qwen Team (Alibaba Cloud)** – Groundbreaking foundation models for generative image synthesis and visual understanding.
 - **[Quickshell](https://github.com/outfoxxed/quickshell)** by [@outfoxxed](https://github.com/outfoxxed) – The lightning-fast, reactive QtQuick/Wayland environment that gives QIS its sub-millisecond desktop responsiveness.
 - **[WD14 Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger)** by [@pythongosssss](https://github.com/pythongosssss) & [@SmilingWolf](https://github.com/SmilingWolf) – State-of-the-art anime & photography tag interrogation models.
+- **[TAEQI / Tiny AutoEncoder](https://github.com/madebyollin/taesd)** by [@madebyollin](https://github.com/madebyollin) – Ultra-fast, lightweight latent autoencoder powering real-time zero-VRAM step previews.
 - **[Civitai](https://civitai.com/)** – For fostering a vibrant community of prompt artists, checkpoint creators, and open model sharing.
 - **[Omarchy Linux & Hyprland](https://github.com/hyprwm/Hyprland)** – For providing the premier Wayland tiling desktop ecosystem.
 

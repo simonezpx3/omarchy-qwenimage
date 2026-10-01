@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "simonez.qwenimage",
   "name": "QIS",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "simonez & Arci",
   "license": "MIT",
   "description": "Native generative AI studio (Text-to-Image, Image-to-Image, WD14 Danbooru interrogator, Qwen3-VL vision reverse-engineering, Civitai explorer, SIMD Lanczos resizer, and 1-click wallpaper integration).",

@@ -1178,7 +1178,7 @@ Panel {
             spacing: Style.space(6)
 
             Text {
-              text: "v1.0.0"
+              text: "v1.1.0"
               font.family: root.bar ? root.bar.fontFamily : Style.font.family
               font.pixelSize: Style.font.caption
               color: Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 1.6)
