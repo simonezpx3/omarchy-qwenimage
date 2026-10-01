@@ -1040,14 +1040,17 @@ Item {
                 font.pixelSize: Style.font.caption
                 font.bold: true
                 color: Color.foreground
-                Layout.fillWidth: true
+                elide: Text.ElideRight
               }
+
+              Item { Layout.fillWidth: true }
 
               Text {
                 text: panelRoot && panelRoot.generationTelemetry !== "" ? panelRoot.generationTelemetry : "1024x1024 | 25 STEPS | RTX 3070 (0 TOKENS)"
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 color: Qt.darker(Color.foreground, 1.6)
+                elide: Text.ElideRight
               }
             }
 
@@ -1063,12 +1066,12 @@ Item {
               Layout.fillHeight: true
               clip: true
 
-              // Empty State Indicator (Instrumental Reticle & Guidance)
+              // Unified Canvas Placeholder (Idle Ready State or Initializing State)
               Item {
                 anchors.fill: parent
-                visible: (panelRoot && panelRoot.generatedPath === "" && !panelRoot.isGenerating)
+                visible: (!mainPreview.source || mainPreview.status !== Image.Ready || (panelRoot && panelRoot.generatedPath === "")) && !(panelRoot && panelRoot.isGenerating && panelRoot.livePreviewPath !== "")
 
-                // Reticle corners for cybernetic instrument aesthetic
+                // Reticle corners for cybernetic instrument aesthetic (visible when idle)
                 Rectangle {
                   anchors.top: parent.top
                   anchors.left: parent.left
@@ -1076,6 +1079,7 @@ Item {
                   width: Style.space(14)
                   height: 1
                   color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                  visible: !panelRoot || !panelRoot.isGenerating
                 }
                 Rectangle {
                   anchors.top: parent.top
@@ -1084,6 +1088,7 @@ Item {
                   width: 1
                   height: Style.space(14)
                   color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                  visible: !panelRoot || !panelRoot.isGenerating
                 }
                 Rectangle {
                   anchors.top: parent.top
@@ -1092,6 +1097,7 @@ Item {
                   width: Style.space(14)
                   height: 1
                   color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                  visible: !panelRoot || !panelRoot.isGenerating
                 }
                 Rectangle {
                   anchors.top: parent.top
@@ -1100,6 +1106,7 @@ Item {
                   width: 1
                   height: Style.space(14)
                   color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                  visible: !panelRoot || !panelRoot.isGenerating
                 }
                 Rectangle {
                   anchors.bottom: parent.bottom
@@ -1108,6 +1115,7 @@ Item {
                   width: Style.space(14)
                   height: 1
                   color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                  visible: !panelRoot || !panelRoot.isGenerating
                 }
                 Rectangle {
                   anchors.bottom: parent.bottom
@@ -1116,6 +1124,7 @@ Item {
                   width: 1
                   height: Style.space(14)
                   color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                  visible: !panelRoot || !panelRoot.isGenerating
                 }
                 Rectangle {
                   anchors.bottom: parent.bottom
@@ -1124,6 +1133,7 @@ Item {
                   width: Style.space(14)
                   height: 1
                   color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                  visible: !panelRoot || !panelRoot.isGenerating
                 }
                 Rectangle {
                   anchors.bottom: parent.bottom
@@ -1132,6 +1142,7 @@ Item {
                   width: 1
                   height: Style.space(14)
                   color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                  visible: !panelRoot || !panelRoot.isGenerating
                 }
 
                 ColumnLayout {
@@ -1140,27 +1151,35 @@ Item {
 
                   Text {
                     Layout.alignment: Qt.AlignHCenter
-                    text: "󰢹"
+                    text: panelRoot && panelRoot.isGenerating ? "󰑮" : "󰢹"
                     font.family: Style.font.family
                     font.pixelSize: Style.font.title * 2
-                    color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.3)
+                    color: panelRoot && panelRoot.isGenerating ? Color.accent : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.3)
+                    SequentialAnimation on opacity {
+                      loops: Animation.Infinite
+                      running: panelRoot && panelRoot.isGenerating
+                      PropertyAnimation { to: 0.3; duration: 400 }
+                      PropertyAnimation { to: 1.0; duration: 400 }
+                    }
                   }
 
                   Text {
                     Layout.alignment: Qt.AlignHCenter
-                    text: panelRoot && panelRoot.currentLang === "cs" ? "STUDIO PŘIPRAVENO" : "STUDIO READY"
+                    text: panelRoot && panelRoot.isGenerating
+                      ? (root.tr("generating_img") + (root.genElapsedSeconds > 0 ? " (" + root.genElapsedSeconds + "s)" : ""))
+                      : root.tr("ready_to_synth")
                     font.family: Style.font.family
                     font.features: { "tnum": 1 }
-                    font.pixelSize: Style.font.caption
+                    font.pixelSize: Style.font.body
                     font.bold: true
-                    color: Qt.darker(Color.foreground, 1.8)
+                    color: panelRoot && panelRoot.isGenerating ? Color.accent : Qt.darker(Color.foreground, 1.6)
                   }
 
                   Text {
                     Layout.alignment: Qt.AlignHCenter
-                    text: panelRoot && panelRoot.currentLang === "cs"
-                      ? "Zadejte prompt a stiskněte Ctrl+Enter"
-                      : "Enter prompt and press Ctrl+Enter"
+                    text: panelRoot && panelRoot.isGenerating
+                      ? (panelRoot.currentLang === "cs" ? "Inicializace difúzního modelu..." : "Initializing diffusion pipeline...")
+                      : (panelRoot && panelRoot.currentLang === "cs" ? "Zadejte prompt a stiskněte Ctrl+Enter" : "Enter prompt and press Ctrl+Enter")
                     font.family: Style.font.family
                     font.pixelSize: Style.font.caption
                     color: Qt.darker(Color.foreground, 2.4)
@@ -1233,29 +1252,6 @@ Item {
                     font.bold: true
                     color: Color.accent
                   }
-                }
-              }
-
-              // Placeholder when no image generated
-              Column {
-                anchors.centerIn: parent
-                spacing: Style.spacing.xs
-                visible: (!mainPreview.source || mainPreview.status !== Image.Ready) && !(panelRoot && panelRoot.isGenerating && panelRoot.livePreviewPath !== "")
-
-                Text {
-                  anchors.horizontalCenter: parent.horizontalCenter
-                  text: panelRoot && panelRoot.isGenerating ? root.tr("generating_img") : root.tr("ready_to_synth")
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.body
-                  color: panelRoot && panelRoot.isGenerating ? Color.accent : Qt.darker(Color.foreground, 1.8)
-                }
-
-                Text {
-                  anchors.horizontalCenter: parent.horizontalCenter
-                  text: root.tr("press_gen_hint")
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.caption
-                  color: Qt.darker(Color.foreground, 2.0)
                 }
               }
             }
