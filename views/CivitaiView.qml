@@ -342,15 +342,46 @@ Item {
         }
 
         delegate: Rectangle {
+          id: cardDelegate
           width: promptList.width - Style.spacing.sm
           implicitHeight: Math.max(Style.space(150), rowContent.implicitHeight + Style.spacing.sm * 2)
-          color: Color.menu.background
-          border.color: Color.menu.border
+          color: cardArea.containsMouse ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.06) : Color.menu.background
+          border.color: cardArea.containsMouse ? Color.accent : Color.menu.border
           border.width: 1
           radius: Style.cornerRadius
 
+          function applyPrompt(autoGenerate) {
+            if (panelRoot) {
+              panelRoot.promptText = modelData.prompt || "";
+              if (modelData.negative_prompt) panelRoot.negativePromptText = modelData.negative_prompt;
+              if (modelData.seed && modelData.seed > 0) {
+                panelRoot.seedVal = modelData.seed;
+                panelRoot.seedLocked = true;
+              }
+              if (modelData.steps) panelRoot.steps = modelData.steps;
+              if (modelData.cfg) panelRoot.cfg = modelData.cfg;
+              panelRoot.currentView = "studio";
+              if (autoGenerate) {
+                Qt.callLater(function() {
+                  if (panelRoot) panelRoot.startGeneration();
+                });
+              }
+            }
+          }
+
+          MouseArea {
+            id: cardArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            z: 0
+            onClicked: cardDelegate.applyPrompt(false)
+            onDoubleClicked: cardDelegate.applyPrompt(true)
+          }
+
           RowLayout {
             id: rowContent
+            z: 1
             anchors.fill: parent
             anchors.margins: Style.spacing.sm
             spacing: Style.spacing.md
@@ -398,7 +429,7 @@ Item {
                   color: Qt.rgba(previewBox.domainColor.r, previewBox.domainColor.g, previewBox.domainColor.b, 0.16)
                   border.color: previewBox.domainColor
                   border.width: 1
-                  radius: 3
+                  radius: Style.cornerRadius
 
                   Text {
                     id: textBadgeText
@@ -459,7 +490,7 @@ Item {
                   anchors.margins: Style.spacing.xxs
                   width: nsfwBadgeText.implicitWidth + Style.spacing.xs
                   height: nsfwBadgeText.implicitHeight + 2
-                  radius: 2
+                  radius: Style.cornerRadius
                   color: Color.urgent
                   visible: modelData.nsfw && modelData.nsfw !== "None" && modelData.nsfw !== 1
 
@@ -493,7 +524,7 @@ Item {
                   color: Qt.rgba(previewBox.domainColor.r, previewBox.domainColor.g, previewBox.domainColor.b, 0.15)
                   border.color: previewBox.domainColor
                   border.width: 1
-                  radius: 3
+                  radius: Style.cornerRadius
 
                   Text {
                     id: srcTagText
@@ -521,19 +552,7 @@ Item {
                   fontSize: Style.font.caption
                   bordered: true
                   selected: true
-                  onClicked: {
-                    if (panelRoot) {
-                      panelRoot.promptText = modelData.prompt || "";
-                      if (modelData.negative_prompt) panelRoot.negativePromptText = modelData.negative_prompt;
-                      if (modelData.seed && modelData.seed > 0) {
-                        panelRoot.seedVal = modelData.seed;
-                        panelRoot.seedLocked = true;
-                      }
-                      if (modelData.steps) panelRoot.steps = modelData.steps;
-                      if (modelData.cfg) panelRoot.cfg = modelData.cfg;
-                      panelRoot.currentView = "studio";
-                    }
-                  }
+                  onClicked: cardDelegate.applyPrompt(false)
                 }
 
                 Button {

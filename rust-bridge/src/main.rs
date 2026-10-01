@@ -687,24 +687,153 @@ fn cmd_status() {
     println!("{}", val);
 }
 
+fn decode_percent_str(s: &str) -> String {
+    let mut bytes = Vec::new();
+    let mut chars = s.as_bytes().iter();
+    while let Some(&b) = chars.next() {
+        if b == b'%' {
+            if let (Some(&h1), Some(&h2)) = (chars.next(), chars.next()) {
+                if let Ok(val) = u8::from_str_radix(std::str::from_utf8(&[h1, h2]).unwrap_or(""), 16) {
+                    bytes.push(val);
+                    continue;
+                }
+            }
+        }
+        bytes.push(b);
+    }
+    String::from_utf8_lossy(&bytes).to_string()
+}
+
+fn is_supported_image_path(p: &Path) -> bool {
+    if !p.exists() || !p.is_file() {
+        return false;
+    }
+    p.extension()
+        .and_then(|e| e.to_str())
+        .map(|ext| {
+            matches!(
+                ext.to_lowercase().as_str(),
+                "png" | "jpg" | "jpeg" | "webp" | "bmp" | "gif" | "tiff" | "avif" | "ico"
+            )
+        })
+        .unwrap_or(false)
+}
+
 fn cmd_paste_clipboard() {
     let ts = now_millis();
-    let target = get_temp_dir().join(format!("clip_{}.png", ts));
+    let temp_dir = get_temp_dir();
 
-    let out = Command::new("wl-paste")
-        .args(["-t", "image/png"])
+    // 1. Zkusit surové obrazové MIME typy (PNG, JPEG, WebP, BMP, TIFF)
+    let image_mimes = [
+        ("image/png", "png"),
+        ("image/jpeg", "jpg"),
+        ("image/webp", "webp"),
+        ("image/bmp", "bmp"),
+        ("image/tiff", "tiff"),
+    ];
+
+    for (mime, ext) in &image_mimes {
+        let target = temp_dir.join(format!("clip_{}.{}", ts, ext));
+        let out = Command::new("wl-paste")
+            .args(["-t", mime])
+            .output();
+
+        if let Ok(o) = out {
+            if o.status.success() && o.stdout.len() > 64 && fs::write(&target, &o.stdout).is_ok() {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "status": "ok",
+                        "path": target.to_string_lossy()
+                    })
+                );
+                return;
+            }
+        }
+    }
+
+    // 2. Zkusit text/uri-list (soubory zkopírované ze správce souborů nebo prohlížeče)
+    let uri_out = Command::new("wl-paste")
+        .args(["-t", "text/uri-list"])
         .output();
 
-    if let Ok(o) = out {
-        if o.status.success() && o.stdout.len() > 64 && fs::write(&target, &o.stdout).is_ok() {
-            println!(
-                "{}",
-                serde_json::json!({
-                    "status": "ok",
-                    "path": target.to_string_lossy()
-                })
-            );
-            return;
+    if let Ok(o) = uri_out {
+        if o.status.success() && !o.stdout.is_empty() {
+            let content = String::from_utf8_lossy(&o.stdout);
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed.is_empty() || trimmed.starts_with('#') {
+                    continue;
+                }
+                let raw_path = if let Some(stripped) = trimmed.strip_prefix("file://") {
+                    decode_percent_str(stripped)
+                } else {
+                    trimmed.to_string()
+                };
+                let p = Path::new(&raw_path);
+                if is_supported_image_path(p) {
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "status": "ok",
+                            "path": p.to_string_lossy()
+                        })
+                    );
+                    return;
+                }
+            }
+        }
+    }
+
+    // 3. Zkusit čistý text (cesty zkopírované jako text nebo standardní výstup wl-paste)
+    let text_out = Command::new("wl-paste").output();
+    if let Ok(o) = text_out {
+        if o.status.success() && !o.stdout.is_empty() {
+            let content = String::from_utf8_lossy(&o.stdout);
+            for line in content.lines() {
+                let trimmed = line.trim().trim_matches('"').trim_matches('\'');
+                if trimmed.is_empty() {
+                    continue;
+                }
+                let raw_path = if let Some(stripped) = trimmed.strip_prefix("file://") {
+                    decode_percent_str(stripped)
+                } else {
+                    trimmed.to_string()
+                };
+                let p = Path::new(&raw_path);
+                if is_supported_image_path(p) {
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "status": "ok",
+                            "path": p.to_string_lossy()
+                        })
+                    );
+                    return;
+                }
+
+                // Pokud jde o HTTP/HTTPS odkaz na obrázek, stáhnout do tempu
+                if raw_path.starts_with("http://") || raw_path.starts_with("https://") {
+                    let agent = get_http_agent(10);
+                    if let Ok(mut resp) = agent.get(&raw_path).call() {
+                        let target = temp_dir.join(format!("clip_web_{}.png", ts));
+                        let mut reader = resp.body_mut().as_reader();
+                        let mut bytes = Vec::new();
+                        if std::io::copy(&mut reader, &mut bytes).is_ok() && bytes.len() > 64 {
+                            if fs::write(&target, &bytes).is_ok() {
+                                println!(
+                                    "{}",
+                                    serde_json::json!({
+                                        "status": "ok",
+                                        "path": target.to_string_lossy()
+                                    })
+                                );
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -712,7 +841,7 @@ fn cmd_paste_clipboard() {
         "{}",
         serde_json::json!({
             "status": "error",
-            "message": "No PNG image found in Wayland clipboard"
+            "message": "Ve schránce nebyl nalezen žádný podporovaný obrázek ani platná cesta k souboru"
         })
     );
 }
@@ -1679,6 +1808,7 @@ fn cmd_generate(
     }
 
     let t0 = Instant::now();
+    cmd.stdin(Stdio::null());
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
 

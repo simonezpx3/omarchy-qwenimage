@@ -769,38 +769,22 @@ Item {
           }
 
           // Quick Step Presets (15 Fast, 25 Standard, 35 Detail)
-          Row {
-            spacing: 3
+          RowLayout {
+            spacing: Style.spacing.xs
             Layout.alignment: Qt.AlignVCenter
             Repeater {
               model: [15, 25, 35]
-              delegate: Rectangle {
-                width: Style.space(26)
-                height: Style.space(20)
-                radius: Style.cornerRadius - 2
-                readonly property bool active: panelRoot && panelRoot.steps === modelData
-                color: active ? Style.selectedFillFor(Color.foreground, Color.accent) : (chipMouse.containsMouse ? Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.08) : "transparent")
-                border.color: active ? Color.accent : Qt.rgba(Color.menu.border.r, Color.menu.border.g, Color.menu.border.b, 0.5)
-                border.width: 1
-
-                Text {
-                  anchors.centerIn: parent
-                  text: String(modelData)
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.caption - 1
-                  font.bold: active
-                  color: active ? Color.accent : Qt.darker(Color.foreground, 1.3)
-                }
-
-                MouseArea {
-                  id: chipMouse
-                  anchors.fill: parent
-                  hoverEnabled: true
-                  cursorShape: Qt.PointingHandCursor
-                  onClicked: {
-                    if (panelRoot) panelRoot.steps = modelData;
-                  }
-                }
+              delegate: Button {
+                text: String(modelData)
+                fontSize: Style.font.caption
+                bordered: true
+                selected: panelRoot && panelRoot.steps === modelData
+                active: panelRoot && panelRoot.steps === modelData
+                Layout.preferredWidth: Style.space(32)
+                horizontalPadding: Style.space(4)
+                verticalPadding: Style.space(2)
+                onClicked: if (panelRoot) panelRoot.steps = modelData
+                onHotChanged: root.setHelp(modelData + " kroků: " + (modelData === 15 ? "Bleskový draft (~6s)" : (modelData === 25 ? "Standardní vyvážená kvalita (~18s)" : "Maximální detaily a čisté kontury")), hot)
               }
             }
           }
@@ -872,11 +856,19 @@ Item {
               Layout.fillWidth: true
               Layout.fillHeight: true
               Layout.minimumHeight: Style.space(90)
-              color: Qt.darker(Color.background, 1.4)
-              border.color: panelRoot && panelRoot.referencePath !== "" ? Color.accent : Color.menu.border
+              color: refBoxMouse.containsMouse ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.08) : Qt.darker(Color.background, 1.4)
+              border.color: refBoxMouse.containsMouse ? Color.accent : (panelRoot && panelRoot.referencePath !== "" ? Color.accent : Color.menu.border)
               border.width: 1
               radius: Style.cornerRadius
               clip: true
+
+              MouseArea {
+                id: refBoxMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: if (panelRoot) panelRoot.pasteFromClipboard()
+              }
 
               // Loaded buffer image
               Image {
@@ -946,6 +938,8 @@ Item {
                 bordered: true
                 Layout.fillWidth: true
                 active: panelRoot && panelRoot.isInterrogating
+                selected: panelRoot && panelRoot.isInterrogating
+                foreground: (panelRoot && panelRoot.isInterrogating) ? Color.accent : Color.foreground
                 enabled: panelRoot && panelRoot.referencePath !== "" && !panelRoot.isInterrogating
                 onHotChanged: root.setHelp(root.tr("help_interrogate"), hot)
                 onClicked: if (panelRoot) panelRoot.interrogateWd14()
@@ -957,6 +951,8 @@ Item {
                 bordered: true
                 Layout.fillWidth: true
                 active: panelRoot && panelRoot.isVisionLoading
+                selected: panelRoot && panelRoot.isVisionLoading
+                foreground: (panelRoot && panelRoot.isVisionLoading) ? Color.accent : Color.foreground
                 enabled: panelRoot && panelRoot.referencePath !== "" && !panelRoot.isVisionLoading
                 onHotChanged: root.setHelp(root.tr("help_vision"), hot)
                 onClicked: if (panelRoot) panelRoot.extractVisionPrompt()
@@ -1093,8 +1089,8 @@ Item {
                 visible: panelRoot && panelRoot.isGenerating && panelRoot.livePreviewStep > 0
                 height: Style.space(24)
                 width: liveStepRow.implicitWidth + Style.space(16)
-                radius: Style.space(12)
-                color: Qt.rgba(Color.background.r, Color.background.g, Color.background.b, 0.85)
+                radius: Style.cornerRadius
+                color: Qt.rgba(Color.background.r, Color.background.g, Color.background.b, 0.90)
                 border.color: Color.accent
                 border.width: 1
                 z: 10
@@ -1107,7 +1103,7 @@ Item {
                   Rectangle {
                     width: Style.space(6)
                     height: Style.space(6)
-                    radius: Style.space(3)
+                    radius: width / 2
                     color: Color.accent
                     SequentialAnimation on opacity {
                       loops: Animation.Infinite
@@ -1118,11 +1114,11 @@ Item {
                   }
 
                   Text {
-                    text: root.tr("step") + " " + (panelRoot ? panelRoot.livePreviewStep : 0) + "/" + (panelRoot ? panelRoot.livePreviewMaxSteps : 25)
+                    text: root.tr("step") + " " + (panelRoot ? panelRoot.livePreviewStep : 0) + "/" + (panelRoot ? panelRoot.livePreviewMaxSteps : 25) + (root.genElapsedSeconds > 0 ? (" (" + root.genElapsedSeconds + "s)") : "")
                     font.family: Style.font.family
                     font.pixelSize: Style.font.caption
                     font.bold: true
-                    color: Color.foreground
+                    color: Color.accent
                   }
                 }
               }
@@ -1167,55 +1163,70 @@ Item {
           }
 
           Button {
-            text: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 2.0) ? ("2X (" + root.genElapsedSeconds + "s)") : "2X"
+            readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 2.0)
+            text: isBusy ? ("2X (" + root.genElapsedSeconds + "s)") : "2X"
             fontSize: Style.font.caption
             bordered: true
             Layout.fillWidth: true
-            active: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 2.0)
+            active: isBusy
+            selected: isBusy
+            foreground: isBusy ? Color.accent : Color.foreground
             enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_2x"), hot)
             onClicked: if (panelRoot) panelRoot.scaleImage(2.0)
           }
 
           Button {
-            text: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 4.0) ? ("4X (" + root.genElapsedSeconds + "s)") : "4X"
+            readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 4.0)
+            text: isBusy ? ("4X (" + root.genElapsedSeconds + "s)") : "4X"
             fontSize: Style.font.caption
             bordered: true
             Layout.fillWidth: true
-            active: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 4.0)
+            active: isBusy
+            selected: isBusy
+            foreground: isBusy ? Color.accent : Color.foreground
             enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_4x"), hot)
             onClicked: if (panelRoot) panelRoot.scaleImage(4.0)
           }
 
           Button {
-            text: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "enhance") ? ("AI 2X (" + root.genElapsedSeconds + "s)") : "AI 2X"
+            readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "enhance")
+            text: isBusy ? ("AI 2X (" + root.genElapsedSeconds + "s)") : "AI 2X"
             fontSize: Style.font.caption
             bordered: true
             Layout.fillWidth: true
-            active: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "enhance")
+            active: isBusy
+            selected: isBusy
+            foreground: isBusy ? Color.accent : Color.foreground
             enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_ai"), hot)
             onClicked: if (panelRoot) panelRoot.aiEnhance()
           }
 
           Button {
-            text: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 0.5) ? ("0.5X (" + root.genElapsedSeconds + "s)") : "0.5X"
+            readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 0.5)
+            text: isBusy ? ("0.5X (" + root.genElapsedSeconds + "s)") : "0.5X"
             fontSize: Style.font.caption
             bordered: true
             Layout.fillWidth: true
-            active: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 0.5)
+            active: isBusy
+            selected: isBusy
+            foreground: isBusy ? Color.accent : Color.foreground
             enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_half"), hot)
             onClicked: if (panelRoot) panelRoot.scaleImage(0.5)
           }
 
           Button {
-            text: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === -1.0) ? ("FIT 1K (" + root.genElapsedSeconds + "s)") : "FIT 1K"
+            readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === -1.0)
+            text: isBusy ? ("FIT 1K (" + root.genElapsedSeconds + "s)") : "FIT 1K"
             fontSize: Style.font.caption
             bordered: true
             Layout.fillWidth: true
-            active: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === -1.0)
+            active: isBusy
+            selected: isBusy
+            foreground: isBusy ? Color.accent : Color.foreground
             enabled: ((panelRoot && panelRoot.referencePath !== "") || (panelRoot && panelRoot.generatedPath !== "")) && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_fit1k"), hot)
             onClicked: if (panelRoot) panelRoot.scaleImage(-1.0)
@@ -1364,8 +1375,9 @@ Item {
       Item { Layout.fillWidth: true }
 
       Button {
+        readonly property bool isBusy: panelRoot && panelRoot.isGenerating
         text: {
-          if (panelRoot && panelRoot.isGenerating) {
+          if (isBusy) {
             if (panelRoot.generatingMode === "scale") return root.tr("upscaling") + " (" + root.genElapsedSeconds + "s)";
             if (panelRoot.generatingMode === "enhance") return root.tr("enhancing") + " (" + root.genElapsedSeconds + "s)";
             return root.tr("generating") + " (" + root.genElapsedSeconds + "s)";
@@ -1374,9 +1386,10 @@ Item {
           return root.tr("generate");
         }
         bordered: true
-        active: panelRoot && panelRoot.isGenerating
-        foreground: Color.accent
-        enabled: panelRoot && !panelRoot.isGenerating && !panelRoot.isGameLocked
+        active: isBusy
+        selected: isBusy
+        foreground: isBusy ? Color.accent : Color.foreground
+        enabled: panelRoot && !isBusy && !panelRoot.isGameLocked
         onHotChanged: root.setHelp(root.tr("help_generate"), hot)
         onClicked: if (panelRoot) panelRoot.startGeneration()
       }

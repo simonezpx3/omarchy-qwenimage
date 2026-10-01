@@ -1044,6 +1044,7 @@ Panel {
             fontSize: Style.font.caption
             bordered: true
             active: root.isUpdating
+            selected: root.isUpdating
             foreground: root.updateStatusText !== ""
               ? (root.updateStatusText.indexOf("CHYBA") !== -1 || root.updateStatusText.indexOf("ERROR") !== -1 ? Color.urgent : "#4ade80")
               : (root.isUpdating ? Color.accent : Color.foreground)
