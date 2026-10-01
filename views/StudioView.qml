@@ -546,6 +546,13 @@ Item {
                     panelRoot.negativePromptText = text;
                   }
                 }
+
+                Keys.onPressed: function(event) {
+                  if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+                    if (panelRoot) panelRoot.startGeneration();
+                    event.accepted = true;
+                  }
+                }
               }
             }
           }
@@ -1056,6 +1063,111 @@ Item {
               Layout.fillHeight: true
               clip: true
 
+              // Empty State Indicator (Instrumental Reticle & Guidance)
+              Item {
+                anchors.fill: parent
+                visible: (panelRoot && panelRoot.generatedPath === "" && !panelRoot.isGenerating)
+
+                // Reticle corners for cybernetic instrument aesthetic
+                Rectangle {
+                  anchors.top: parent.top
+                  anchors.left: parent.left
+                  anchors.margins: Style.spacing.md
+                  width: Style.space(14)
+                  height: 1
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                }
+                Rectangle {
+                  anchors.top: parent.top
+                  anchors.left: parent.left
+                  anchors.margins: Style.spacing.md
+                  width: 1
+                  height: Style.space(14)
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                }
+                Rectangle {
+                  anchors.top: parent.top
+                  anchors.right: parent.right
+                  anchors.margins: Style.spacing.md
+                  width: Style.space(14)
+                  height: 1
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                }
+                Rectangle {
+                  anchors.top: parent.top
+                  anchors.right: parent.right
+                  anchors.margins: Style.spacing.md
+                  width: 1
+                  height: Style.space(14)
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                }
+                Rectangle {
+                  anchors.bottom: parent.bottom
+                  anchors.left: parent.left
+                  anchors.margins: Style.spacing.md
+                  width: Style.space(14)
+                  height: 1
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                }
+                Rectangle {
+                  anchors.bottom: parent.bottom
+                  anchors.left: parent.left
+                  anchors.margins: Style.spacing.md
+                  width: 1
+                  height: Style.space(14)
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                }
+                Rectangle {
+                  anchors.bottom: parent.bottom
+                  anchors.right: parent.right
+                  anchors.margins: Style.spacing.md
+                  width: Style.space(14)
+                  height: 1
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                }
+                Rectangle {
+                  anchors.bottom: parent.bottom
+                  anchors.right: parent.right
+                  anchors.margins: Style.spacing.md
+                  width: 1
+                  height: Style.space(14)
+                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                }
+
+                ColumnLayout {
+                  anchors.centerIn: parent
+                  spacing: Style.spacing.xs
+
+                  Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "󰢹"
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.title * 2
+                    color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.3)
+                  }
+
+                  Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: panelRoot && panelRoot.currentLang === "cs" ? "STUDIO PŘIPRAVENO" : "STUDIO READY"
+                    font.family: Style.font.family
+                    font.features: { "tnum": 1 }
+                    font.pixelSize: Style.font.caption
+                    font.bold: true
+                    color: Qt.darker(Color.foreground, 1.8)
+                  }
+
+                  Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: panelRoot && panelRoot.currentLang === "cs"
+                      ? "Zadejte prompt a stiskněte Ctrl+Enter"
+                      : "Enter prompt and press Ctrl+Enter"
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.caption
+                    color: Qt.darker(Color.foreground, 2.4)
+                  }
+                }
+              }
+
               Image {
                 id: mainPreview
                 anchors.fill: parent
@@ -1116,6 +1228,7 @@ Item {
                   Text {
                     text: root.tr("step") + " " + (panelRoot ? panelRoot.livePreviewStep : 0) + "/" + (panelRoot ? panelRoot.livePreviewMaxSteps : 25) + (root.genElapsedSeconds > 0 ? (" (" + root.genElapsedSeconds + "s)") : "")
                     font.family: Style.font.family
+                    font.features: { "tnum": 1 }
                     font.pixelSize: Style.font.caption
                     font.bold: true
                     color: Color.accent

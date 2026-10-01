@@ -1025,6 +1025,7 @@ Panel {
           Text {
             text: "VRAM: " + (root.vramUsed / 1024).toFixed(1) + " / " + (root.vramTotal / 1024).toFixed(1) + " GB (" + root.vramPct + "%)"
             font.family: Style.font.family
+            font.features: { "tnum": 1 }
             font.pixelSize: Style.font.caption
             color: Color.foreground
           }
