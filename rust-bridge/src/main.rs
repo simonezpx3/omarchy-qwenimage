@@ -819,17 +819,18 @@ fn cmd_paste_clipboard() {
                         let target = temp_dir.join(format!("clip_web_{}.png", ts));
                         let mut reader = resp.body_mut().as_reader();
                         let mut bytes = Vec::new();
-                        if std::io::copy(&mut reader, &mut bytes).is_ok() && bytes.len() > 64 {
-                            if fs::write(&target, &bytes).is_ok() {
-                                println!(
-                                    "{}",
-                                    serde_json::json!({
-                                        "status": "ok",
-                                        "path": target.to_string_lossy()
-                                    })
-                                );
-                                return;
-                            }
+                        if std::io::copy(&mut reader, &mut bytes).is_ok()
+                            && bytes.len() > 64
+                            && fs::write(&target, &bytes).is_ok()
+                        {
+                            println!(
+                                "{}",
+                                serde_json::json!({
+                                    "status": "ok",
+                                    "path": target.to_string_lossy()
+                                })
+                            );
+                            return;
                         }
                     }
                 }
@@ -1144,10 +1145,12 @@ fn fetch_civitai_items(query: &str, limit: usize, nsfw_allowed: bool) -> Vec<ser
                             }
 
                             let nsfw_str = it.get("nsfwLevel").and_then(|v| v.as_str()).unwrap_or("None");
-                            if !nsfw_allowed {
-                                if nsfw_str.eq_ignore_ascii_case("x") || nsfw_str.eq_ignore_ascii_case("mature") || nsfw_str.eq_ignore_ascii_case("soft") {
-                                    continue;
-                                }
+                            if !nsfw_allowed
+                                && (nsfw_str.eq_ignore_ascii_case("x")
+                                    || nsfw_str.eq_ignore_ascii_case("mature")
+                                    || nsfw_str.eq_ignore_ascii_case("soft"))
+                            {
+                                continue;
                             }
 
                             let neg = meta.get("negativePrompt")
@@ -1225,10 +1228,12 @@ fn fetch_civitai_items(query: &str, limit: usize, nsfw_allowed: bool) -> Vec<ser
                             }
 
                             let nsfw_str = it.get("nsfwLevel").and_then(|v| v.as_str()).unwrap_or("None");
-                            if !nsfw_allowed {
-                                if nsfw_str.eq_ignore_ascii_case("x") || nsfw_str.eq_ignore_ascii_case("mature") || nsfw_str.eq_ignore_ascii_case("soft") {
-                                    continue;
-                                }
+                            if !nsfw_allowed
+                                && (nsfw_str.eq_ignore_ascii_case("x")
+                                    || nsfw_str.eq_ignore_ascii_case("mature")
+                                    || nsfw_str.eq_ignore_ascii_case("soft"))
+                            {
+                                continue;
                             }
 
                             let neg = meta.get("negativePrompt")
