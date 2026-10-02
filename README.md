@@ -65,7 +65,7 @@ graph LR
 - **Vision Prompt Engineering:** Reverse-engineering existing scenes into rich diffusion prompts.
 - **Civitai Explorer:** Curated prompts, negative prompts, and generation settings browser with single-click apply and double-click instant generation.
 - **Fast Rust Bridge:** High-performance native bridge (`bin/qwen-bridge`) executing telemetry, PNG metadata chunk manipulation, clipboard decoding, and system monitoring in sub-millisecond speeds.
-- **Omarchy X-Ray Visual Instrument Architecture:** Pixel-perfect geometric harmony with `Style.cornerRadius`, concentric surface depth, cybernetic reticle corners, and zero box-clutter.
+- **Omarchy UI Architecture:** Pixel-perfect geometric harmony with `Style.cornerRadius`, concentric surface depth, cybernetic reticle corners, and zero box-clutter.
 - **Tabular Numerals & Optical Stability:** OpenType `tnum` tabular numerals across diffusion step badges, timers, and VRAM telemetry eliminating horizontal layout jitter.
 - **Live System Telemetry:** Header badges showing connected Qwen model, ComfyUI, Ollama, CUDA, Quickshell, and VRAM utilization.
 - **In-Button Live Timers:** Dynamic, non-intrusive second counters inside active buttons (`GENERATE`, `UPDATE`, `OPTIMIZE`, `TAGS`, `SCALE`).

@@ -1212,7 +1212,7 @@ Item {
                 visible: panelRoot && panelRoot.isGenerating && panelRoot.livePreviewPath !== ""
               }
 
-              // Live Diffusion Step Badge (Omarchy X-Ray Style)
+              // Live Diffusion Step Badge (Omarchy UI Style)
               Rectangle {
                 anchors.top: parent.top
                 anchors.right: parent.right
