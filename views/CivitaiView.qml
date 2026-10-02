@@ -539,6 +539,7 @@ Item {
 
                 Text {
                   text: "SEED: " + (modelData.seed || "Random") + " | CFG: " + (modelData.cfg || "4.0") + " | STEPS: " + (modelData.steps || "25") + (modelData.sampler ? (" | " + modelData.sampler) : "")
+                  textFormat: Text.PlainText
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
                   font.bold: true
@@ -569,6 +570,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 text: modelData.prompt || (panelRoot && panelRoot.currentLang === "cs" ? "Bez popisu promptu" : "No prompt description")
+                textFormat: Text.PlainText
                 wrapMode: Text.Wrap
                 maximumLineCount: 4
                 elide: Text.ElideRight
@@ -580,6 +582,7 @@ Item {
               Text {
                 Layout.fillWidth: true
                 text: "NEG: " + (modelData.negative_prompt || (panelRoot && panelRoot.currentLang === "cs" ? "Žádný" : "None"))
+                textFormat: Text.PlainText
                 wrapMode: Text.Wrap
                 maximumLineCount: 1
                 elide: Text.ElideRight

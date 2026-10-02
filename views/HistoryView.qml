@@ -88,6 +88,7 @@ Item {
 
               Text {
                 text: modelData.prompt || "No prompt"
+                textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 color: Color.foreground
