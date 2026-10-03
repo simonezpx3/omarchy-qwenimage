@@ -854,6 +854,45 @@ fn cmd_snip() {
     cmd_paste_clipboard();
 }
 
+fn cmd_copy_text(text_arg: Option<&str>) {
+    let mut child = match Command::new("wl-copy")
+        .stdin(Stdio::piped())
+        .spawn()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Failed to spawn wl-copy: {}", e);
+            return;
+        }
+    };
+
+    if let Some(mut stdin) = child.stdin.take() {
+        if let Some(t) = text_arg {
+            let _ = stdin.write_all(t.as_bytes());
+        } else {
+            let mut buf = Vec::new();
+            let _ = std::io::stdin().read_to_end(&mut buf);
+            let _ = stdin.write_all(&buf);
+        }
+    }
+    let _ = child.wait();
+}
+
+fn cmd_copy_image(path: &str) {
+    let p = Path::new(path);
+    if !p.exists() || !p.is_file() {
+        eprintln!("File not found: {}", path);
+        return;
+    }
+    if let Ok(file) = File::open(p) {
+        let _ = Command::new("wl-copy")
+            .args(["-t", "image/png"])
+            .stdin(file)
+            .status();
+    }
+}
+
+
 fn cmd_wallpaper(input_path: &str) {
     let p = Path::new(input_path);
     if !p.exists() {
@@ -1898,6 +1937,19 @@ fn main() {
     match args[1].as_str() {
         "status" => cmd_status(),
         "paste-clipboard" => cmd_paste_clipboard(),
+        "copy-text" => {
+            let text = if args.len() >= 3 {
+                Some(args[2].as_str())
+            } else {
+                None
+            };
+            cmd_copy_text(text);
+        }
+        "copy-image" => {
+            if args.len() >= 3 {
+                cmd_copy_image(&args[2]);
+            }
+        }
         "snip" => cmd_snip(),
         "wallpaper" => {
             if args.len() >= 3 {

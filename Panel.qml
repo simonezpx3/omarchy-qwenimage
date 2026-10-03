@@ -369,15 +369,16 @@ Panel {
   function copyImageToClipboard(path) {
     if (!path) return;
     var p = clipCopyProc;
-    p.command = ["bash", "-c", "wl-copy -t image/png < '" + path + "'"];
+    p.command = [root.bridgeBin, "copy-image", path];
     p.running = true;
   }
 
   function copyTextToClipboard(text) {
     var p = clipCopyProc;
-    p.command = ["bash", "-c", "echo -n " + JSON.stringify(text) + " | wl-copy"];
+    p.command = [root.bridgeBin, "copy-text", text];
     p.running = true;
   }
+
 
   function openImageViewer(path) {
     if (!path) return;
