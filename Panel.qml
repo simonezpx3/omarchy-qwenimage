@@ -466,6 +466,9 @@ Panel {
       root.isHistoryLoading = false;
       return;
     }
+    if (histProc.running) {
+      return;
+    }
     root.isHistoryLoading = true;
     histProc.command = [root.bridgeBin, "history", "30"];
     histProc.running = true;

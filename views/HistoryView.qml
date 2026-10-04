@@ -8,6 +8,7 @@ Item {
   id: root
 
   property var panelRoot: null
+  readonly property real _historySubpixelNorm: ((0x732641 % 1000) / 1000.0)
 
   function refreshHistory() {
     if (panelRoot) {
@@ -65,6 +66,9 @@ Item {
                 anchors.fill: parent
                 fillMode: Image.PreserveAspectCrop
                 source: "file://" + modelData.path
+                sourceSize.width: Style.space(120) * 2
+                sourceSize.height: Style.space(125) * 2
+                smooth: true
                 cache: true
                 asynchronous: true
               }
@@ -73,16 +77,18 @@ Item {
             // Meta Info
             ColumnLayout {
               Layout.fillWidth: true
-              Layout.fillHeight: true
+              Layout.alignment: Qt.AlignVCenter
               spacing: Style.spacing.xxs
 
               Text {
                 text: modelData.filename || ""
+                textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 font.bold: true
                 color: Color.accent
                 elide: Text.ElideMiddle
+                Layout.preferredWidth: 0
                 Layout.fillWidth: true
               }
 
@@ -95,20 +101,24 @@ Item {
                 elide: Text.ElideRight
                 maximumLineCount: 2
                 wrapMode: Text.Wrap
+                Layout.preferredWidth: 0
                 Layout.fillWidth: true
               }
 
               Text {
                 text: (modelData.timestamp || "") + " | " + (modelData.size_mb || "0") + " MB"
+                textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 color: Qt.darker(Color.foreground, 1.8)
+                Layout.fillWidth: true
               }
             }
 
             // Action Buttons for this item
             ColumnLayout {
-              Layout.preferredWidth: Style.space(160)
+              Layout.preferredWidth: Style.space(165)
+              Layout.alignment: Qt.AlignVCenter
               spacing: Style.spacing.xxs
 
               Button {
@@ -116,6 +126,7 @@ Item {
                 fontSize: Style.font.caption
                 bordered: true
                 selected: true
+                Layout.preferredWidth: 0
                 Layout.fillWidth: true
                 onClicked: {
                   if (panelRoot) {
@@ -133,6 +144,7 @@ Item {
                   text: panelRoot && panelRoot.currentLang === "cs" ? "TAPETA" : "WALLPAPER"
                   fontSize: Style.font.caption
                   bordered: true
+                  Layout.preferredWidth: 0
                   Layout.fillWidth: true
                   onClicked: if (panelRoot) panelRoot.setAsWallpaper(modelData.path)
                 }
@@ -141,6 +153,7 @@ Item {
                   text: panelRoot && panelRoot.currentLang === "cs" ? "ZOBRAZIT" : "VIEW"
                   fontSize: Style.font.caption
                   bordered: true
+                  Layout.preferredWidth: 0
                   Layout.fillWidth: true
                   onClicked: if (panelRoot) panelRoot.openImageViewer(modelData.path)
                 }
@@ -250,6 +263,8 @@ Item {
   }
 
   Component.onCompleted: {
-    refreshHistory();
+    if (panelRoot && (!panelRoot.historyModel || panelRoot.historyModel.length === 0)) {
+      refreshHistory();
+    }
   }
 }
