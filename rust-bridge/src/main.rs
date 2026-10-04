@@ -626,7 +626,7 @@ fn get_stack_versions(comfy_online: bool, ollama_online: bool) -> serde_json::Va
         "driver": driver,
         "quickshell": qs,
         "hyprland": hypr,
-        "plugin": "1.0.0"
+        "plugin": env!("CARGO_PKG_VERSION")
     })
 }
 
@@ -1924,6 +1924,104 @@ fn cmd_generate(
 }
 
 // ---------------------------------------------------------
+// Settings Management (Atomic 0600 Persistence)
+// ---------------------------------------------------------
+
+fn get_settings_path() -> PathBuf {
+    get_home()
+        .join(".config")
+        .join("omarchy")
+        .join("plugins")
+        .join("simonez.qwenimage")
+        .join("settings.json")
+}
+
+fn load_settings() -> serde_json::Value {
+    let p = get_settings_path();
+    if let Ok(content) = fs::read_to_string(&p) {
+        if let Ok(val) = serde_json::from_str(&content) {
+            return val;
+        }
+    }
+    serde_json::json!({})
+}
+
+fn save_settings(val: &serde_json::Value) -> Result<(), std::io::Error> {
+    let p = get_settings_path();
+    if let Some(parent) = p.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let s = serde_json::to_string_pretty(val)
+        .map_err(std::io::Error::other)?;
+    let tmp = p.with_extension("tmp");
+    let mut f = File::create(&tmp)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = f.set_permissions(fs::Permissions::from_mode(0o600));
+    }
+    f.write_all(s.as_bytes())?;
+    f.sync_all()?;
+    fs::rename(&tmp, &p)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&p, fs::Permissions::from_mode(0o600));
+    }
+    Ok(())
+}
+
+fn cmd_settings_get() {
+    let mut val = load_settings();
+    if !val.is_object() {
+        val = serde_json::json!({});
+    }
+    let obj = val.as_object_mut().unwrap();
+    let lang = obj.get("language").and_then(|v| v.as_str()).unwrap_or("cs");
+    let nsfw = obj.get("nsfw").and_then(|v| v.as_bool()).unwrap_or(false);
+    let anime = obj.get("anime_lora").and_then(|v| v.as_bool()).unwrap_or(false);
+    let res_mode = obj.get("res_mode").and_then(|v| v.as_str()).unwrap_or("standard");
+
+    println!("{}", serde_json::json!({
+        "status": "ok",
+        "lang": lang,
+        "nsfw": nsfw,
+        "anime": anime,
+        "res_mode": res_mode,
+        "settings": val
+    }));
+}
+
+fn cmd_settings_set(key: &str, value: &str) {
+    let mut val = load_settings();
+    if !val.is_object() {
+        val = serde_json::json!({});
+    }
+    if let Some(map) = val.as_object_mut() {
+        match key {
+            "nsfw" | "anime_lora" => {
+                let b = value.eq_ignore_ascii_case("true") || value == "1";
+                map.insert(key.to_string(), serde_json::json!(b));
+            }
+            "language" | "lang" => {
+                let l = if value == "en" { "en" } else { "cs" };
+                map.insert("language".to_string(), serde_json::json!(l));
+            }
+            "res_mode" => {
+                map.insert("res_mode".to_string(), serde_json::json!(value));
+            }
+            other => {
+                map.insert(other.to_string(), serde_json::json!(value));
+            }
+        }
+    }
+    match save_settings(&val) {
+        Ok(_) => println!("{}", serde_json::json!({"status": "ok", "key": key, "value": value})),
+        Err(e) => println!("{}", serde_json::json!({"status": "error", "message": format!("{}", e)})),
+    }
+}
+
+// ---------------------------------------------------------
 // Main CLI Router
 // ---------------------------------------------------------
 
@@ -1936,6 +2034,17 @@ fn main() {
 
     match args[1].as_str() {
         "status" => cmd_status(),
+        "settings" => {
+            if args.len() >= 3 && args[2] == "set" {
+                if args.len() >= 5 {
+                    cmd_settings_set(&args[3], &args[4]);
+                } else {
+                    eprintln!("Usage: qwen_bridge settings set <key> <val>");
+                }
+            } else {
+                cmd_settings_get();
+            }
+        }
         "paste-clipboard" => cmd_paste_clipboard(),
         "copy-text" => {
             let text = if args.len() >= 3 {

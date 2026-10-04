@@ -107,8 +107,9 @@ Panel {
 
   function toggleLanguage() {
     currentLang = (currentLang === "cs" ? "en" : "cs");
-    saveLangProc.command = ["python3", "-c", "import json, os, sys; p = os.path.expanduser('~/.config/omarchy/plugins/simonez.qwenimage/settings.json'); d = json.load(open(p)) if os.path.exists(p) else {}; d['language'] = sys.argv[1]; open(p, 'w').write(json.dumps(d))", root.currentLang];
-    saveLangProc.running = true;
+    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "language", root.currentLang];
+    saveSettingsProc.running = false;
+    saveSettingsProc.running = true;
   }
 
   // NSFW filter state (false = SFW only, true = NSFW allowed)
@@ -116,7 +117,8 @@ Panel {
 
   function toggleNsfw() {
     isNsfwEnabled = !isNsfwEnabled;
-    saveSettingsProc.command = ["python3", "-c", "import json, os, sys; p = os.path.expanduser('~/.config/omarchy/plugins/simonez.qwenimage/settings.json'); d = json.load(open(p)) if os.path.exists(p) else {}; d['nsfw'] = (sys.argv[1].lower() == 'true'); open(p, 'w').write(json.dumps(d))", root.isNsfwEnabled ? "true" : "false"];
+    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "nsfw", root.isNsfwEnabled ? "true" : "false"];
+    saveSettingsProc.running = false;
     saveSettingsProc.running = true;
     root.fetchPrompts(root.activePromptSource, "");
   }
@@ -126,7 +128,7 @@ Panel {
 
   function toggleAnimeLoRA() {
     isAnimeLoRAEnabled = !isAnimeLoRAEnabled;
-    saveSettingsProc.command = ["python3", "-c", "import json, os, sys; p = os.path.expanduser('~/.config/omarchy/plugins/simonez.qwenimage/settings.json'); d = json.load(open(p)) if os.path.exists(p) else {}; d['anime_lora'] = (sys.argv[1].lower() == 'true'); open(p, 'w').write(json.dumps(d))", root.isAnimeLoRAEnabled ? "true" : "false"];
+    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "anime_lora", root.isAnimeLoRAEnabled ? "true" : "false"];
     saveSettingsProc.running = false;
     saveSettingsProc.running = true;
   }
@@ -134,7 +136,7 @@ Panel {
   function setResolutionMode(mode) {
     if (!mode) return;
     root.resMode = mode;
-    saveSettingsProc.command = ["python3", "-c", "import json, os, sys; p = os.path.expanduser('~/.config/omarchy/plugins/simonez.qwenimage/settings.json'); d = json.load(open(p)) if os.path.exists(p) else {}; d['res_mode'] = sys.argv[1]; open(p, 'w').write(json.dumps(d))", root.resMode];
+    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "res_mode", root.resMode];
     saveSettingsProc.running = false;
     saveSettingsProc.running = true;
   }
@@ -382,13 +384,13 @@ Panel {
 
   function openImageViewer(path) {
     if (!path) return;
-    var p = clipCopyProc;
+    var p = openExternalProc;
     p.command = ["xdg-open", path];
     p.running = true;
   }
 
   function openPicturesFolder() {
-    var p = clipCopyProc;
+    var p = openExternalProc;
     p.command = ["xdg-open", root.picturesDir];
     p.running = true;
   }
@@ -550,6 +552,7 @@ Panel {
 
   Process { id: wallProc }
   Process { id: clipCopyProc }
+  Process { id: openExternalProc }
 
   Process {
     id: panelStatusProc
@@ -692,16 +695,12 @@ Panel {
   }
 
   Process {
-    id: saveLangProc
-  }
-
-  Process {
     id: saveSettingsProc
   }
 
   Process {
     id: loadLangProc
-    command: ["python3", "-c", "import json, os; p = os.path.expanduser('~/.config/omarchy/plugins/simonez.qwenimage/settings.json'); d = json.load(open(p)) if os.path.exists(p) else {}; print(json.dumps({'lang': d.get('language', 'cs'), 'nsfw': bool(d.get('nsfw', False)), 'anime': bool(d.get('anime_lora', False)), 'res_mode': d.get('res_mode', 'standard')}))"]
+    command: [root.bridgeBin, "settings"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -1182,7 +1181,7 @@ Panel {
             spacing: Style.space(6)
 
             Text {
-              text: "v1.1.2"
+              text: "v1.1.3"
               font.family: root.bar ? root.bar.fontFamily : Style.font.family
               font.pixelSize: Style.font.caption
               color: Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 1.6)

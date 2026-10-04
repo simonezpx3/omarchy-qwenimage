@@ -11,9 +11,12 @@ SHELL_CONFIG="${SHELL_CONFIG:-${HOME}/.config/omarchy/shell.json}"
 BIN_DIR="${BIN_DIR:-${HOME}/.local/bin}"
 
 NO_RESTART=0
+FORCE_INSTALL=0
 for arg in "$@"; do
   if [[ "$arg" == "--no-restart" ]]; then
     NO_RESTART=1
+  elif [[ "$arg" == "--force" || "$arg" == "-f" ]]; then
+    FORCE_INSTALL=1
   fi
 done
 
@@ -46,11 +49,11 @@ case "${1:-}" in
   --stack)
     exec "${SCRIPT_DIR}/scripts/qis-stack.sh"
     ;;
-  --no-restart|"")
+  --force|-f|--no-restart|"")
     # Pokračovat na standardní instalaci
     ;;
   *)
-    echo "[ERROR] Neznámý parametr: ${1}. Povolené volby: update, status, rollback, --full, --stack, --no-restart" >&2
+    echo "[ERROR] Neznámý parametr: ${1}. Povolené volby: update, status, rollback, --full, --stack, --force, --no-restart" >&2
     exit 1
     ;;
 esac
@@ -227,14 +230,14 @@ copy_if_changed() {
       exit 1
     fi
     local expected_phash="${prior_hashes["$rel_dst"]:-}"
-    if [[ -z "$expected_phash" ]]; then
-      echo "  [ERROR] Existing file $rel_dst is not recorded in prior install receipt. Refusing to overwrite." >&2
+    if [[ -z "$expected_phash" && "$FORCE_INSTALL" -ne 1 ]]; then
+      echo "  [ERROR] Existing file $rel_dst is not recorded in prior install receipt. Refusing to overwrite (use --force to overwrite)." >&2
       exit 1
     fi
     local curr_phash
     curr_phash="$(sha256sum "$dst" | awk '{print $1}')"
-    if [[ "$curr_phash" != "$expected_phash" ]]; then
-      echo "  [ERROR] Existing file $rel_dst was modified since installation (${curr_phash:0:8} != ${expected_phash:0:8}). Refusing to overwrite user changes." >&2
+    if [[ "$FORCE_INSTALL" -ne 1 && -n "$expected_phash" && "$curr_phash" != "$expected_phash" ]]; then
+      echo "  [ERROR] Existing file $rel_dst was modified since installation (${curr_phash:0:8} != ${expected_phash:0:8}). Refusing to overwrite user changes (use --force to overwrite)." >&2
       exit 1
     fi
   fi

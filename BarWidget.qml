@@ -107,9 +107,15 @@ BarWidget {
     }
   }
 
+  onOpenedChanged: {
+    if (root.opened && !statusProc.running) {
+      statusProc.running = true;
+    }
+  }
+
   Timer {
     id: pollTimer
-    interval: Math.max(1000, root.setting("refreshIntervalSec", 3) * 1000)
+    interval: root.opened ? 2000 : Math.max(5000, root.setting("refreshIntervalSec", 8) * 1000)
     repeat: true
     running: true
     onTriggered: {

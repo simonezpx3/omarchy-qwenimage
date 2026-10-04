@@ -479,6 +479,8 @@ Item {
                   anchors.fill: parent
                   fillMode: Image.PreserveAspectCrop
                   source: previewBox.hasGenuineLiveImage ? modelData.preview_url : ""
+                  sourceSize.width: Style.space(260) * 2
+                  sourceSize.height: Style.space(160) * 2
                   cache: true
                   asynchronous: true
                   smooth: true
