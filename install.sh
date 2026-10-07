@@ -266,6 +266,18 @@ ensure_safe_dir "${TARGET_PLUGIN_DIR}/scripts"
 copy_if_changed "${SCRIPT_DIR}/scripts/qis-stack.sh" "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
 chmod +x "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
 
+if [[ -d "${SCRIPT_DIR}/custom_nodes" ]]; then
+  ensure_safe_dir "${TARGET_PLUGIN_DIR}/custom_nodes"
+  ensure_safe_dir "${TARGET_PLUGIN_DIR}/custom_nodes/ComfyUI-ViggleTurbo"
+  copy_if_changed "${SCRIPT_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py" "${TARGET_PLUGIN_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py"
+fi
+
+if [[ -d "${COMFY_DIR}/custom_nodes" && -f "${SCRIPT_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py" ]]; then
+  ensure_safe_dir "${COMFY_DIR}/custom_nodes/ComfyUI-ViggleTurbo"
+  copy_if_changed "${SCRIPT_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py" "${COMFY_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py"
+  chmod 0644 "${COMFY_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py"
+fi
+
 # ---------------------------------------------------------
 # 5. Native Bridge Binary (Source Compilation & Cache)
 # ---------------------------------------------------------
@@ -354,6 +366,9 @@ fi
   )
   if [[ "$SETTINGS_NEWLY_CREATED" -eq 1 ]]; then
     hash_files+=(settings.json)
+  fi
+  if [[ -f "custom_nodes/ComfyUI-ViggleTurbo/__init__.py" ]]; then
+    hash_files+=(custom_nodes/ComfyUI-ViggleTurbo/__init__.py)
   fi
 
   # Refuse pre-existing symlink at .installed_hashes target

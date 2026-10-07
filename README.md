@@ -56,7 +56,7 @@ graph LR
 ## Features
 
 - **Text-to-Image (DiT Diffusion):** Native high-resolution generation via local ComfyUI backend.
-- **Turbo Mode (Viggle Turbo DMD):** 6-step distillation yielding ~5s generation on RTX 3070 at 0 token cost, seamlessly toggleable from the bottom action bar.
+- **Turbo Mode (Viggle Turbo DMD):** 6-step distillation yielding ~5s generation on consumer GPUs (8GB+ VRAM) at 0 token cost, seamlessly toggleable from the bottom action bar.
 - **Heretic LoRA (Abliterated Uncensored Latent):** Dedicated uncensored diffusion adapter for uninhibited artistic freedom, with dynamic LoRA weight governor preventing tensor saturation.
 - **Anatomical Safety Guard:** Intelligent anatomy preservation automatically enforcing a standard resolution floor (1024 px) and adaptive Euler sampling profile when human subjects, portraits, or erotic themes are detected in draft mode.
 - **Live TAEQI 2.1 Previews:** Real-time intermediate diffusion preview streaming over WebSocket directly from ComfyUI (0 VRAM overhead, decoded via ultra-fast TAEQI into RAM-disk tmpfs).

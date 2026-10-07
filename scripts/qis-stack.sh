@@ -29,6 +29,17 @@ HF_TE_SHA256="1338274ac7a6344f262a16c7a52d1bd7fe789307d252733b23ea421126e5d343"
 HF_VAE_COMMIT="9a44dbdb47cefd046be9c0a13476192f34c8db8e"
 HF_VAE_SHA256="bb21f7473051e1ac368515dd3f2e15cd44d7a11748ee8823e1ddca3e4876b7c9"
 
+# LoRA Adapters & Acceleration Nodes (Marketplace Supply Chain Baseline)
+HF_VIGGLE_COMMIT="009a44a895ef85f7e643c80fdca9543795248867"
+HF_VIGGLE_NODE_SHA256="0592defd8ee6555b8c02bd9b287514849b1d46f579f47f8c7f711e6411f89587"
+HF_VIGGLE_TURBO_LORA_SHA256="0c98591700346f9777051d4e6fa29aa94519abec0d85b1f1f672a2a3db8c94b3"
+
+HF_UNCENSORED_COMMIT="6b34e59458d3eb7ba6a6f86a116aed5253dc02c3"
+HF_UNCENSORED_LORA_SHA256="00ee2cb7f00a37b097640c1880ed0d17e368e30599f34bb348fee0e8c2cc4ca1"
+
+HF_ANIME_COMMIT="c4ab5473bfdf585fc19cfd1e280f79d2b0c79947"
+HF_ANIME_LORA_SHA256="0c171eb802ea8051b511f2d93c1743eeadd030316255aa98fa65d40809366752"
+
 # Colors & Formatting
 BOLD="\033[1m"
 GREEN="\033[0;32m"
@@ -123,7 +134,7 @@ check_status() {
         echo -e "  [✖] ComfyUI Engine: ${RED}Nenalezeno (${COMFY_DIR})${RESET}"
     fi
 
-    local nodes=("ComfyUI-GGUF" "ComfyUI-GGUF-Qwen3VL-TE" "ComfyUI-WD14-Tagger" "ComfyUI-Autocomplete-Plus")
+    local nodes=("ComfyUI-GGUF" "ComfyUI-GGUF-Qwen3VL-TE" "ComfyUI-WD14-Tagger" "ComfyUI-Autocomplete-Plus" "ComfyUI-ViggleTurbo")
     for node in "${nodes[@]}"; do
         if [[ -d "${COMFY_DIR}/custom_nodes/${node}" ]]; then
             echo -e "  [✔] Node: ${node}: ${GREEN}Aktivní${RESET}"
@@ -156,6 +167,35 @@ check_status() {
     else
         echo -e "  [✖] VAE: ${RED}Chybí (${vae_model})${RESET}"
     fi
+
+    echo -e "\n${BOLD}LoRA Adapters & Acceleration:${RESET}"
+    local turbo_lora="${COMFY_DIR}/models/loras/qwen-image-2.1-viggle-turbo.safetensors"
+    local uncensored_lora="${COMFY_DIR}/models/loras/qwen-image-2.1-uncensored-lora.safetensors"
+    local anime_lora="${COMFY_DIR}/models/loras/qwen-image-2.1-anime-lora.safetensors"
+
+    if [[ -f "$turbo_lora" || -L "$turbo_lora" ]]; then
+        local sz_turbo
+        sz_turbo=$(du -hL "$turbo_lora" | awk '{print $1}')
+        echo -e "  [✔] Viggle Turbo (DMD 6-Step): ${GREEN}qwen-image-2.1-viggle-turbo.safetensors (${sz_turbo})${RESET}"
+    else
+        echo -e "  [✖] Viggle Turbo (DMD 6-Step): ${RED}Chybí (${turbo_lora})${RESET}"
+    fi
+
+    if [[ -f "$uncensored_lora" ]]; then
+        local sz_uncensored
+        sz_uncensored=$(du -h "$uncensored_lora" | awk '{print $1}')
+        echo -e "  [✔] Heretic Uncensored: ${GREEN}qwen-image-2.1-uncensored-lora.safetensors (${sz_uncensored})${RESET}"
+    else
+        echo -e "  [✖] Heretic Uncensored: ${RED}Chybí (${uncensored_lora})${RESET}"
+    fi
+
+    if [[ -f "$anime_lora" ]]; then
+        local sz_anime
+        sz_anime=$(du -h "$anime_lora" | awk '{print $1}')
+        echo -e "  [✔] Anime Consistency: ${GREEN}qwen-image-2.1-anime-lora.safetensors (${sz_anime})${RESET}"
+    else
+        echo -e "  [✖] Anime Consistency: ${RED}Chybí (${anime_lora})${RESET}"
+    fi
 }
 
 # ---------------------------------------------------------
@@ -185,7 +225,7 @@ install_system_deps() {
 # ---------------------------------------------------------
 install_comfyui() {
     log_info "Příprava ComfyUI v ${COMFY_DIR}..."
-    mkdir -p "${COMFY_DIR}" "${COMFY_DIR}/models/diffusion_models" "${COMFY_DIR}/models/text_encoders" "${COMFY_DIR}/models/vae" "${COMFY_DIR}/custom_nodes"
+    mkdir -p "${COMFY_DIR}" "${COMFY_DIR}/models/diffusion_models" "${COMFY_DIR}/models/text_encoders" "${COMFY_DIR}/models/vae" "${COMFY_DIR}/models/loras" "${COMFY_DIR}/custom_nodes"
 
     if [[ ! -f "${COMFY_DIR}/main.py" ]]; then
         log_info "Klonuji oficiální ComfyUI repozitář na prověřený commit ${COMFY_PINNED_COMMIT:0:7}..."
@@ -262,6 +302,25 @@ install_comfyui() {
         fi
         log_ok "Uzel ${node_name} ověřen na prověřeném commitu (${node_commit:0:7})."
     done
+
+    # Setup ComfyUI-ViggleTurbo custom node (runtime LoRA & DMD 6-step scheduler)
+    local viggle_dir="${COMFY_DIR}/custom_nodes/ComfyUI-ViggleTurbo"
+    mkdir -p "${viggle_dir}"
+    local viggle_init="${viggle_dir}/__init__.py"
+    local local_viggle="${SCRIPT_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py"
+
+    if [[ -f "${local_viggle}" ]]; then
+        log_info "Instaluji ComfyUI-ViggleTurbo z lokálního repozitáře..."
+        cp -f "${local_viggle}" "${viggle_init}"
+        chmod 0644 "${viggle_init}"
+        log_ok "ComfyUI-ViggleTurbo úspěšně integrován z lokálního balíčku."
+    else
+        log_info "Stahuji ComfyUI-ViggleTurbo z Hugging Face na prověřený commit ${HF_VIGGLE_COMMIT:0:7}..."
+        safe_download_model "${viggle_dir}" "__init__.py" \
+            "https://huggingface.co/Viggle/Qwen-Image-2.1-viggle-turbo/resolve/${HF_VIGGLE_COMMIT}/comfyui/viggle_turbo.py" \
+            "ComfyUI-ViggleTurbo Node" "${HF_VIGGLE_NODE_SHA256}"
+    fi
+
     log_ok "ComfyUI a custom nody jsou připraveny na schválených commitech."
 }
 
@@ -374,6 +433,26 @@ download_models() {
     local vae_file="qwen_image_2.1_vae_bf16.safetensors"
     local vae_url="https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/${HF_VAE_COMMIT}/vae/qwen_image_2.1_vae_bf16.safetensors"
     safe_download_model "$vae_dir" "$vae_file" "$vae_url" "VAE" "${HF_VAE_SHA256}"
+
+    # 4. Viggle Turbo LoRA (6-step DMD distillation) - pinned to commit 009a44a
+    local loras_dir="${COMFY_DIR}/models/loras"
+    mkdir -p "${loras_dir}"
+    local turbo_file="Qwen-Image-2.1-viggle-turbo-v0.3-6step-lora-r128.safetensors"
+    local turbo_url="https://huggingface.co/Viggle/Qwen-Image-2.1-viggle-turbo/resolve/${HF_VIGGLE_COMMIT}/Qwen-Image-2.1-viggle-turbo-v0.3-6step-lora-r128.safetensors"
+    safe_download_model "$loras_dir" "$turbo_file" "$turbo_url" "Viggle Turbo LoRA" "${HF_VIGGLE_TURBO_LORA_SHA256}"
+    if [[ ! -e "${loras_dir}/qwen-image-2.1-viggle-turbo.safetensors" || -L "${loras_dir}/qwen-image-2.1-viggle-turbo.safetensors" ]]; then
+        ln -sf "$turbo_file" "${loras_dir}/qwen-image-2.1-viggle-turbo.safetensors"
+    fi
+
+    # 5. Heretic Uncensored LoRA (33 MB) - pinned to commit 6b34e59
+    local uncensored_file="qwen-image-2.1-uncensored-lora.safetensors"
+    local uncensored_url="https://huggingface.co/abenzerps/Qwen-Image-2.1-Uncensored-GGUF/resolve/${HF_UNCENSORED_COMMIT}/qwen-image-2.1-uncensored-lora.safetensors"
+    safe_download_model "$loras_dir" "$uncensored_file" "$uncensored_url" "Heretic Uncensored LoRA" "${HF_UNCENSORED_LORA_SHA256}"
+
+    # 6. Anime Consistency LoRA (160 MB) - pinned to commit c4ab547
+    local anime_file="qwen-image-2.1-anime-lora.safetensors"
+    local anime_url="https://huggingface.co/WarmBloodAban/Qwen-Image-2.1-LoRAs/resolve/${HF_ANIME_COMMIT}/Qwen2.1_Anime_consistency.safetensors"
+    safe_download_model "$loras_dir" "$anime_file" "$anime_url" "Anime Consistency LoRA" "${HF_ANIME_LORA_SHA256}"
 }
 
 # ---------------------------------------------------------
@@ -612,9 +691,24 @@ update_comfyui() {
                 log_err "Chyba ověření integrity uzlu ${node_name} po aktualizaci! Očekáván ${node_commit}, nalezen ${actual_node_commit}."
                 return 1
             fi
-
         fi
     done
+
+    # Synchronizace ComfyUI-ViggleTurbo
+    local viggle_dir="${COMFY_DIR}/custom_nodes/ComfyUI-ViggleTurbo"
+    mkdir -p "${viggle_dir}"
+    local viggle_init="${viggle_dir}/__init__.py"
+    local local_viggle="${SCRIPT_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py"
+
+    if [[ -f "${local_viggle}" ]]; then
+        cp -f "${local_viggle}" "${viggle_init}"
+        chmod 0644 "${viggle_init}"
+        log_ok "ComfyUI-ViggleTurbo synchronizován z lokálního repozitáře."
+    elif [[ ! -f "${viggle_init}" ]]; then
+        safe_download_model "${viggle_dir}" "__init__.py" \
+            "https://huggingface.co/Viggle/Qwen-Image-2.1-viggle-turbo/resolve/${HF_VIGGLE_COMMIT}/comfyui/viggle_turbo.py" \
+            "ComfyUI-ViggleTurbo Node" "${HF_VIGGLE_NODE_SHA256}"
+    fi
 
     # Synchronizace a ověření hash-verified závislostí
     detect_hardware
