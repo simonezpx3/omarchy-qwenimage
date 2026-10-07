@@ -56,6 +56,9 @@ graph LR
 ## Features
 
 - **Text-to-Image (DiT Diffusion):** Native high-resolution generation via local ComfyUI backend.
+- **Turbo Mode (Viggle Turbo DMD):** 6-step distillation yielding ~5s generation on RTX 3070 at 0 token cost, seamlessly toggleable from the bottom action bar.
+- **Heretic LoRA (Abliterated Uncensored Latent):** Dedicated uncensored diffusion adapter for uninhibited artistic freedom, with dynamic LoRA weight governor preventing tensor saturation.
+- **Anatomical Safety Guard:** Intelligent anatomy preservation automatically enforcing a standard resolution floor (1024 px) and adaptive Euler sampling profile when human subjects, portraits, or erotic themes are detected in draft mode.
 - **Live TAEQI 2.1 Previews:** Real-time intermediate diffusion preview streaming over WebSocket directly from ComfyUI (0 VRAM overhead, decoded via ultra-fast TAEQI into RAM-disk tmpfs).
 - **Quick Step Presets:** Instant step selection (`15`, `25`, `35`) with active state highlight and live elapsed timer.
 - **Universal Wayland Clipboard Engine:** Deep Rust integration decoding raw image formats (PNG, JPEG, WebP, BMP, TIFF), file manager URIs (`file://` from Nemo, Thunar, Nautilus), and web image URLs directly into the reference buffer.
@@ -64,7 +67,8 @@ graph LR
 - **WD14 Tag Interrogator:** Fast Danbooru tag extraction via ONNX / ViT models.
 - **Vision Prompt Engineering:** Reverse-engineering existing scenes into rich diffusion prompts.
 - **Civitai Explorer:** Curated prompts, negative prompts, and generation settings browser with single-click apply and double-click instant generation.
-- **Fast Rust Bridge:** High-performance native bridge (`bin/qwen-bridge`) executing telemetry, PNG metadata chunk manipulation, clipboard decoding, and system monitoring in sub-millisecond speeds.
+- **Hardened Rust Bridge & Regression Suite:** High-performance native bridge (`bin/qwen-bridge`) equipped with a 4096-character buffer clamp, automated LLM JSON prompt envelope unpacking, toxic foreign tag sanitization (`<lora:...>`, `<embedding:...>`), and an automated unit test suite.
+- **Dynamic Output Node Resolution:** Resilient backend listener that dynamically detects SaveImage nodes across custom workflows instead of relying on fixed node indices.
 - **Omarchy UI Architecture:** Pixel-perfect geometric harmony with `Style.cornerRadius`, concentric surface depth, cybernetic reticle corners, and zero box-clutter.
 - **Tabular Numerals & Optical Stability:** OpenType `tnum` tabular numerals across diffusion step badges, timers, and VRAM telemetry eliminating horizontal layout jitter.
 - **Live System Telemetry:** Header badges showing connected Qwen model, ComfyUI, Ollama, CUDA, Quickshell, and VRAM utilization.
@@ -79,6 +83,9 @@ graph LR
 |---|---|---|
 | **Toggle Studio Panel** | Click on bar widget or `omarchy-shell simonez.qwenimage toggle` | Opens/closes the floating studio window |
 | **Instant Generation** | `Ctrl + Enter` in prompt or negative prompt | Immediately launches diffusion synthesis |
+| **Turbo Mode Toggle** | Click on `TURBO: ON // OFF` in bottom bar | Toggles 6-step DMD acceleration (~5s) vs standard 28-step Euler sampling |
+| **Heretic LoRA Toggle** | Click on `HERETIC: ON // OFF` in bottom bar | Toggles uncensored latent diffusion adapter |
+| **Anime LoRA Toggle** | Click on `ANIME: ON // OFF` in bottom bar | Toggles SD_Tutorial anime and illustration stylization adapter |
 | **Paste Reference Image** | Click on reference preview box or `Ctrl + V` | Decodes image, file path, or URL from Wayland clipboard |
 | **CivitAI Quick Apply** | Single click on any prompt card | Loads prompt and parameters into Studio |
 | **CivitAI Direct Synthesize** | Double click on any prompt card | Loads prompt and triggers immediate generation |
