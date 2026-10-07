@@ -4,3 +4,4 @@ settings.json
 .DS_Store
 bin/qwen-bridge
 .beads/
+.installed_hashes

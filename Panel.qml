@@ -133,6 +133,43 @@ Panel {
     saveSettingsProc.running = true;
   }
 
+  // Turbo Viggle LoRA state (true = 6-step DMD acceleration ~5s, false = standard 25 steps)
+  property bool isTurboEnabled: true
+
+  function toggleTurbo() {
+    isTurboEnabled = !isTurboEnabled;
+    if (!isTurboEnabled && steps < 25) {
+      steps = 28;
+      cfg = 4.0;
+    } else if (isTurboEnabled && steps > 8) {
+      steps = 6;
+      cfg = 1.0;
+    }
+    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "turbo", root.isTurboEnabled ? "true" : "false"];
+    saveSettingsProc.running = false;
+    saveSettingsProc.running = true;
+  }
+
+  // Anatomical Safety Guard: Sledování lidského subjektu v promptu
+  readonly property bool isHumanSubjectInPrompt: {
+    var p = promptText.toLowerCase();
+    var kw = ["woman", "man", "girl", "boy", "person", "body", "nude", "naked", "erotic", "portrait", "skin", "breasts", "legs", "face", "buttocks", "ass", "waist", "hips", "thighs", "female", "male", "model", "žena", "dívka", "muž", "tělo", "nahá", "nahý", "akt"];
+    for (var i = 0; i < kw.length; ++i) {
+      if (p.indexOf(kw[i]) !== -1) return true;
+    }
+    return false;
+  }
+
+  // Uncensored Latent LoRA state (true = uncensored latent LoRA, false = standard latent)
+  property bool isUncensoredEnabled: false
+
+  function toggleUncensored() {
+    isUncensoredEnabled = !isUncensoredEnabled;
+    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "uncensored", root.isUncensoredEnabled ? "true" : "false"];
+    saveSettingsProc.running = false;
+    saveSettingsProc.running = true;
+  }
+
   function setResolutionMode(mode) {
     if (!mode) return;
     root.resMode = mode;
@@ -272,14 +309,31 @@ Panel {
     livePreviewTick = 0;
     if (hostWidget) hostWidget.isBusy = true;
 
+    var runSteps = steps;
+    var runCfg = cfg;
+    var runResMode = root.resMode;
+
+    // Anatomical Safety Guard: sanitize steps, cfg and resolution floor
+    if (!root.isTurboEnabled) {
+      if (root.isHumanSubjectInPrompt && runSteps < 25) {
+        runSteps = 28;
+        runCfg = 4.0;
+      } else if (runSteps < 20) {
+        runSteps = 25;
+      }
+    }
+    if (root.isHumanSubjectInPrompt && (runResMode === "draft" || runResMode === "preview" || runResMode === "fast")) {
+      runResMode = "standard";
+    }
+
     var actualSeed = seedLocked ? Number(seedVal) : -1;
     var args = [
       root.bridgeBin,
       "generate",
       trimmed,
       aspectRatio,
-      String(steps),
-      String(cfg),
+      String(runSteps),
+      String(runCfg),
       String(actualSeed),
       negativePromptText
     ];
@@ -294,9 +348,17 @@ Panel {
       args.push("--anime");
     }
 
-    if (root.resMode && root.resMode !== "") {
+    if (root.isTurboEnabled) {
+      args.push("--turbo");
+    }
+
+    if (root.isUncensoredEnabled) {
+      args.push("--uncensored");
+    }
+
+    if (runResMode && runResMode !== "") {
       args.push("--res");
-      args.push(root.resMode);
+      args.push(runResMode);
     }
 
     genProc.command = args;
@@ -338,6 +400,14 @@ Panel {
 
     if (root.isAnimeLoRAEnabled) {
       args.push("--anime");
+    }
+
+    if (root.isTurboEnabled) {
+      args.push("--turbo");
+    }
+
+    if (root.isUncensoredEnabled) {
+      args.push("--uncensored");
     }
 
     genProc.command = args;
@@ -714,6 +784,12 @@ Panel {
           }
           if (typeof res.anime === "boolean") {
             root.isAnimeLoRAEnabled = res.anime;
+          }
+          if (typeof res.turbo === "boolean") {
+            root.isTurboEnabled = res.turbo;
+          }
+          if (typeof res.uncensored === "boolean") {
+            root.isUncensoredEnabled = res.uncensored;
           }
           if (res.res_mode) {
             root.resMode = res.res_mode;

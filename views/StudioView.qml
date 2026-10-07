@@ -63,10 +63,18 @@ Item {
       "max": { "cs": "MAX (2560)", "en": "MAX (2560)" },
 
       // Seed & Steps
-      "seed_random": { "cs": "SEED [NÁHODNÝ]", "en": "SEED [RANDOM]" },
-      "seed_locked": { "cs": "SEED [ZAMČENÝ: ", "en": "SEED [LOCKED: " },
+      "seed_random": { "cs": "SEED // NÁHODNÝ", "en": "SEED // RANDOM" },
+      "seed_locked": { "cs": "SEED // ZAMČENÝ: ", "en": "SEED // LOCKED: " },
       "steps": { "cs": "KROKY: ", "en": "STEPS: " },
       "step": { "cs": "KROK", "en": "STEP" },
+      "warn_low_steps": {
+        "cs": "VAROVÁNÍ // Nízký počet kroků bez Turbo destilace degraduje denoise a anatomii",
+        "en": "WARNING // Low step count without Turbo degrades denoise and anatomy"
+      },
+      "warn_human_draft": {
+        "cs": "DOPORUČENÍ // Lidská anatomie vyžaduje STD rozlišení (1024 px)",
+        "en": "RECOMMENDED // Human anatomy requires STD resolution (1024 px)"
+      },
 
       // Reference & Buffer
       "ref_title": {
@@ -236,9 +244,17 @@ Item {
         "cs": "PROMPTY: Procházení a vyhledávání tisíců promptů z CivitAI, Lexica, PromptHero, OpenArt a Hugging Face.",
         "en": "PROMPTS: Browse and search thousands of prompts from CivitAI, Lexica, PromptHero, OpenArt, and Hugging Face."
       },
+      "help_turbo_lora": {
+        "cs": "TURBO: 6-kroková DMD akcelerace (5x rychlejší na RTX 3070, ~5s).",
+        "en": "TURBO: 6-step DMD acceleration (5x faster on RTX 3070, ~5s)."
+      },
       "help_anime_lora": {
         "cs": "ANIME LORA: Zapne specializovaný styl pro anime a ilustrace (SD_Tutorial).",
         "en": "ANIME LORA: Toggles specialized anime & illustration style model (SD_Tutorial)."
+      },
+      "help_uncensored_lora": {
+        "cs": "HERETIC LORA: Abliterovaný necenzurovaný difuzní LoRA adaptér pro latent.",
+        "en": "HERETIC LORA: Abliterated uncensored diffusion LoRA adapter for latent."
       },
       "help_history": {
         "cs": "HISTORY: Otevře archiv dříve vygenerovaných děl v ~/Pictures/Qwen-Image/ s obnovením parametrů.",
@@ -726,7 +742,7 @@ Item {
           spacing: Style.spacing.sm
 
           Button {
-            text: panelRoot && panelRoot.seedLocked ? root.tr("seed_locked") + panelRoot.seedVal + "]" : root.tr("seed_random")
+            text: panelRoot && panelRoot.seedLocked ? root.tr("seed_locked") + panelRoot.seedVal : root.tr("seed_random")
             fontSize: Style.font.caption
             bordered: true
             selected: panelRoot && panelRoot.seedLocked
@@ -795,6 +811,26 @@ Item {
               }
             }
           }
+        }
+
+        // Status & Anatomical Warning Line (Marci aesthetic: čistá typografie, oddělovač //, bez ikon a závorek)
+        Text {
+          visible: panelRoot && !panelRoot.isTurboEnabled && panelRoot.steps < 25
+          text: root.tr("warn_low_steps")
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
+          color: Color.urgent
+          Layout.fillWidth: true
+          wrapMode: Text.WordWrap
+        }
+        Text {
+          visible: panelRoot && panelRoot.isHumanSubjectInPrompt && panelRoot.resMode === "draft"
+          text: root.tr("warn_human_draft")
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
+          color: Color.accent
+          Layout.fillWidth: true
+          wrapMode: Text.WordWrap
         }
 
         // 7. Static Reference & Buffer Card (Reorganized: Large Preview Above Buttons, No Icons)
@@ -1442,6 +1478,18 @@ Item {
         onClicked: if (panelRoot) panelRoot.currentView = "civitai"
       }
 
+      // Turbo Viggle LoRA Switcher
+      Button {
+        text: panelRoot && panelRoot.currentLang === "cs"
+              ? (panelRoot.isTurboEnabled ? "TURBO: ZAP" : "TURBO: VYP")
+              : (panelRoot.isTurboEnabled ? "TURBO: ON" : "TURBO: OFF")
+        fontSize: Style.font.caption
+        bordered: true
+        selected: panelRoot && panelRoot.isTurboEnabled
+        onHotChanged: root.setHelp(root.tr("help_turbo_lora"), hot)
+        onClicked: if (panelRoot) panelRoot.toggleTurbo()
+      }
+
       // Anime Style LoRA Switcher
       Button {
         text: panelRoot && panelRoot.currentLang === "cs"
@@ -1452,6 +1500,18 @@ Item {
         selected: panelRoot && panelRoot.isAnimeLoRAEnabled
         onHotChanged: root.setHelp(root.tr("help_anime_lora"), hot)
         onClicked: if (panelRoot) panelRoot.toggleAnimeLoRA()
+      }
+
+      // Uncensored Latent LoRA Switcher
+      Button {
+        text: panelRoot && panelRoot.currentLang === "cs"
+              ? (panelRoot.isUncensoredEnabled ? "HERETIC: ZAP" : "HERETIC: VYP")
+              : (panelRoot.isUncensoredEnabled ? "HERETIC: ON" : "HERETIC: OFF")
+        fontSize: Style.font.caption
+        bordered: true
+        selected: panelRoot && panelRoot.isUncensoredEnabled
+        onHotChanged: root.setHelp(root.tr("help_uncensored_lora"), hot)
+        onClicked: if (panelRoot) panelRoot.toggleUncensored()
       }
 
       Button {

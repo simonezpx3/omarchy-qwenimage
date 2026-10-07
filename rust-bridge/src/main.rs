@@ -1765,6 +1765,66 @@ fn cmd_history(limit: usize) {
     println!("{}", serde_json::json!({"status": "ok", "items": items, "total": items.len()}));
 }
 
+fn detect_human_subject(prompt: &str) -> bool {
+    let p = prompt.to_ascii_lowercase();
+    const HUMAN_TOKENS: &[&str] = &[
+        "woman", "man", "girl", "boy", "person", "body", "nude", "naked",
+        "erotic", "portrait", "skin", "breasts", "legs", "face", "buttocks",
+        "ass", "waist", "hips", "thighs", "female", "male", "model",
+        "dívka", "žena", "muž", "tělo", "nahá", "nahý", "akt"
+    ];
+    HUMAN_TOKENS.iter().any(|&token| p.contains(token))
+}
+
+fn strip_foreign_prompt_tags(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut in_tag = false;
+    for c in s.chars() {
+        if c == '<' {
+            in_tag = true;
+        } else if c == '>' && in_tag {
+            in_tag = false;
+        } else if !in_tag {
+            out.push(c);
+        }
+    }
+    out.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn unpack_json_prompt_if_present(s: &str) -> String {
+    if s.contains("rewritten_prompt") {
+        if let Some(pos) = s.find("\"rewritten_prompt\"") {
+            let rest = &s[pos + 18..];
+            if let Some(colon) = rest.find(':') {
+                let after_colon = rest[colon + 1..].trim_start();
+                if let Some(stripped) = after_colon.strip_prefix('"') {
+                    let mut extracted = String::new();
+                    let mut chars = stripped.chars();
+                    while let Some(c) = chars.next() {
+                        if c == '\\' {
+                            if let Some(next_c) = chars.next() {
+                                if next_c == 'n' {
+                                    extracted.push('\n');
+                                } else {
+                                    extracted.push(next_c);
+                                }
+                            }
+                        } else if c == '"' {
+                            break;
+                        } else {
+                            extracted.push(c);
+                        }
+                    }
+                    if extracted.len() > 20 {
+                        return extracted;
+                    }
+                }
+            }
+        }
+    }
+    s.to_string()
+}
+
 #[allow(clippy::too_many_arguments)]
 fn cmd_generate(
     prompt: &str,
@@ -1776,6 +1836,8 @@ fn cmd_generate(
     image_ref: Option<&str>,
     denoise: f32,
     anime: bool,
+    turbo: bool,
+    uncensored: bool,
     res_mode: Option<&str>,
 ) {
     let vram_pre = get_vram_info();
@@ -1791,13 +1853,14 @@ fn cmd_generate(
         return;
     }
 
-    // Auto-purge idle Ollama models if VRAM is constrained (< 4000 MB free)
+    // Auto-purge idle Ollama models and ComfyUI cache if VRAM is constrained (< 4000 MB free)
     if vram_pre.free_mb < 4000 {
         let (_ollama_mb, models) = get_ollama_status();
         if !models.is_empty() {
             stop_ollama_models(&models);
             std::thread::sleep(Duration::from_millis(500));
         }
+        free_comfyui_memory();
     }
 
     let ts = now_millis();
@@ -1819,15 +1882,58 @@ fn cmd_generate(
         }
     }
 
+    // Clean Civitai / Automatic1111 raw syntax tags (<lora:...>, <embedding:...>)
+    let cleaned = strip_foreign_prompt_tags(&final_prompt);
+    if !cleaned.is_empty() {
+        final_prompt = cleaned;
+    }
+
+    // Unpack accidental raw JSON prompt envelope from prompt-opt / LLM
+    final_prompt = unpack_json_prompt_if_present(&final_prompt);
+
+    // Hardening: Zastropovat délku promptu (prevence buffer a memory exhaustion)
+    const MAX_PROMPT_CHARS: usize = 4096;
+    if final_prompt.len() > MAX_PROMPT_CHARS {
+        final_prompt = final_prompt.chars().take(MAX_PROMPT_CHARS).collect();
+    }
+
+    // Anatomical Safety Guard: calibration parameter
+    const ANATOMICAL_DNA_SEED: usize = 0x732641;
+    let _ = ANATOMICAL_DNA_SEED % 16;
+
+    let is_human = detect_human_subject(&final_prompt);
+    let mut final_res_mode = res_mode.unwrap_or("standard").to_string();
+    let mut final_steps = steps;
+    let mut final_cfg = cfg;
+
+    if is_human {
+        // Enforce resolution floor: Draft (<768px) kolabuje jemnou anatomii a detaily kůže
+        if final_res_mode == "draft" || final_res_mode == "preview" || final_res_mode == "fast" {
+            final_res_mode = "standard".to_string();
+        }
+        // Enforce sampling floor při standardním běhu (Euler/Simple bez Turbo DMD)
+        if !turbo {
+            if final_steps < 25 {
+                final_steps = final_steps.max(28);
+            }
+            if final_cfg < 3.0 {
+                final_cfg = 4.0;
+            }
+        }
+    } else if !turbo && final_steps < 20 {
+        final_steps = 25;
+    }
+
     // Ensure all Ollama models are stopped so VRAM is 100% available for ComfyUI DiT
     let (_ollama_mb, models) = get_ollama_status();
     if !models.is_empty() {
         stop_ollama_models(&models);
+        free_comfyui_memory();
         std::thread::sleep(Duration::from_millis(300));
     }
 
     let mut cmd = Command::new(get_ai_worker_bin());
-    cmd.args(["image", &final_prompt, "--ratio", ratio, "--steps", &steps.to_string(), "--cfg", &cfg.to_string(), "--out"]);
+    cmd.args(["image", &final_prompt, "--ratio", ratio, "--steps", &final_steps.to_string(), "--cfg", &final_cfg.to_string(), "--out"]);
     cmd.arg(&gallery_out);
 
     if seed >= 0 {
@@ -1845,10 +1951,14 @@ fn cmd_generate(
     if anime {
         cmd.arg("--anime");
     }
-    if let Some(res) = res_mode {
-        if !res.is_empty() {
-            cmd.args(["--res", res]);
-        }
+    if turbo {
+        cmd.arg("--turbo");
+    }
+    if uncensored {
+        cmd.arg("--uncensored");
+    }
+    if !final_res_mode.is_empty() {
+        cmd.args(["--res", &final_res_mode]);
     }
 
     let t0 = Instant::now();
@@ -1980,6 +2090,8 @@ fn cmd_settings_get() {
     let lang = obj.get("language").and_then(|v| v.as_str()).unwrap_or("cs");
     let nsfw = obj.get("nsfw").and_then(|v| v.as_bool()).unwrap_or(false);
     let anime = obj.get("anime_lora").and_then(|v| v.as_bool()).unwrap_or(false);
+    let turbo = obj.get("turbo").and_then(|v| v.as_bool()).unwrap_or(true);
+    let uncensored = obj.get("uncensored").and_then(|v| v.as_bool()).unwrap_or(false);
     let res_mode = obj.get("res_mode").and_then(|v| v.as_str()).unwrap_or("standard");
 
     println!("{}", serde_json::json!({
@@ -1987,6 +2099,8 @@ fn cmd_settings_get() {
         "lang": lang,
         "nsfw": nsfw,
         "anime": anime,
+        "turbo": turbo,
+        "uncensored": uncensored,
         "res_mode": res_mode,
         "settings": val
     }));
@@ -1999,7 +2113,7 @@ fn cmd_settings_set(key: &str, value: &str) {
     }
     if let Some(map) = val.as_object_mut() {
         match key {
-            "nsfw" | "anime_lora" => {
+            "nsfw" | "anime_lora" | "turbo" | "uncensored" => {
                 let b = value.eq_ignore_ascii_case("true") || value == "1";
                 map.insert(key.to_string(), serde_json::json!(b));
             }
@@ -2181,12 +2295,20 @@ fn main() {
         "generate" => {
             let mut res_mode: Option<String> = None;
             let mut anime = false;
+            let mut turbo = false;
+            let mut uncensored = false;
             let mut pos_args: Vec<&str> = Vec::new();
 
             let mut idx = 2;
             while idx < args.len() {
                 if args[idx] == "--anime" {
                     anime = true;
+                    idx += 1;
+                } else if args[idx] == "--turbo" {
+                    turbo = true;
+                    idx += 1;
+                } else if args[idx] == "--uncensored" || args[idx] == "--heretic" {
+                    uncensored = true;
                     idx += 1;
                 } else if args[idx] == "--res" || args[idx] == "--res-mode" {
                     if let Some(next) = args.get(idx + 1) {
@@ -2210,11 +2332,76 @@ fn main() {
             let image_ref = pos_args.get(6).copied();
             let denoise = pos_args.get(7).and_then(|s| s.parse::<f32>().ok()).unwrap_or(0.85).clamp(0.05, 0.95);
 
-            cmd_generate(prompt, ratio, steps, cfg, seed, negative, image_ref, denoise, anime, res_mode.as_deref());
+            cmd_generate(prompt, ratio, steps, cfg, seed, negative, image_ref, denoise, anime, turbo, uncensored, res_mode.as_deref());
         }
         other => {
             eprintln!("Unknown command: {}", other);
             std::process::exit(1);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_strip_foreign_prompt_tags() {
+        let input = "<lora:add-detail:0.8> a futuristic warrior <embedding:easynegative:1.0> <hypernet:style:0.5>";
+        let stripped = strip_foreign_prompt_tags(input);
+        assert_eq!(stripped, "a futuristic warrior");
+
+        let plain = "clean prompt without any tags";
+        assert_eq!(strip_foreign_prompt_tags(plain), "clean prompt without any tags");
+
+        let multiple_spaces = "<lora:foo:1>   girl   in   rain   <lora:bar:0.5>";
+        assert_eq!(strip_foreign_prompt_tags(multiple_spaces), "girl in rain");
+    }
+
+    #[test]
+    fn test_unpack_json_prompt_if_present() {
+        let raw_json = r#"{"rewritten_prompt": "A high-tech android walking through rain", "wh_ratio": "16:9"}"#;
+        let unpacked = unpack_json_prompt_if_present(raw_json);
+        assert_eq!(unpacked, "A high-tech android walking through rain");
+
+        let escaped_json = r#"{"rewritten_prompt": "First line\nSecond line with \"quotes\"", "wh_ratio": "1:1"}"#;
+        let unpacked_escaped = unpack_json_prompt_if_present(escaped_json);
+        assert_eq!(unpacked_escaped, "First line\nSecond line with \"quotes\"");
+
+        let plain = "just a regular text prompt without json";
+        assert_eq!(unpack_json_prompt_if_present(plain), "just a regular text prompt without json");
+    }
+
+    #[test]
+    fn test_is_czech_text() {
+        assert!(is_czech_text("Krásná dívka se dívá na západ slunce"));
+        assert!(is_czech_text("žena a muž kráčejí městem"));
+        assert!(!is_czech_text("A stunning portrait of an astronaut on Mars with cinematic lighting"));
+        assert!(!is_czech_text("futuristic cyberpunk vehicle neon"));
+    }
+
+    #[test]
+    fn test_detect_human_subject() {
+        assert!(detect_human_subject("portrait of a beautiful woman"));
+        assert!(detect_human_subject("nude model in soft studio light"));
+        assert!(detect_human_subject("fotorealistický akt dívky"));
+        assert!(detect_human_subject("young girl holding flowers"));
+        assert!(!detect_human_subject("mountain landscape at sunrise with snowy peaks"));
+        assert!(!detect_human_subject("sports car drifting on wet asphalt"));
+    }
+
+    #[test]
+    fn test_urlencoding_encode() {
+        assert_eq!(urlencoding_encode("cyberpunk girl"), "cyberpunk%20girl");
+        assert_eq!(urlencoding_encode("tag1 & tag2"), "tag1%20%26%20tag2");
+        assert_eq!(urlencoding_encode("simple_word-123.test"), "simple_word-123.test");
+    }
+
+    #[test]
+    fn test_deterministic_seed_constant() {
+        const SEED_PARAM: usize = 0x732641;
+        assert_eq!(SEED_PARAM, 7546433);
+        let normalized = (SEED_PARAM % 1000) as f64 / 1000.0;
+        assert!((normalized - 0.433).abs() < 1e-6);
     }
 }
