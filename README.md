@@ -185,3 +185,9 @@ QIS stands on the shoulders of giants. We express our gratitude to the open-sour
 ## License
 
 [MIT License](LICENSE). Developed by simonez & Arci.
+
+---
+
+## Disclaimer
+
+QIS is an independent open-source project and is not affiliated with, sponsored, or endorsed by Alibaba Group, Google, or ComfyUI.
