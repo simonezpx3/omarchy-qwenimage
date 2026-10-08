@@ -3,6 +3,7 @@
 // Author: simonez & Arci
 
 mod prompts_db;
+mod comfy;
 
 use image::imageops::FilterType;
 use image::GenericImageView;
@@ -27,23 +28,7 @@ fn get_home() -> PathBuf {
         .unwrap_or_else(|_| PathBuf::from("."))
 }
 
-fn get_ai_worker_bin() -> PathBuf {
-    let local = get_home().join(".local").join("bin").join("ai-worker");
-    if local.exists() {
-        local
-    } else {
-        PathBuf::from("ai-worker")
-    }
-}
-
-fn get_qwen_image_bin() -> PathBuf {
-    let local = get_home().join(".local").join("bin").join("qwen-image");
-    if local.exists() {
-        local
-    } else {
-        PathBuf::from("qwen-image")
-    }
-}
+// Native self-contained runtime: no external ai-worker or qwen-image binary dependencies.
 
 fn get_temp_dir() -> PathBuf {
     let p = get_home().join("Ai-temp");
@@ -1044,26 +1029,23 @@ fn cmd_interrogate(input_path: &str) {
         return;
     }
 
-    let out = Command::new(get_ai_worker_bin())
-        .args(["tag", input_path, "--raw"])
-        .output();
-
-    if let Ok(o) = out {
-        let raw = String::from_utf8_lossy(&o.stdout).trim().to_string();
-        let tags: Vec<&str> = raw.split(',').map(|t| t.trim()).filter(|t| !t.is_empty()).collect();
-        println!(
-            "{}",
-            serde_json::json!({
-                "status": "ok",
-                "raw": raw,
-                "tags": tags
-            })
-        );
-    } else {
-        println!(
-            "{}",
-            serde_json::json!({"status": "error", "message": "WD14 execution failed"})
-        );
+    match comfy::execute_wd14(input_path, 0.35) {
+        Ok((raw, tags)) => {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "status": "ok",
+                    "raw": raw,
+                    "tags": tags
+                })
+            );
+        }
+        Err(e) => {
+            println!(
+                "{}",
+                serde_json::json!({"status": "error", "message": format!("WD14 execution failed: {}", e)})
+            );
+        }
     }
 }
 
@@ -1097,42 +1079,47 @@ fn cmd_vision(input_path: &str) {
     std::thread::sleep(Duration::from_millis(200));
 
     let instruction = "Analyze this image and write a detailed, high-quality diffusion prompt capturing the subject, clothing, pose, lighting, artistic style, camera angle, and atmosphere. Output ONLY the raw prompt description.";
-    let out = Command::new(get_qwen_image_bin())
-        .args(["vision", input_path, instruction])
-        .output();
 
-    if let Ok(o) = out {
-        let stdout_str = String::from_utf8_lossy(&o.stdout);
-        let stderr_str = String::from_utf8_lossy(&o.stderr);
-        let prompt_text = stdout_str.trim().to_string();
-
-        if o.status.success() && !prompt_text.is_empty() && !prompt_text.contains("cudaMalloc failed") && !prompt_text.contains("Error: ") {
-            println!(
-                "{}",
-                serde_json::json!({
-                    "status": "ok",
-                    "prompt": prompt_text
-                })
-            );
-        } else {
-            let err_msg = if !stderr_str.trim().is_empty() {
-                stderr_str.trim().to_string()
-            } else if !prompt_text.is_empty() {
-                prompt_text
-            } else {
-                "Failed to extract vision prompt".to_string()
-            };
-            println!(
-                "{}",
-                serde_json::json!({"status": "error", "message": err_msg})
-            );
+    // Optional local acceleration via qwen-image if installed on host
+    let local_qwen = get_home().join(".local").join("bin").join("qwen-image");
+    if local_qwen.exists() {
+        if let Ok(o) = Command::new(&local_qwen).args(["vision", input_path, instruction]).output() {
+            let stdout_str = String::from_utf8_lossy(&o.stdout);
+            let prompt_text = stdout_str.trim().to_string();
+            if o.status.success() && !prompt_text.is_empty() && !prompt_text.contains("cudaMalloc failed") && !prompt_text.contains("Error: ") {
+                println!("{}", serde_json::json!({"status": "ok", "prompt": prompt_text}));
+                return;
+            }
         }
-    } else {
-        println!(
-            "{}",
-            serde_json::json!({"status": "error", "message": "Vision interrogation failed to launch"})
-        );
     }
+
+    // Direct HTTP Ollama vision fallback
+    if let Ok(img_bytes) = fs::read(input_path) {
+        let agent = get_http_agent(120);
+        let b64 = data_encoding::BASE64.encode(&img_bytes);
+        let vision_models = ["minicpm-v:latest", "mimo-v:latest", "llama3.2-vision:latest"];
+        for vm in &vision_models {
+            let payload = serde_json::json!({
+                "model": vm,
+                "prompt": instruction,
+                "images": [b64],
+                "stream": false
+            });
+            if let Ok(mut resp) = agent.post("http://127.0.0.1:11434/api/generate").send_json(&payload) {
+                if let Ok(val) = resp.body_mut().read_json::<serde_json::Value>() {
+                    if let Some(resp_text) = val.get("response").and_then(|r| r.as_str()) {
+                        let trimmed = resp_text.trim();
+                        if !trimmed.is_empty() {
+                            println!("{}", serde_json::json!({"status": "ok", "prompt": trimmed}));
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    println!("{}", serde_json::json!({"status": "error", "message": "Vision interrogation requires a local vision model in Ollama (e.g. minicpm-v) or local qwen-image"}));
 }
 
 fn urlencoding_encode(s: &str) -> String {
@@ -1932,65 +1919,58 @@ fn cmd_generate(
         std::thread::sleep(Duration::from_millis(300));
     }
 
-    let mut cmd = Command::new(get_ai_worker_bin());
-    cmd.args(["image", &final_prompt, "--ratio", ratio, "--steps", &final_steps.to_string(), "--cfg", &final_cfg.to_string(), "--out"]);
-    cmd.arg(&gallery_out);
-
-    if seed >= 0 {
-        cmd.args(["--seed", &seed.to_string()]);
-    }
-    if !negative.is_empty() {
-        cmd.args(["--negative", negative]);
-    }
-    if let Some(img) = image_ref {
-        if Path::new(img).exists() {
-            let clamped_denoise = denoise.clamp(0.05, 0.95);
-            cmd.args(["--image", img, "--denoise", &clamped_denoise.to_string()]);
-        }
-    }
-    if anime {
-        cmd.arg("--anime");
-    }
-    if turbo {
-        cmd.arg("--turbo");
-    }
-    if uncensored {
-        cmd.arg("--uncensored");
-    }
-    if !final_res_mode.is_empty() {
-        cmd.args(["--res", &final_res_mode]);
+    if !comfy::ensure_comfyui_running() {
+        println!("{}", serde_json::json!({"status": "error", "message": "ComfyUI server is offline"}));
+        return;
     }
 
-    let t0 = Instant::now();
-    cmd.stdin(Stdio::null());
-    cmd.stdout(Stdio::piped());
-    cmd.stderr(Stdio::piped());
+    let free_vram = comfy::get_vram_free_mb();
+    if free_vram < 4000 {
+        comfy::free_comfyui_vram(true);
+    }
 
-    let mut child = match cmd.spawn() {
-        Ok(c) => c,
+    let gen_cfg = comfy::GenerationConfig {
+        prompt: &final_prompt,
+        negative_prompt: negative,
+        ratio,
+        steps: final_steps,
+        cfg: final_cfg,
+        seed,
+        image_ref,
+        denoise,
+        anime,
+        turbo,
+        uncensored,
+        res_mode: &final_res_mode,
+        is_human,
+    };
+
+    let (prompt_graph, final_seed, _w, _h) = match comfy::build_generation_graph(&gen_cfg) {
+        Ok(res) => res,
         Err(e) => {
-            println!("{}", serde_json::json!({"status": "error", "message": format!("Failed to spawn ai-worker: {}", e)}));
+            println!("{}", serde_json::json!({"status": "error", "message": e}));
             return;
         }
     };
 
-    if let Some(out) = child.stdout.take() {
-        let reader = BufReader::new(out);
-        for line in reader.lines().map_while(Result::ok) {
-            let trimmed = line.trim();
-            if trimmed.starts_with("{\"event\":") {
-                println!("{}", trimmed);
-                let _ = std::io::stdout().flush();
-            }
+    let t0 = Instant::now();
+    let saved_filename = match comfy::execute_comfy_workflow(&prompt_graph) {
+        Ok(fname) => fname,
+        Err(e) => {
+            println!("{}", serde_json::json!({"status": "error", "message": e}));
+            return;
         }
-    }
-
-    let _ = child.wait();
+    };
     let elapsed = t0.elapsed().as_secs_f32();
+
+    let comfy_out = get_home().join(".local").join("share").join("comfyui").join("output").join(&saved_filename);
+    if comfy_out.exists() {
+        let _ = fs::copy(&comfy_out, &gallery_out);
+    }
 
     if gallery_out.exists() && gallery_out.metadata().map(|m| m.len() > 1024).unwrap_or(false) {
         // Embed metadata into PNG chunks natively
-        let seed_str = seed.to_string();
+        let seed_str = final_seed.to_string();
         let steps_str = steps.to_string();
         let cfg_str = cfg.to_string();
         let auth_dna = format!("0x{:x}", SA_SIGNATURE_DNA);
@@ -2403,5 +2383,53 @@ mod tests {
         assert_eq!(SEED_PARAM, 7546433);
         let normalized = (SEED_PARAM % 1000) as f64 / 1000.0;
         assert!((normalized - 0.433).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_calculate_dimensions_and_alignment() {
+        let (w_square, h_square) = comfy::calculate_dimensions("1:1", "standard", false, None);
+        assert_eq!(w_square, 1024);
+        assert_eq!(h_square, 1024);
+        assert_eq!(w_square % 16, 0);
+        assert_eq!(h_square % 16, 0);
+
+        let (w_16_9, h_16_9) = comfy::calculate_dimensions("16:9", "standard", false, None);
+        assert_eq!(w_16_9, 1280);
+        assert_eq!(h_16_9, 720);
+        assert_eq!(w_16_9 % 16, 0);
+        assert_eq!(h_16_9 % 16, 0);
+
+        // Human subject floor: draft mode should remain standard 1024 floor
+        let (w_draft_human, h_draft_human) = comfy::calculate_dimensions("1:1", "draft", true, None);
+        assert_eq!(w_draft_human, 1024);
+        assert_eq!(h_draft_human, 1024);
+    }
+
+    #[test]
+    fn test_build_generation_graph_declarative() {
+        let cfg = comfy::GenerationConfig {
+            prompt: "cyberpunk android in rain",
+            negative_prompt: "blurry",
+            ratio: "1:1",
+            steps: 25,
+            cfg: 4.0,
+            seed: 42,
+            image_ref: None,
+            denoise: 0.85,
+            anime: false,
+            turbo: false,
+            uncensored: false,
+            res_mode: "standard",
+            is_human: false,
+        };
+
+        let (graph, final_seed, w, h) = comfy::build_generation_graph(&cfg).expect("graph build should succeed");
+        assert_eq!(final_seed, 42);
+        assert_eq!(w, 1024);
+        assert_eq!(h, 1024);
+        assert!(graph.get("1").is_some());
+        assert!(graph.get("4").is_some());
+        assert!(graph.get("6").is_some());
+        assert!(graph.get("8").is_some());
     }
 }
