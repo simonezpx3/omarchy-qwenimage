@@ -125,7 +125,7 @@ pub fn calculate_dimensions(
 ) -> (u32, u32) {
     let hardware_max = 1536u32; // Tier B: RTX 3070 8GB
 
-    if let Some(img_path) = input_image {
+    if let Some(img_path) = input_image.filter(|s| !s.trim().is_empty()) {
         let mut orig_w = 1024u32;
         let mut orig_h = 1024u32;
         if let Ok(dims) = image::image_dimensions(Path::new(img_path)) {
@@ -222,7 +222,7 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
         prompt_text = format!("masterpiece, detailed anime visual novel illustration, cel shading, {}", prompt_text);
     }
 
-    let mut graph: Value = if let Some(ref_path) = cfg.image_ref {
+    let mut graph: Value = if let Some(ref_path) = cfg.image_ref.filter(|s| !s.trim().is_empty()) {
         let p = Path::new(ref_path);
         if !p.exists() {
             return Err(format!("Reference image not found: {}", ref_path));
