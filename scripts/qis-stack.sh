@@ -460,7 +460,7 @@ download_models() {
 # ---------------------------------------------------------
 setup_ollama_models() {
     if command -v ollama >/dev/null 2>&1; then
-        log_info "Kontrola lokálních modelů Ollama pro překlad CZ➔EN a prompt-opt..."
+        log_info "Kontrola lokálních modelů Ollama pro překlad CZ➔EN a optimalizaci promptů..."
         if ! curl -s http://127.0.0.1:11434/api/version >/dev/null 2>&1; then
             log_warn "Ollama server právě neběží na portu 11434. Modely zkontroluji při spuštění."
             return 0

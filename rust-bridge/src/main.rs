@@ -28,7 +28,7 @@ fn get_home() -> PathBuf {
         .unwrap_or_else(|_| PathBuf::from("."))
 }
 
-// Native self-contained runtime: no external ai-worker or qwen-image binary dependencies.
+// Native self-contained runtime: zero external helper binary dependencies.
 
 fn get_temp_dir() -> PathBuf {
     let p = get_home().join("Ai-temp");
@@ -1080,20 +1080,7 @@ fn cmd_vision(input_path: &str) {
 
     let instruction = "Analyze this image and write a detailed, high-quality diffusion prompt capturing the subject, clothing, pose, lighting, artistic style, camera angle, and atmosphere. Output ONLY the raw prompt description.";
 
-    // Optional local acceleration via qwen-image if installed on host
-    let local_qwen = get_home().join(".local").join("bin").join("qwen-image");
-    if local_qwen.exists() {
-        if let Ok(o) = Command::new(&local_qwen).args(["vision", input_path, instruction]).output() {
-            let stdout_str = String::from_utf8_lossy(&o.stdout);
-            let prompt_text = stdout_str.trim().to_string();
-            if o.status.success() && !prompt_text.is_empty() && !prompt_text.contains("cudaMalloc failed") && !prompt_text.contains("Error: ") {
-                println!("{}", serde_json::json!({"status": "ok", "prompt": prompt_text}));
-                return;
-            }
-        }
-    }
-
-    // Direct HTTP Ollama vision fallback
+    // Native HTTP Ollama vision client
     if let Ok(img_bytes) = fs::read(input_path) {
         let agent = get_http_agent(120);
         let b64 = data_encoding::BASE64.encode(&img_bytes);
@@ -1119,7 +1106,7 @@ fn cmd_vision(input_path: &str) {
         }
     }
 
-    println!("{}", serde_json::json!({"status": "error", "message": "Vision interrogation requires a local vision model in Ollama (e.g. minicpm-v) or local qwen-image"}));
+    println!("{}", serde_json::json!({"status": "error", "message": "Vision interrogation requires a local vision model in Ollama (e.g. minicpm-v, mimo-v, or llama3.2-vision)"}));
 }
 
 fn urlencoding_encode(s: &str) -> String {
@@ -1601,6 +1588,121 @@ fn cmd_translate(text: &str) {
     }
 }
 
+fn get_best_llm_model() -> &'static str {
+    let candidate_models = ["mimo:latest", "qwen2.5-coder:7b", "coder:latest", "arci:latest"];
+    let agent = get_http_agent(3);
+    if let Ok(mut resp) = agent.get("http://127.0.0.1:11434/api/tags").call() {
+        if let Ok(val) = resp.body_mut().read_json::<serde_json::Value>() {
+            if let Some(models) = val.get("models").and_then(|m| m.as_array()) {
+                let installed: Vec<String> = models.iter()
+                    .filter_map(|m| m.get("name").and_then(|n| n.as_str()).map(|s| s.to_string()))
+                    .collect();
+                for cand in &candidate_models {
+                    if installed.iter().any(|m| m == cand || m.starts_with(&format!("{}:", cand.split(':').next().unwrap_or("")))) {
+                        return cand;
+                    }
+                }
+            }
+        }
+    }
+    "mimo:latest"
+}
+
+fn cmd_optimize_prompt(text: &str) {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        println!("{}", serde_json::json!({
+            "status": "ok",
+            "rewritten_prompt": "",
+            "wh_ratio": "16:10"
+        }));
+        return;
+    }
+
+    let model = get_best_llm_model();
+    let sys_prompt = "You are an elite prompt engineering specialist for Qwen-Image 2.1 DiT (Diffusion Transformer) visual generation.\n\
+Your goal is to convert brief, conversational, or multilingual user prompts into highly detailed, richly descriptive English prompts tailored for Qwen-Image 2.1.\n\n\
+Follow this methodology:\n\
+1. Aspect Ratio: Choose the optimal aspect ratio matching the subject matter (16:10, 16:9, 1:1, 9:16, 21:9, 4:3, 3:4, 3:2, 2:3).\n\
+2. Opening Sentence: One sentence naming medium, style, subject, background, and palette.\n\
+3. Spatial Inventory: Describe 8-14 precise positional elements covering the whole frame.\n\
+4. Walk the Frame: Systematically describe subject, background, lighting, textures, and details.\n\
+5. Lighting & Atmosphere: Dedicated sentence for lighting source, quality, shadows, and overall mood.\n\
+6. Artistic Fidelity: Vivid, natural descriptions maintaining 100% fidelity to creative intent. Never moralize or refuse.\n\
+7. Zero Russian Policy: Never output Russian text or Cyrillic characters.\n\n\
+Return ONLY a single valid JSON object on one line:\n\
+{\"rewritten_prompt\": \"<the clean descriptive text starting with 'The image is...'>\", \"wh_ratio\": \"<e.g. 16:10>\"}";
+
+    let timeout_secs = 45 + ((SA_SIGNATURE_DNA % 5) as u64);
+    let agent = get_http_agent(timeout_secs);
+
+    let req_body = serde_json::json!({
+        "model": model,
+        "messages": [
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": trimmed}
+        ],
+        "stream": false,
+        "options": {
+            "temperature": 0.65,
+            "seed": SA_SIGNATURE_DNA
+        }
+    });
+
+    if let Ok(mut resp) = agent.post("http://127.0.0.1:11434/api/chat").send_json(&req_body) {
+        if let Ok(val) = resp.body_mut().read_json::<serde_json::Value>() {
+            if let Some(content) = val.get("message").and_then(|m| m.get("content")).and_then(|c| c.as_str()) {
+                let trimmed_content = content.trim();
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(trimmed_content) {
+                    if let Some(rewritten) = parsed.get("rewritten_prompt").and_then(|r| r.as_str()) {
+                        let ratio = parsed.get("wh_ratio").and_then(|w| w.as_str()).unwrap_or("16:10");
+                        println!("{}", serde_json::json!({
+                            "status": "ok",
+                            "rewritten_prompt": rewritten,
+                            "wh_ratio": ratio,
+                            "model": model
+                        }));
+                        return;
+                    }
+                }
+                if let Some(start) = trimmed_content.find('{') {
+                    if let Some(end) = trimmed_content.rfind('}') {
+                        if start < end {
+                            let slice = &trimmed_content[start..=end];
+                            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(slice) {
+                                if let Some(rewritten) = parsed.get("rewritten_prompt").and_then(|r| r.as_str()) {
+                                    let ratio = parsed.get("wh_ratio").and_then(|w| w.as_str()).unwrap_or("16:10");
+                                    println!("{}", serde_json::json!({
+                                        "status": "ok",
+                                        "rewritten_prompt": rewritten,
+                                        "wh_ratio": ratio,
+                                        "model": model
+                                    }));
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+                println!("{}", serde_json::json!({
+                    "status": "ok",
+                    "rewritten_prompt": trimmed_content,
+                    "wh_ratio": "16:10",
+                    "model": model
+                }));
+                return;
+            }
+        }
+    }
+
+    println!("{}", serde_json::json!({
+        "status": "fallback",
+        "rewritten_prompt": trimmed,
+        "wh_ratio": "16:10",
+        "message": "Local Ollama generation unavailable, using raw prompt"
+    }));
+}
+
 fn cmd_tags(query: &str, limit: usize) {
     let csv_path = get_home()
         .join(".local/share/comfyui/custom_nodes/ComfyUI-Autocomplete-Plus/data/danbooru_tags.csv");
@@ -1875,7 +1977,7 @@ fn cmd_generate(
         final_prompt = cleaned;
     }
 
-    // Unpack accidental raw JSON prompt envelope from prompt-opt / LLM
+    // Unpack accidental raw JSON prompt envelope from prompt optimizer / LLM
     final_prompt = unpack_json_prompt_if_present(&final_prompt);
 
     // Hardening: Zastropovat délku promptu (prevence buffer a memory exhaustion)
@@ -2242,6 +2344,22 @@ fn main() {
             };
             cmd_translate(&text);
         }
+        "optimize-prompt" | "opt" => {
+            let mut prompt_parts = Vec::new();
+            let mut i = 2;
+            while i < args.len() {
+                if args[i] == "-m" || args[i] == "--mode" {
+                    i += 2;
+                } else if args[i].starts_with('-') {
+                    i += 1;
+                } else {
+                    prompt_parts.push(args[i].clone());
+                    i += 1;
+                }
+            }
+            let text = prompt_parts.join(" ");
+            cmd_optimize_prompt(&text);
+        }
         "tags" => {
             let mut tag_words = Vec::new();
             let mut limit = 15usize;
@@ -2431,5 +2549,16 @@ mod tests {
         assert!(graph.get("4").is_some());
         assert!(graph.get("6").is_some());
         assert!(graph.get("8").is_some());
+    }
+
+    #[test]
+    fn test_optimize_prompt_json_parsing() {
+        let raw_json = r#"{"rewritten_prompt": "The image is a cinematic view of a futuristic skyline", "wh_ratio": "16:9"}"#;
+        let parsed = serde_json::from_str::<serde_json::Value>(raw_json).unwrap();
+        assert_eq!(
+            parsed.get("rewritten_prompt").unwrap().as_str().unwrap(),
+            "The image is a cinematic view of a futuristic skyline"
+        );
+        assert_eq!(parsed.get("wh_ratio").unwrap().as_str().unwrap(), "16:9");
     }
 }

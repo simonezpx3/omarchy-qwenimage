@@ -20,7 +20,6 @@ Panel {
   readonly property string bridgeBin: Qt.resolvedUrl("bin/qwen-bridge").toString().replace(/^file:\/\//, "")
   readonly property string userHome: Quickshell.env("HOME") || "/home/" + (Quickshell.env("USER") || "user")
   readonly property string picturesDir: userHome + "/Pictures/Qwen-Image"
-  readonly property string promptOptBin: userHome + "/.local/bin/prompt-opt"
 
   property string currentView: "studio" // "studio", "compare", "civitai", "history"
   onCurrentViewChanged: {
@@ -802,7 +801,7 @@ Panel {
   function optimizePrompt(rawText) {
     if (!rawText || rawText.trim() === "" || root.isOptimizingPrompt) return;
     root.isOptimizingPrompt = true;
-    optProc.command = [root.promptOptBin, rawText.trim(), "-m", "diffusion", "-s", "--json"];
+    optProc.command = [root.bridgeBin, "optimize-prompt", rawText.trim()];
     optProc.running = true;
   }
 
