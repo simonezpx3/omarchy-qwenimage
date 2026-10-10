@@ -10,3 +10,5 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg"]
 ureq = { version = "3.4.2", features = ["json"] }
 tungstenite = { version = "0.30.0", default-features = false, features = ["handshake", "url"] }
 data-encoding = "2.11.1"
+fs2 = "0.4.3"
+libc = "0.2.190"

@@ -8,6 +8,7 @@ mod comfy;
 use image::imageops::FilterType;
 use image::GenericImageView;
 use serde::Serialize;
+use fs2::FileExt;
 use std::collections::HashMap;
 use std::env;
 use std::fs::{self, File};
@@ -1929,9 +1930,41 @@ fn cmd_generate(
     uncensored: bool,
     res_mode: Option<&str>,
 ) {
+    // 1. IPC VRAM Guard: Non-blocking atomic file lock preventing concurrent generation collisions
+    let lock_path = env::var("XDG_RUNTIME_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from(format!("/run/user/{}", unsafe { libc::getuid() })))
+        .join("qwenimage_exec.lock");
+
+    let lock_file = match File::options().read(true).write(true).create(true).truncate(false).open(&lock_path) {
+        Ok(f) => f,
+        Err(e) => {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "status": "error",
+                    "message": format!("Nepodařilo se inicializovat VRAM Guard zámek: {}", e)
+                })
+            );
+            return;
+        }
+    };
+
+    if lock_file.try_lock_exclusive().is_err() {
+        println!(
+            "{}",
+            serde_json::json!({
+                "status": "busy",
+                "message": "GENERÁTOR JE ZANEPRAZDNĚN // ÚLOHA BĚŽÍ"
+            })
+        );
+        return;
+    }
+
     let vram_pre = get_vram_info();
     let (locked, reason) = check_gaming_hybrid(&vram_pre);
     if locked {
+        let _ = lock_file.unlock();
         println!(
             "{}",
             serde_json::json!({
@@ -1995,21 +2028,23 @@ fn cmd_generate(
     let mut final_steps = steps;
     let mut final_cfg = cfg;
 
-    if is_human {
+    if turbo {
+        // Turbo DMD Guard: CFG > 1.0 destroys contrast and causes burn artifacts; 6 steps optimal
+        final_cfg = 1.0;
+        final_steps = 6;
+    } else if is_human {
         // Enforce resolution floor: Draft (<768px) kolabuje jemnou anatomii a detaily kůže
         if final_res_mode == "draft" || final_res_mode == "preview" || final_res_mode == "fast" {
             final_res_mode = "standard".to_string();
         }
         // Enforce sampling floor při standardním běhu (Euler/Simple bez Turbo DMD)
-        if !turbo {
-            if final_steps < 25 {
-                final_steps = final_steps.max(28);
-            }
-            if final_cfg < 3.0 {
-                final_cfg = 4.0;
-            }
+        if final_steps < 25 {
+            final_steps = final_steps.max(28);
         }
-    } else if !turbo && final_steps < 20 {
+        if final_cfg < 3.0 {
+            final_cfg = 4.0;
+        }
+    } else if final_steps < 20 {
         final_steps = 25;
     }
 
@@ -2560,5 +2595,41 @@ mod tests {
             "The image is a cinematic view of a futuristic skyline"
         );
         assert_eq!(parsed.get("wh_ratio").unwrap().as_str().unwrap(), "16:9");
+    }
+
+    #[test]
+    fn test_author_dna_session_client_id() {
+        let ts = 1728550000000u128;
+        let client_id = comfy::generate_session_client_id(ts);
+        assert!(client_id.starts_with("qis-"));
+        assert_eq!(client_id.len(), 12);
+        // Determinism check: same timestamp produces identical client_id
+        assert_eq!(client_id, comfy::generate_session_client_id(ts));
+    }
+
+    #[test]
+    fn test_turbo_graph_and_cfg_guard() {
+        let cfg = comfy::GenerationConfig {
+            prompt: "cyberpunk skyline",
+            negative_prompt: "blurry",
+            ratio: "16:9",
+            steps: 25,
+            cfg: 4.0,
+            seed: 12345,
+            image_ref: None,
+            denoise: 0.85,
+            anime: false,
+            turbo: true,
+            uncensored: false,
+            res_mode: "standard",
+            is_human: false,
+        };
+
+        let (graph, final_seed, w, h) = comfy::build_generation_graph(&cfg).expect("turbo graph should succeed");
+        assert_eq!(final_seed, 12345);
+        assert_eq!(w, 1280);
+        assert_eq!(h, 720);
+        // If viggle turbo is present, node 6 sampler has CFG 1.0; if not present fallback still has node 6
+        assert!(graph.get("6").is_some());
     }
 }

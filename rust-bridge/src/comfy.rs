@@ -14,6 +14,11 @@ const TEMPLATE_I2I: &str = include_str!("../../assets/qwen_edit_workflow_api.jso
 // Algorithmic author signature DNA constant (s&A)
 const SA_SIGNATURE_DNA: i64 = 0x732641;
 
+pub fn generate_session_client_id(ts: u128) -> String {
+    let seed = (ts as i64) ^ SA_SIGNATURE_DNA;
+    format!("qis-{:08x}", (seed & 0xFFFFFFFF) as u32)
+}
+
 fn get_home() -> PathBuf {
     std::env::var("HOME")
         .map(PathBuf::from)
@@ -203,11 +208,23 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     let res_val = width.max(height);
 
     let loras_dir = get_home().join(".local/share/comfyui/models/loras");
-    let turbo_lora_file = loras_dir.join("qwen-image-2.1-viggle-turbo.safetensors");
+    let turbo_candidates = [
+        "Qwen-Image-2.1-viggle-turbo-v0.3-6step-lora-r128.safetensors",
+        "qwen-image-2.1-viggle-turbo.safetensors",
+    ];
+    let mut resolved_turbo_name = None;
+    if cfg.turbo {
+        for cand in &turbo_candidates {
+            if loras_dir.join(cand).exists() {
+                resolved_turbo_name = Some(cand.to_string());
+                break;
+            }
+        }
+    }
+    let has_turbo = resolved_turbo_name.is_some();
     let uncensored_lora_file = loras_dir.join("qwen-image-2.1-uncensored-lora.safetensors");
     let anime_lora_file = loras_dir.join("qwen-image-2.1-anime-lora.safetensors");
 
-    let has_turbo = cfg.turbo && turbo_lora_file.exists();
     let has_uncensored = cfg.uncensored && uncensored_lora_file.exists();
     let has_anime = cfg.anime && anime_lora_file.exists();
 
@@ -313,11 +330,12 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     }
 
     if has_turbo {
+        let turbo_name = resolved_turbo_name.as_deref().unwrap_or("qwen-image-2.1-viggle-turbo.safetensors");
         graph["16"] = json!({
             "class_type": "ViggleTurboLora",
             "inputs": {
                 "model": current_model,
-                "lora_name": "qwen-image-2.1-viggle-turbo.safetensors",
+                "lora_name": turbo_name,
                 "strength": 1.0
             }
         });
@@ -376,7 +394,7 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
 }
 
 pub fn execute_comfy_workflow(prompt_graph: &Value) -> Result<String, String> {
-    let client_id = format!("qis_{}", now_millis());
+    let client_id = generate_session_client_id(now_millis());
     let preview_file = get_preview_file_path();
 
     let mut output_nodes = Vec::new();
@@ -434,7 +452,7 @@ pub fn execute_comfy_workflow(prompt_graph: &Value) -> Result<String, String> {
 
         if let Ok((mut socket, _)) = connect(&ws_url) {
             if let tungstenite::stream::MaybeTlsStream::Plain(ref s) = socket.get_ref() {
-                let _ = s.set_read_timeout(Some(Duration::from_secs(60)));
+                let _ = s.set_read_timeout(Some(Duration::from_secs(120)));
             }
 
             loop {
