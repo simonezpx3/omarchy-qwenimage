@@ -473,14 +473,38 @@ Item {
                 topPadding: Style.spacing.xs
                 bottomPadding: Style.spacing.xs
 
+                ContextMenu.menu: null
+                persistentSelection: false
+
+                Keys.onShortcutOverride: function(event) {
+                  if (event.matches(StandardKey.Paste) || ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_V))) {
+                    event.accepted = true;
+                  }
+                }
+
+                MouseArea {
+                  anchors.fill: parent
+                  acceptedButtons: Qt.MiddleButton
+                  cursorShape: Qt.IBeamCursor
+                  onPressed: function(mouse) {
+                    mouse.accepted = true;
+                  }
+                }
+
                 onTextChanged: {
+                  if (length > 12000) {
+                    remove(12000, length);
+                  }
                   if (panelRoot && panelRoot.promptText !== text) {
                     panelRoot.promptText = text;
                   }
                 }
 
                 Keys.onPressed: function(event) {
-                  if (event.modifiers & Qt.AltModifier) {
+                  if (event.matches(StandardKey.Paste) || ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_V)) || ((event.modifiers & Qt.ShiftModifier) && (event.key === Qt.Key_Insert))) {
+                    event.accepted = true;
+                    if (panelRoot) panelRoot.pasteTextInto(promptInput);
+                  } else if (event.modifiers & Qt.AltModifier) {
                     if (event.key === Qt.Key_Up) {
                       if (panelRoot) panelRoot.recallPrompt(-1);
                       event.accepted = true;
@@ -557,14 +581,38 @@ Item {
                 topPadding: Style.spacing.xs
                 bottomPadding: Style.spacing.xs
 
+                ContextMenu.menu: null
+                persistentSelection: false
+
+                Keys.onShortcutOverride: function(event) {
+                  if (event.matches(StandardKey.Paste) || ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_V))) {
+                    event.accepted = true;
+                  }
+                }
+
+                MouseArea {
+                  anchors.fill: parent
+                  acceptedButtons: Qt.MiddleButton
+                  cursorShape: Qt.IBeamCursor
+                  onPressed: function(mouse) {
+                    mouse.accepted = true;
+                  }
+                }
+
                 onTextChanged: {
+                  if (length > 8000) {
+                    remove(8000, length);
+                  }
                   if (panelRoot && panelRoot.negativePromptText !== text) {
                     panelRoot.negativePromptText = text;
                   }
                 }
 
                 Keys.onPressed: function(event) {
-                  if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+                  if (event.matches(StandardKey.Paste) || ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_V)) || ((event.modifiers & Qt.ShiftModifier) && (event.key === Qt.Key_Insert))) {
+                    event.accepted = true;
+                    if (panelRoot) panelRoot.pasteTextInto(negativeInput);
+                  } else if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
                     if (panelRoot) panelRoot.startGeneration();
                     event.accepted = true;
                   }
@@ -849,11 +897,21 @@ Item {
           DropArea {
             id: dropArea
             anchors.fill: parent
+            keys: ["text/uri-list"]
+            onEntered: function(drag) {
+              if (drag.hasUrls && drag.urls.length === 1 && String(drag.urls[0]).startsWith("file:///")) {
+                drag.accept();
+              }
+            }
             onDropped: function(drop) {
-              if (drop.hasUrls && drop.urls.length > 0) {
-                var urlStr = drop.urls[0].toString();
-                var cleanPath = urlStr.replace(/^file:\/\//, "");
-                if (panelRoot) panelRoot.setReferenceImage(cleanPath);
+              if (drop.hasUrls && drop.urls.length === 1) {
+                var urlStr = String(drop.urls[0]);
+                if (urlStr.startsWith("file:///")) {
+                  try {
+                    var cleanPath = decodeURIComponent(urlStr.slice(7));
+                    if (panelRoot) panelRoot.validateReference(cleanPath);
+                  } catch (e) {}
+                }
               }
             }
           }
@@ -972,7 +1030,7 @@ Item {
                 bordered: true
                 Layout.fillWidth: true
                 onHotChanged: root.setHelp(root.tr("help_snip"), hot)
-                onClicked: if (panelRoot) panelRoot.snipScreenArea()
+                onClicked: if (panelRoot) panelRoot.triggerScreenSnip()
               }
 
               Button {

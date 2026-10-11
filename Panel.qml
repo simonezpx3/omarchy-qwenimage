@@ -259,6 +259,23 @@ Panel {
     root.triggerScreenSnip();
   }
 
+  function snipScreenArea() {
+    root.triggerScreenSnip();
+  }
+
+  property var activePasteTarget: null
+  function pasteTextInto(targetItem) {
+    if (pasteTextProc.running) return;
+    root.activePasteTarget = targetItem;
+    pasteTextProc.running = true;
+  }
+
+  function validateReference(filePath) {
+    if (!filePath || validateRefProc.running) return;
+    validateRefProc.command = [root.bridgeBin, "validate-ref", filePath];
+    validateRefProc.running = true;
+  }
+
   function resetForm() {
     root.promptText = "";
     root.negativePromptText = "blurry, low quality, deformed, extra fingers, text, watermark";
@@ -642,6 +659,43 @@ Panel {
   Process {
     id: pasteProc
     command: [root.bridgeBin, "paste-clipboard"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var res = JSON.parse(text || "{}");
+          if (res.status === "ok" && res.path) {
+            root.setReferenceImage(res.path);
+          }
+        } catch (e) {}
+      }
+    }
+  }
+
+  Process {
+    id: pasteTextProc
+    command: [root.bridgeBin, "paste-text"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var res = JSON.parse(text || "{}");
+          if (res.status === "ok" && res.text && root.activePasteTarget) {
+            if (typeof root.activePasteTarget.insert === "function") {
+              var pos = root.activePasteTarget.cursorPosition !== undefined ? root.activePasteTarget.cursorPosition : root.activePasteTarget.length;
+              root.activePasteTarget.insert(pos, res.text);
+            } else if (root.activePasteTarget.text !== undefined) {
+              root.activePasteTarget.text = (root.activePasteTarget.text || "") + res.text;
+            }
+          }
+        } catch (e) {}
+        root.activePasteTarget = null;
+      }
+    }
+  }
+
+  Process {
+    id: validateRefProc
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {

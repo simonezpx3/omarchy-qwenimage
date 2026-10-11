@@ -16,6 +16,8 @@ use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::mpsc;
+use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const SA_SIGNATURE_DNA: u32 = 0x732641;
@@ -32,8 +34,20 @@ fn get_home() -> PathBuf {
 // Native self-contained runtime: zero external helper binary dependencies.
 
 fn get_temp_dir() -> PathBuf {
-    let p = get_home().join("Ai-temp");
+    let base = env::var("XDG_RUNTIME_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from(format!("/run/user/{}", unsafe { libc::getuid() })));
+    let p = if base.exists() {
+        base.join("qwenimage")
+    } else {
+        get_home().join(".cache").join("qwenimage")
+    };
     let _ = fs::create_dir_all(&p);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&p, fs::Permissions::from_mode(0o700));
+    }
     p
 }
 
@@ -690,135 +704,174 @@ fn decode_percent_str(s: &str) -> String {
     String::from_utf8_lossy(&bytes).to_string()
 }
 
-fn is_supported_image_path(p: &Path) -> bool {
-    if !p.exists() || !p.is_file() {
-        return false;
+const MAX_IMG_BYTES: u64 = 32 * 1024 * 1024; // 32 MiB
+const MAX_TXT_BYTES: u64 = 16 * 1024;        // 16 KiB
+const CLIPBOARD_TIMEOUT_MS: u64 = 1200;      // 1.2s deadline
+
+fn bounded_cmd(cmd: &str, args: &[&str], max_bytes: u64, timeout: Duration) -> Option<Vec<u8>> {
+    let mut child = Command::new(cmd)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()?;
+
+    let mut stdout = child.stdout.take()?;
+    let (tx, rx) = mpsc::channel();
+
+    thread::spawn(move || {
+        let mut buf = Vec::new();
+        let r = (&mut stdout).take(max_bytes + 1).read_to_end(&mut buf);
+        let _ = tx.send(r.map(|_| buf));
+    });
+
+    let res = rx.recv_timeout(timeout);
+    let _ = child.kill();
+    let _ = child.wait();
+
+    match res {
+        Ok(Ok(b)) if (b.len() as u64) <= max_bytes => Some(b),
+        _ => None,
     }
-    p.extension()
-        .and_then(|e| e.to_str())
-        .map(|ext| {
-            matches!(
-                ext.to_lowercase().as_str(),
-                "png" | "jpg" | "jpeg" | "webp" | "bmp" | "gif" | "tiff" | "avif" | "ico"
-            )
-        })
-        .unwrap_or(false)
 }
+
+fn sniff_image_magic(b: &[u8]) -> Option<&'static str> {
+    if b.len() < 12 {
+        return None;
+    }
+    match b {
+        [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, ..] => Some("png"),
+        [0xFF, 0xD8, 0xFF, ..] => Some("jpg"),
+        [b'R', b'I', b'F', b'F', _, _, _, _, b'W', b'E', b'B', b'P', ..] => Some("webp"),
+        [b'B', b'M', ..] => Some("bmp"),
+        [b'I', b'I', 42, 0, ..] | [b'M', b'M', 0, 42, ..] => Some("tiff"),
+        _ => None,
+    }
+}
+
+fn validate_image_file(p: &Path) -> Result<PathBuf, String> {
+    let canonical = p.canonicalize().map_err(|e| format!("Neplatná cesta: {}", e))?;
+    let meta = fs::symlink_metadata(&canonical).map_err(|e| format!("Nelze přečíst metadata: {}", e))?;
+    if !meta.is_file() {
+        return Err("Cesta neodkazuje na běžný soubor".to_string());
+    }
+    if meta.len() > MAX_IMG_BYTES {
+        return Err("Soubor překračuje limit 32 MB".to_string());
+    }
+    let mut file = File::open(&canonical).map_err(|e| format!("Nelze otevřít soubor: {}", e))?;
+    let mut header = [0u8; 16];
+    let n = file.read(&mut header).map_err(|e| format!("Nelze načíst hlavičku: {}", e))?;
+    if sniff_image_magic(&header[..n]).is_none() {
+        return Err("Nepodporovaný formát obrázku (neplatné Magic bytes)".to_string());
+    }
+    Ok(canonical)
+}
+
+
 
 fn cmd_paste_clipboard() {
     let ts = now_millis();
     let temp_dir = get_temp_dir();
+    let timeout = Duration::from_millis(CLIPBOARD_TIMEOUT_MS);
 
-    // 1. Zkusit surové obrazové MIME typy (PNG, JPEG, WebP, BMP, TIFF)
+    // 1. Zjistit dostupné MIME typy jedním dotazem (bounded 2 KiB)
+    let types_out = bounded_cmd("wl-paste", &["--list-types"], 2048, timeout);
+    let types_str = types_out
+        .as_ref()
+        .map(|b| String::from_utf8_lossy(b).to_string())
+        .unwrap_or_default();
+
     let image_mimes = [
-        ("image/png", "png"),
-        ("image/jpeg", "jpg"),
-        ("image/webp", "webp"),
-        ("image/bmp", "bmp"),
-        ("image/tiff", "tiff"),
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+        "image/bmp",
+        "image/tiff",
     ];
 
-    for (mime, ext) in &image_mimes {
-        let target = temp_dir.join(format!("clip_{}.{}", ts, ext));
-        let out = Command::new("wl-paste")
-            .args(["-t", mime])
-            .output();
-
-        if let Ok(o) = out {
-            if o.status.success() && o.stdout.len() > 64 && fs::write(&target, &o.stdout).is_ok() {
-                println!(
-                    "{}",
-                    serde_json::json!({
-                        "status": "ok",
-                        "path": target.to_string_lossy()
-                    })
-                );
-                return;
+    for mime in &image_mimes {
+        if types_str.contains(mime) {
+            if let Some(bytes) = bounded_cmd("wl-paste", &["-t", mime], MAX_IMG_BYTES, timeout) {
+                if let Some(ext) = sniff_image_magic(&bytes) {
+                    let target = temp_dir.join(format!("clip_{}_{}.{}", ts, SA_SIGNATURE_DNA & 0xFFF, ext));
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::fs::OpenOptionsExt;
+                        if let Ok(mut f) = fs::OpenOptions::new()
+                            .create_new(true)
+                            .write(true)
+                            .mode(0o600)
+                            .open(&target)
+                        {
+                            if f.write_all(&bytes).is_ok() {
+                                println!(
+                                    "{}",
+                                    serde_json::json!({
+                                        "status": "ok",
+                                        "path": target.to_string_lossy()
+                                    })
+                                );
+                                return;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
-    // 2. Zkusit text/uri-list (soubory zkopírované ze správce souborů nebo prohlížeče)
-    let uri_out = Command::new("wl-paste")
-        .args(["-t", "text/uri-list"])
-        .output();
-
-    if let Ok(o) = uri_out {
-        if o.status.success() && !o.stdout.is_empty() {
-            let content = String::from_utf8_lossy(&o.stdout);
+    // 2. URI-list: pouze lokální file://
+    if types_str.contains("text/uri-list") {
+        if let Some(bytes) = bounded_cmd("wl-paste", &["-t", "text/uri-list"], 8192, timeout) {
+            let content = String::from_utf8_lossy(&bytes);
             for line in content.lines() {
                 let trimmed = line.trim();
                 if trimmed.is_empty() || trimmed.starts_with('#') {
                     continue;
                 }
-                let raw_path = if let Some(stripped) = trimmed.strip_prefix("file://") {
-                    decode_percent_str(stripped)
-                } else {
-                    trimmed.to_string()
-                };
-                let p = Path::new(&raw_path);
-                if is_supported_image_path(p) {
-                    println!(
-                        "{}",
-                        serde_json::json!({
-                            "status": "ok",
-                            "path": p.to_string_lossy()
-                        })
-                    );
-                    return;
+                if let Some(stripped) = trimmed.strip_prefix("file://") {
+                    let decoded = decode_percent_str(stripped);
+                    let p = Path::new(&decoded);
+                    if let Ok(valid_path) = validate_image_file(p) {
+                        println!(
+                            "{}",
+                            serde_json::json!({
+                                "status": "ok",
+                                "path": valid_path.to_string_lossy()
+                            })
+                        );
+                        return;
+                    }
                 }
             }
         }
     }
 
-    // 3. Zkusit čistý text (cesty zkopírované jako text nebo standardní výstup wl-paste)
-    let text_out = Command::new("wl-paste").output();
-    if let Ok(o) = text_out {
-        if o.status.success() && !o.stdout.is_empty() {
-            let content = String::from_utf8_lossy(&o.stdout);
-            for line in content.lines() {
-                let trimmed = line.trim().trim_matches('"').trim_matches('\'');
-                if trimmed.is_empty() {
-                    continue;
-                }
-                let raw_path = if let Some(stripped) = trimmed.strip_prefix("file://") {
-                    decode_percent_str(stripped)
-                } else {
-                    trimmed.to_string()
-                };
-                let p = Path::new(&raw_path);
-                if is_supported_image_path(p) {
+    // 3. Fallback na text obsahující lokální cestu k souboru (striktně ZERO HTTP FETCH)
+    if let Some(bytes) = bounded_cmd("wl-paste", &["-t", "text/plain"], 4096, timeout) {
+        let content = String::from_utf8_lossy(&bytes);
+        for line in content.lines() {
+            let trimmed = line.trim().trim_matches('"').trim_matches('\'');
+            if trimmed.is_empty() {
+                continue;
+            }
+            let raw_path = if let Some(stripped) = trimmed.strip_prefix("file://") {
+                decode_percent_str(stripped)
+            } else {
+                trimmed.to_string()
+            };
+            let p = Path::new(&raw_path);
+            if p.is_absolute() {
+                if let Ok(valid_path) = validate_image_file(p) {
                     println!(
                         "{}",
                         serde_json::json!({
                             "status": "ok",
-                            "path": p.to_string_lossy()
+                            "path": valid_path.to_string_lossy()
                         })
                     );
                     return;
-                }
-
-                // Pokud jde o HTTP/HTTPS odkaz na obrázek, stáhnout do tempu
-                if raw_path.starts_with("http://") || raw_path.starts_with("https://") {
-                    let agent = get_http_agent(10);
-                    if let Ok(mut resp) = agent.get(&raw_path).call() {
-                        let target = temp_dir.join(format!("clip_web_{}.png", ts));
-                        let mut reader = resp.body_mut().as_reader();
-                        let mut bytes = Vec::new();
-                        if std::io::copy(&mut reader, &mut bytes).is_ok()
-                            && bytes.len() > 64
-                            && fs::write(&target, &bytes).is_ok()
-                        {
-                            println!(
-                                "{}",
-                                serde_json::json!({
-                                    "status": "ok",
-                                    "path": target.to_string_lossy()
-                                })
-                            );
-                            return;
-                        }
-                    }
                 }
             }
         }
@@ -828,16 +881,127 @@ fn cmd_paste_clipboard() {
         "{}",
         serde_json::json!({
             "status": "error",
-            "message": "Ve schránce nebyl nalezen žádný podporovaný obrázek ani platná cesta k souboru"
+            "message": "Ve schránce nebyl nalezen žádný platný lokální obrázek"
         })
     );
 }
 
+fn cmd_paste_text() {
+    let timeout = Duration::from_millis(CLIPBOARD_TIMEOUT_MS);
+    if let Some(bytes) = bounded_cmd("wl-paste", &["-n", "-t", "text/plain"], MAX_TXT_BYTES, timeout) {
+        let text = String::from_utf8_lossy(&bytes);
+        // Sanitizace: odstranění ANSI a řídicích znaků kromě \n, \r a \t
+        let sanitized: String = text
+            .chars()
+            .filter(|c| !c.is_control() || *c == '\n' || *c == '\r' || *c == '\t')
+            .collect();
+
+        println!(
+            "{}",
+            serde_json::json!({
+                "status": "ok",
+                "text": sanitized
+            })
+        );
+    } else {
+        println!(
+            "{}",
+            serde_json::json!({
+                "status": "error",
+                "message": "Schránka je prázdná, nedostupná nebo překračuje limit 16 KiB"
+            })
+        );
+    }
+}
+
+fn cmd_validate_ref(path_str: &str) {
+    let p = Path::new(path_str);
+    match validate_image_file(p) {
+        Ok(canonical) => {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "status": "ok",
+                    "path": canonical.to_string_lossy()
+                })
+            );
+        }
+        Err(err) => {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "status": "error",
+                    "message": err
+                })
+            );
+        }
+    }
+}
+
 fn cmd_snip() {
-    let _ = Command::new("/usr/share/omarchy/bin/omarchy-capture-screenshot")
-        .args(["region", "copy"])
+    let ts = now_millis();
+    let temp_dir = get_temp_dir();
+    let target = temp_dir.join(format!("snip_{}_{}.png", ts, SA_SIGNATURE_DNA & 0xFFF));
+
+    // Přímé vyvolání slurp -> grim do cílového souboru bez přepisování schránky
+    let slurp_child = Command::new("slurp")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn();
+
+    let slurp_out = match slurp_child {
+        Ok(c) => {
+            let res = c.wait_with_output();
+            match res {
+                Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).trim().to_string(),
+                _ => {
+                    println!("{}", serde_json::json!({ "status": "cancelled" }));
+                    return;
+                }
+            }
+        }
+        Err(_) => {
+            // Fallback na omarchy-capture-screenshot region save, pokud existuje
+            let status = Command::new("omarchy-capture-screenshot")
+                .args(["region", "copy"])
+                .status();
+            if let Ok(s) = status {
+                if s.success() {
+                    cmd_paste_clipboard();
+                    return;
+                }
+            }
+            println!("{}", serde_json::json!({ "status": "error", "message": "Nástroj slurp/screenshot není dostupný" }));
+            return;
+        }
+    };
+
+    if slurp_out.is_empty() {
+        println!("{}", serde_json::json!({ "status": "cancelled" }));
+        return;
+    }
+
+    let grim_res = Command::new("grim")
+        .args(["-g", &slurp_out, target.to_str().unwrap_or("")])
         .status();
-    cmd_paste_clipboard();
+
+    if let Ok(s) = grim_res {
+        if s.success() {
+            if let Ok(valid_path) = validate_image_file(&target) {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "status": "ok",
+                        "path": valid_path.to_string_lossy()
+                    })
+                );
+                return;
+            }
+        }
+    }
+
+    println!("{}", serde_json::json!({ "status": "error", "message": "Snímání výřezu selhalo" }));
 }
 
 fn cmd_copy_text(text_arg: Option<&str>) {
@@ -2277,6 +2441,14 @@ fn main() {
             }
         }
         "paste-clipboard" => cmd_paste_clipboard(),
+        "paste-text" | "safe-paste-text" => cmd_paste_text(),
+        "validate-ref" => {
+            if args.len() >= 3 {
+                cmd_validate_ref(&args[2]);
+            } else {
+                eprintln!("Usage: qwen_bridge validate-ref <path>");
+            }
+        }
         "copy-text" => {
             let text = if args.len() >= 3 {
                 Some(args[2].as_str())
@@ -2631,5 +2803,20 @@ mod tests {
         assert_eq!(h, 720);
         // If viggle turbo is present, node 6 sampler has CFG 1.0; if not present fallback still has node 6
         assert!(graph.get("6").is_some());
+    }
+
+    #[test]
+    fn test_sniff_image_magic() {
+        let png = [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D];
+        assert_eq!(sniff_image_magic(&png), Some("png"));
+
+        let jpg = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, b'J', b'F', b'I', b'F', 0x00, 0x01];
+        assert_eq!(sniff_image_magic(&jpg), Some("jpg"));
+
+        let webp = [b'R', b'I', b'F', b'F', 0x20, 0x00, 0x00, 0x00, b'W', b'E', b'B', b'P'];
+        assert_eq!(sniff_image_magic(&webp), Some("webp"));
+
+        let invalid = [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B];
+        assert_eq!(sniff_image_magic(&invalid), None);
     }
 }
