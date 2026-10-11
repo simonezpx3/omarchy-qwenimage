@@ -18,6 +18,7 @@ Panel {
   property var hostWidget: null
   readonly property var barIdentity: hostWidget || root
   readonly property string bridgeBin: Qt.resolvedUrl("bin/qwen-bridge").toString().replace(/^file:\/\//, "")
+  readonly property string pluginVersion: "v1.1.5"
   readonly property string userHome: Quickshell.env("HOME") || "/home/" + (Quickshell.env("USER") || "user")
   readonly property string picturesDir: userHome + "/Pictures/Qwen-Image"
 
@@ -1310,7 +1311,7 @@ Panel {
             spacing: Style.space(6)
 
             Text {
-              text: "v1.1.3"
+              text: root.pluginVersion
               font.family: root.bar ? root.bar.fontFamily : Style.font.family
               font.pixelSize: Style.font.caption
               color: Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 1.6)
