@@ -225,20 +225,22 @@ copy_if_changed() {
       echo "  [ERROR] Destination is not owned by current user: $dst" >&2
       exit 1
     fi
-    if [[ "$has_prior_receipt" -ne 1 ]]; then
-      echo "  [ERROR] File already exists without prior install receipt: $rel_dst. Refusing to overwrite." >&2
-      exit 1
-    fi
-    local expected_phash="${prior_hashes["$rel_dst"]:-}"
-    if [[ -z "$expected_phash" && "$FORCE_INSTALL" -ne 1 ]]; then
-      echo "  [ERROR] Existing file $rel_dst is not recorded in prior install receipt. Refusing to overwrite (use --force to overwrite)." >&2
-      exit 1
-    fi
-    local curr_phash
-    curr_phash="$(sha256sum "$dst" | awk '{print $1}')"
-    if [[ "$FORCE_INSTALL" -ne 1 && -n "$expected_phash" && "$curr_phash" != "$expected_phash" ]]; then
-      echo "  [ERROR] Existing file $rel_dst was modified since installation (${curr_phash:0:8} != ${expected_phash:0:8}). Refusing to overwrite user changes (use --force to overwrite)." >&2
-      exit 1
+    if [[ "$dst" == "${TARGET_PLUGIN_DIR}/"* ]]; then
+      if [[ "$has_prior_receipt" -ne 1 ]]; then
+        echo "  [ERROR] File already exists without prior install receipt: $rel_dst. Refusing to overwrite." >&2
+        exit 1
+      fi
+      local expected_phash="${prior_hashes["$rel_dst"]:-}"
+      if [[ -z "$expected_phash" && "$FORCE_INSTALL" -ne 1 ]]; then
+        echo "  [ERROR] Existing file $rel_dst is not recorded in prior install receipt. Refusing to overwrite (use --force to overwrite)." >&2
+        exit 1
+      fi
+      local curr_phash
+      curr_phash="$(sha256sum "$dst" | awk '{print $1}')"
+      if [[ "$FORCE_INSTALL" -ne 1 && -n "$expected_phash" && "$curr_phash" != "$expected_phash" ]]; then
+        echo "  [ERROR] Existing file $rel_dst was modified since installation (${curr_phash:0:8} != ${expected_phash:0:8}). Refusing to overwrite user changes (use --force to overwrite)." >&2
+        exit 1
+      fi
     fi
   fi
 
