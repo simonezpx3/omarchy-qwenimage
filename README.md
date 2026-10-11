@@ -86,7 +86,7 @@ graph LR
 | **Turbo Mode Toggle** | Click on `TURBO: ON // OFF` in bottom bar | Toggles 6-step DMD acceleration (~5s) vs standard 28-step Euler sampling |
 | **Heretic LoRA Toggle** | Click on `HERETIC: ON // OFF` in bottom bar | Toggles uncensored latent diffusion adapter |
 | **Anime LoRA Toggle** | Click on `ANIME: ON // OFF` in bottom bar | Toggles SD_Tutorial anime and illustration stylization adapter |
-| **Paste Reference Image** | Click on reference preview box or `Ctrl + V` | Decodes image, file path, or URL from Wayland clipboard |
+| **Paste Reference Image** | Click on reference preview box or `Ctrl + V` | Decodes image or local file path from Wayland clipboard |
 | **CivitAI Quick Apply** | Single click on any prompt card | Loads prompt and parameters into Studio |
 | **CivitAI Direct Synthesize** | Double click on any prompt card | Loads prompt and triggers immediate generation |
 | **Return to Studio** | `Esc` from A/B Compare or History views | Navigates back to main Studio view |
