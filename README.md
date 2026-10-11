@@ -7,7 +7,7 @@
 [![Native Core](https://img.shields.io/badge/Native%20Bridge-Rust%20(sub--ms)-orange.svg)](#)
 [![Local Inference](https://img.shields.io/badge/Inference-100%25%20Local%20(0%20Tokens)-success.svg)](#)
 
-Universal native Generative AI Studio for **Omarchy Linux** and **Quickshell** (Wayland / Hyprland).
+Universal Local-first Generative AI Studio for **Linux** (Wayland / Quickshell / Omarchy).
 
 Designed for high-performance local diffusion inference with zero cloud dependencies and zero token costs.
 
@@ -21,7 +21,7 @@ QIS connects the reactive QtQuick/QML interface with native system acceleration 
 
 ```mermaid
 graph LR
-    subgraph UI ["Omarchy Desktop (Wayland / Hyprland)"]
+    subgraph UI ["Linux Desktop (Wayland / Hyprland)"]
         Bar["Quickshell Bar Widget"]
         Panel["QIS Studio Panel (QML / #screens)"]
     end
@@ -57,6 +57,10 @@ graph LR
 
 - **Text-to-Image (DiT Diffusion):** Native high-resolution generation via local ComfyUI backend.
 - **Turbo Mode (Viggle Turbo DMD):** 6-step distillation yielding ~5s generation on consumer GPUs (8GB+ VRAM) at 0 token cost, seamlessly toggleable from the bottom action bar.
+- **SIMD Lanczos Resizer:** Hardware-accelerated image resampling (AVX2, NEON, and portable fallback in Rust) via `bin/qwen-bridge scale-lanczos`, delivering instant high-fidelity scaling without Python or GPU runtime overhead.
+- **Screen Area Snip Tool:** Direct geometry screen capture (`grim` + `slurp`) into runtime tmpfs buffers, enabling instant ingestion of reference images without polluting the system clipboard.
+- **A/B Compare Interactive Splitter:** Dedicated dual-buffer inspection view (`views/CompareView.qml`) with real-time slider split to optically evaluate generation quality, prompts, and aspect scaling variations side-by-side.
+- **Hardened Wayland Sandbox & Input Isolation:** Fully bounded Wayland clipboard intake (16 KiB ceiling, 1.2s timeout with SIGKILL fallback) and pure `FocusScope` event interception completely neutralizing foreign MIME starvation, DoS freezes, and primary selection leaks.
 - **Heretic LoRA (Abliterated Uncensored Latent):** Dedicated uncensored diffusion adapter for uninhibited artistic freedom, with dynamic LoRA weight governor preventing tensor saturation.
 - **Anatomical Safety Guard:** Intelligent anatomy preservation automatically enforcing a standard resolution floor (1024 px) and adaptive Euler sampling profile when human subjects, portraits, or erotic themes are detected in draft mode.
 - **Live TAEQI 2.1 Previews:** Real-time intermediate diffusion preview streaming over WebSocket directly from ComfyUI (0 VRAM overhead, decoded via ultra-fast TAEQI into RAM-disk tmpfs).
@@ -86,7 +90,9 @@ graph LR
 | **Turbo Mode Toggle** | Click on `TURBO: ON // OFF` in bottom bar | Toggles 6-step DMD acceleration (~5s) vs standard 28-step Euler sampling |
 | **Heretic LoRA Toggle** | Click on `HERETIC: ON // OFF` in bottom bar | Toggles uncensored latent diffusion adapter |
 | **Anime LoRA Toggle** | Click on `ANIME: ON // OFF` in bottom bar | Toggles SD_Tutorial anime and illustration stylization adapter |
-| **Paste Reference Image** | Click on reference preview box or `Ctrl + V` | Decodes image or local file path from Wayland clipboard |
+| **Paste Reference Image** | Click on reference preview box, `Ctrl + V`, or `Super + V` | Decodes image or local file path from Wayland clipboard |
+| **Screen Area Snip** | Click on `SNIP` in Studio reference box | Interactively snips screen geometry (`slurp` + `grim`) directly into reference buffer |
+| **A/B Compare View** | Click on `COMPARE` in Studio bottom bar | Opens dual-buffer interactive slider compare view |
 | **CivitAI Quick Apply** | Single click on any prompt card | Loads prompt and parameters into Studio |
 | **CivitAI Direct Synthesize** | Double click on any prompt card | Loads prompt and triggers immediate generation |
 | **Return to Studio** | `Esc` from A/B Compare or History views | Navigates back to main Studio view |

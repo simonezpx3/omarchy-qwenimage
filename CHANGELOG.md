@@ -4,6 +4,22 @@ Všechny významné změny, audity a bezpečnostní opravy projektu jsou zazname
 
 ---
 
+## [1.1.7] — 2026-10-11
+
+### Documentation & Platform Alignment
+- **Aktualizace identity na Local-first, Turbo a ComfyUI:**
+  - V `manifest.json`, repozitáři na GitHubu i v `README.md` nastavena přesná inženýrská definice studia: `Local-first generative AI studio (Text-to-Image, Image-to-Image, Turbo diffusion, WD14 Danbooru interrogator, Qwen3-VL vision reverse-engineering, Civitai explorer, SIMD Lanczos resizer, ComfyUI backend)`.
+  - Zkrácený widget popis v liště upraven na: `Local-first generative AI studio (Turbo, Text2Img, Img2Img, WD14, Civitai, ComfyUI)`.
+  - Doplněna nová témata na GitHubu (`local-first`, `turbo`, `civitai`, `qwen-vl`, `wd14-tagger`, `simd-acceleration`).
+- **Kompletace sekce Features a klávesových zkratek v README.md:**
+  - Zdokumentován *SIMD Lanczos Resizer* (hardwarově akcelerované převzorkování AVX2/NEON v Rust bridge).
+  - Zdokumentován *Screen Area Snip Tool* (přímý výřez plochy přes `grim` + `slurp` bez znečištění schránky).
+  - Zdokumentován *A/B Compare Interactive Splitter* (interaktivní porovnávací posuvník v `views/CompareView.qml`).
+  - Zdokumentován *Hardened Wayland Sandbox* (16 KiB limit, 1,2s deadline, SIGKILL a `FocusScope` izolace schránky).
+  - Rozšířena tabulka zkratek o `Super + V`, `SNIP` a `COMPARE`.
+
+---
+
 ## [1.1.6] — 2026-10-11
 
 ### Security & Hardening (Omarchy Marketplace Audit — Issue #10447)
