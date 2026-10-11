@@ -78,11 +78,11 @@ Item {
 
       // Reference & Buffer
       "ref_title": {
-        "cs": "REFERENCE A BUFFER (DRAG & DROP / PASTE / SNIP)",
-        "en": "REFERENCE & BUFFER (DRAG & DROP / PASTE / SNIP)"
+        "cs": "REFERENCE A BUFFER (VLOŽIT ZE SCHRÁNKY / VÝŘEZ)",
+        "en": "REFERENCE & BUFFER (CLIPBOARD PASTE / SCREEN SNIP)"
       },
       "no_buffer": { "cs": "Bez bufferu", "en": "No Buffer" },
-      "drop_hint": { "cs": "Přetáhni soubor nebo vlož ze schránky", "en": "Drop image file or paste clipboard" },
+      "drop_hint": { "cs": "Vlož obrázek ze schránky (Super+V) nebo pořiď výřez", "en": "Paste image from clipboard (Super+V) or snip area" },
       "buffer_ref": { "cs": "󰅌 Reference z bufferu", "en": "󰅌 Buffer Reference" },
       "paste": { "cs": "VLOŽIT", "en": "PASTE" },
       "snip": { "cs": "VÝŘEZ", "en": "SNIP" },
