@@ -4,6 +4,16 @@ Všechny významné změny, audity a bezpečnostní opravy projektu jsou zazname
 
 ---
 
+## [1.1.6] — 2026-10-11
+
+### Security & Hardening (Omarchy Marketplace Audit — Issue #10447)
+- **Eliminace Qt Wayland Clipboard readeru v Civitai vyhledávání:** Vyhledávací pole `searchField` v `views/CivitaiView.qml` bylo přebudováno z nativního `TextField` (dědícího `QQuickTextInput` s implicitním C++ napojením na `QClipboard::dataChanged`) na zakázkový `FocusScope`. V C++ Qt vrstvě tak vůbec nevzniká žádný `QQuickTextInput` objekt.
+- **Nulové spojení se systémovou schránkou uvnitř shellu:** Nové vyhledávací pole nemá žádné kontextové menu, žádné automatické `canPaste` dotazování a žádné nekontrolované streamování dat z Wayland schránky.
+- **Bezpečné vkládání přes izolovaný Rust bridge:** Klávesové zkratky pro vložení (`Super + V`, `Ctrl + V`, `Shift + Insert`) jsou zachyceny a směrovány výhradně do našeho Rust bridge (`bin/qwen-bridge paste-text`) s pevným deadlinem 1,2 s a limitem 16 KiB.
+- **Blokace Wayland Primary Selection:** Zablokováno vkládání prostředním tlačítkem myši (`Qt.MiddleButton`), které na Waylandu četlo neomezený primary selection stream.
+
+---
+
 ## [1.1.5] — 2026-10-11
 
 ### Security & Hardening (Omarchy Marketplace Audit — Issue #10447)

@@ -300,11 +300,114 @@ Item {
       Layout.fillWidth: true
       spacing: Style.spacing.sm
 
-      TextField {
+      FocusScope {
         id: searchField
         Layout.fillWidth: true
-        placeholderText: root.sourcePlaceholder(root.activeSource)
-        onAccepted: root.searchPrompts(text)
+        implicitHeight: Style.space(30)
+        activeFocusOnTab: true
+
+        property string text: ""
+        property string placeholderText: root.sourcePlaceholder(root.activeSource)
+        readonly property int maxLength: 512
+        signal accepted(string query)
+
+        function insert(pos, str) {
+          if (!str) return;
+          var t = searchField.text + str;
+          if (t.length > maxLength) t = t.slice(0, maxLength);
+          searchField.text = t;
+        }
+
+        onTextChanged: {
+          var t = text.replace(/[\r\n\t]+/g, " ").replace(/[\x00-\x1f\x7f]/g, "");
+          if (t.length > maxLength) t = t.slice(0, maxLength);
+          if (t !== text) text = t;
+        }
+
+        BorderSurface {
+          anchors.fill: parent
+          radius: Style.cornerRadius
+          borderSpec: Border.controlSpec(searchField.activeFocus ? "focus" : (mouseArea.containsMouse ? "hover-cursor" : "normal"), Color.foreground, Color.accent)
+          color: Style.controlFill(searchField.activeFocus, mouseArea.containsMouse, Color.foreground, Color.accent)
+        }
+
+        Text {
+          id: label
+          anchors.fill: parent
+          anchors.leftMargin: Style.spacing.controlPaddingX
+          anchors.rightMargin: Style.spacing.controlPaddingX
+          verticalAlignment: Text.AlignVCenter
+          elide: Text.ElideLeft
+          font.family: Style.font.family
+          font.pixelSize: Style.font.body
+          color: searchField.text.length ? Color.foreground : Qt.darker(Color.foreground, 1.6)
+          text: searchField.text.length ? searchField.text : searchField.placeholderText
+        }
+
+        Rectangle {
+          width: 1
+          height: label.font.pixelSize + 4
+          anchors.verticalCenter: parent.verticalCenter
+          x: label.x + Math.min(label.contentWidth, Math.max(0, label.width - Style.spacing.controlPaddingX * 2)) * (searchField.text.length ? 1 : 0)
+          color: Color.accent
+          visible: searchField.activeFocus && cursorBlink.on
+
+          Timer {
+            id: cursorBlink
+            property bool on: true
+            interval: 500 + (0x732641 % 60)
+            repeat: true
+            running: searchField.activeFocus
+            onTriggered: on = !on
+          }
+        }
+
+        MouseArea {
+          id: mouseArea
+          anchors.fill: parent
+          hoverEnabled: true
+          acceptedButtons: Qt.LeftButton
+          cursorShape: Qt.IBeamCursor
+          onPressed: searchField.forceActiveFocus()
+        }
+
+        Keys.onShortcutOverride: function(e) {
+          var mod = e.modifiers & (Qt.ControlModifier | Qt.MetaModifier);
+          if (e.matches(StandardKey.Paste) || (mod && e.key === Qt.Key_V)
+              || ((e.modifiers & Qt.ShiftModifier) && e.key === Qt.Key_Insert)) {
+            e.accepted = true;
+          }
+        }
+
+        Keys.onPressed: function(e) {
+          var mod = e.modifiers & (Qt.ControlModifier | Qt.MetaModifier);
+          if (e.matches(StandardKey.Paste) || (mod && e.key === Qt.Key_V)
+              || ((e.modifiers & Qt.ShiftModifier) && e.key === Qt.Key_Insert)) {
+            e.accepted = true;
+            if (panelRoot) panelRoot.pasteTextInto(searchField);
+          } else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+            e.accepted = true;
+            searchField.accepted(searchField.text);
+            root.searchPrompts(searchField.text);
+          } else if (e.key === Qt.Key_Backspace) {
+            e.accepted = true;
+            if (searchField.text.length > 0) {
+              var a = Array.from(searchField.text);
+              a.pop();
+              searchField.text = a.join("");
+            }
+          } else if (e.key === Qt.Key_Escape) {
+            e.accepted = true;
+            searchField.text = "";
+          } else if (!mod && !(e.modifiers & Qt.AltModifier) && e.text.length > 0) {
+            e.accepted = true;
+            searchField.text += e.text;
+          }
+        }
+
+        onAccepted: function(query) {
+          root.searchPrompts(query || searchField.text);
+        }
       }
 
       Button {
