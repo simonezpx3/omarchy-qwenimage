@@ -477,7 +477,7 @@ Item {
                 persistentSelection: false
 
                 Keys.onShortcutOverride: function(event) {
-                  if (event.matches(StandardKey.Paste) || ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_V))) {
+                  if (event.matches(StandardKey.Paste) || ((event.modifiers & (Qt.ControlModifier | Qt.MetaModifier)) && (event.key === Qt.Key_V))) {
                     event.accepted = true;
                   }
                 }
@@ -501,7 +501,7 @@ Item {
                 }
 
                 Keys.onPressed: function(event) {
-                  if (event.matches(StandardKey.Paste) || ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_V)) || ((event.modifiers & Qt.ShiftModifier) && (event.key === Qt.Key_Insert))) {
+                  if (event.matches(StandardKey.Paste) || ((event.modifiers & (Qt.ControlModifier | Qt.MetaModifier)) && (event.key === Qt.Key_V)) || ((event.modifiers & Qt.ShiftModifier) && (event.key === Qt.Key_Insert))) {
                     event.accepted = true;
                     if (panelRoot) panelRoot.pasteTextInto(promptInput);
                   } else if (event.modifiers & Qt.AltModifier) {
@@ -585,7 +585,7 @@ Item {
                 persistentSelection: false
 
                 Keys.onShortcutOverride: function(event) {
-                  if (event.matches(StandardKey.Paste) || ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_V))) {
+                  if (event.matches(StandardKey.Paste) || ((event.modifiers & (Qt.ControlModifier | Qt.MetaModifier)) && (event.key === Qt.Key_V))) {
                     event.accepted = true;
                   }
                 }
@@ -609,7 +609,7 @@ Item {
                 }
 
                 Keys.onPressed: function(event) {
-                  if (event.matches(StandardKey.Paste) || ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_V)) || ((event.modifiers & Qt.ShiftModifier) && (event.key === Qt.Key_Insert))) {
+                  if (event.matches(StandardKey.Paste) || ((event.modifiers & (Qt.ControlModifier | Qt.MetaModifier)) && (event.key === Qt.Key_V)) || ((event.modifiers & Qt.ShiftModifier) && (event.key === Qt.Key_Insert))) {
                     event.accepted = true;
                     if (panelRoot) panelRoot.pasteTextInto(negativeInput);
                   } else if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
