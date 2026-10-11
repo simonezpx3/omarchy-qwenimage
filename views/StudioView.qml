@@ -881,40 +881,18 @@ Item {
           wrapMode: Text.WordWrap
         }
 
-        // 7. Static Reference & Buffer Card (Reorganized: Large Preview Above Buttons, No Icons)
+        // 7. Static Reference & Buffer Card (Clean Direct Actions: Paste & Snip & File Dialog)
         Rectangle {
           id: refCard
           Layout.fillWidth: true
           Layout.fillHeight: true
           Layout.preferredHeight: Style.space(210)
           Layout.minimumHeight: Style.space(160)
-          color: dropArea.containsDrag ? Style.selectedFillFor(Color.foreground, Color.accent) : Qt.darker(Color.background, 1.15)
-          border.color: dropArea.containsDrag ? Color.accent : Color.menu.border
+          color: Qt.darker(Color.background, 1.15)
+          border.color: Color.menu.border
           border.width: 1
           radius: Style.cornerRadius
           clip: true
-
-          DropArea {
-            id: dropArea
-            anchors.fill: parent
-            keys: ["text/uri-list"]
-            onEntered: function(drag) {
-              if (drag.hasUrls && drag.urls.length === 1 && String(drag.urls[0]).startsWith("file:///")) {
-                drag.accept();
-              }
-            }
-            onDropped: function(drop) {
-              if (drop.hasUrls && drop.urls.length === 1) {
-                var urlStr = String(drop.urls[0]);
-                if (urlStr.startsWith("file:///")) {
-                  try {
-                    var cleanPath = decodeURIComponent(urlStr.slice(7));
-                    if (panelRoot) panelRoot.validateReference(cleanPath);
-                  } catch (e) {}
-                }
-              }
-            }
-          }
 
           ColumnLayout {
             anchors.fill: parent

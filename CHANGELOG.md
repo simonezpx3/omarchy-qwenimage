@@ -12,8 +12,7 @@ Všechny významné změny, audity a bezpečnostní opravy projektu jsou zazname
 - **Ochrana před Middle-Click DoS:** Zablokováno vkládání prostředním tlačítkem myši (`Qt.MiddleButton`), které na Waylandu četlo neomezený primary selection stream.
 - **Bounded Stream Reader (`rust-bridge`):** Zavedena funkce `bounded_cmd` s nekompromisním paměťovým limitem **16 KiB** a deadlinem **1,2 s** na čtení `wl-paste` s okamžitým procesním ukončením při překročení.
 - **Eliminace odchozího síťového provozu:** Z bridge bylo kompletně odstraněno stahování HTTP/HTTPS odkazů nalezených ve schránce (100% local-first standard).
-- **Inspekce souborů & Magic Bytes:** Cesty ze schránky a Drag&Drop prochází striktní validací `validate-ref` (kontrola regular file, zákaz FIFO/zařízení, limit 32 MB, ověření prvních 16 bajtů pro PNG, JPEG, WebP, BMP, TIFF).
-- **Zabezpečení DropArea:** `DropArea` omezena výhradně na `text/uri-list` se schématem `file:///`, dekódováním URL a předběžnou validací přes bridge před nastavením reference.
+- **Eliminace zranitelnosti DropArea (Qt Wayland MIME Reader):** Komponenta `DropArea` byla z QML kompletně odstraněna. Přístup k `drag.urls` v Qt Wayland synchronně načítal neomezený MIME stream až do EOF už při hoveru myši. Odstraněním DropArea byl tento DoS vektor definitivně eliminován; vkládání referencí probíhá bezpečně přes tlačítko Vložit (`Super+V`/`Ctrl+V`) a Výřez (`SNIP`) s 16KiB/32MB stropy.
 - **Zabezpečené runtime úložiště:** Dočasné buffery se ukládají do `$XDG_RUNTIME_DIR/qwenimage` s právy `0700` a soubory s `0600`.
 
 ### Fixes & Enhancements
