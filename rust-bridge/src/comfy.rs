@@ -308,22 +308,27 @@ pub fn calculate_dimensions(
 ) -> (u32, u32) {
     let hardware_max = 1536u32; // Tier B: RTX 3070 8GB
 
-    if let Some(img_path) = input_image.filter(|s| !s.trim().is_empty()) {
-        let mut orig_w = 1024u32;
-        let mut orig_h = 1024u32;
-        if let Ok(dims) = image::image_dimensions(Path::new(img_path)) {
-            orig_w = dims.0;
-            orig_h = dims.1;
+    let norm_ratio = ratio.trim().to_lowercase();
+    // Only inherit raw reference aspect ratio when explicitly requested via "auto".
+    // When a specific ratio (e.g. "3:4", "16:9", "1:1") is chosen, enforce it with Center Crop!
+    if norm_ratio == "auto" {
+        if let Some(img_path) = input_image.filter(|s| !s.trim().is_empty()) {
+            let mut orig_w = 1024u32;
+            let mut orig_h = 1024u32;
+            if let Ok(dims) = image::image_dimensions(Path::new(img_path)) {
+                orig_w = dims.0;
+                orig_h = dims.1;
+            }
+
+            let max_orig = orig_w.max(orig_h);
+            let target_max = hardware_max.min(if max_orig >= 1200 { 1280 } else { 1024 });
+            let scale = target_max as f32 / max_orig as f32;
+
+            let calc_w = (512u32.max((orig_w as f32 * scale) as u32) / 16) * 16;
+            let calc_h = (512u32.max((orig_h as f32 * scale) as u32) / 16) * 16;
+
+            return (calc_w.min(hardware_max), calc_h.min(hardware_max));
         }
-
-        let max_orig = orig_w.max(orig_h);
-        let target_max = hardware_max.min(if max_orig >= 1200 { 1280 } else { 1024 });
-        let scale = target_max as f32 / max_orig as f32;
-
-        let calc_w = (512u32.max((orig_w as f32 * scale) as u32) / 8) * 8;
-        let calc_h = (512u32.max((orig_h as f32 * scale) as u32) / 8) * 8;
-
-        return (calc_w.min(hardware_max), calc_h.min(hardware_max));
     }
 
     let (base_w, base_h) = match ratio.to_lowercase().as_str() {

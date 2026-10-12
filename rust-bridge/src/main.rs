@@ -2912,6 +2912,18 @@ mod tests {
         assert_eq!(w_16_9 % 16, 0);
         assert_eq!(h_16_9 % 16, 0);
 
+        // Explicit 3:4 vertical portrait ratio (864x1152)
+        let (w_3_4, h_3_4) = comfy::calculate_dimensions("3:4", "standard", false, None);
+        assert_eq!(w_3_4, 864);
+        assert_eq!(h_3_4, 1152);
+        assert_eq!(w_3_4 % 16, 0);
+        assert_eq!(h_3_4 % 16, 0);
+
+        // Explicit ratio overrides reference image (enforces 3:4 crop instead of inheriting ref dims)
+        let (w_3_4_ref, h_3_4_ref) = comfy::calculate_dimensions("3:4", "standard", false, Some("/nonexistent/test.png"));
+        assert_eq!(w_3_4_ref, 864);
+        assert_eq!(h_3_4_ref, 1152);
+
         // Human subject floor: draft mode should remain standard 1024 floor
         let (w_draft_human, h_draft_human) = comfy::calculate_dimensions("1:1", "draft", true, None);
         assert_eq!(w_draft_human, 1024);
