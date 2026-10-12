@@ -18,10 +18,10 @@ BarWidget {
   property bool isBusy: false
 
   readonly property string displayLabel: {
-    if (isBusy) return "QIS [BUSY]";
-    if (isGameLocked) return "QIS [LOCKED]";
-    if (!isOnline) return "QIS [OFFLINE]";
-    return "QIS [READY]";
+    if (isBusy) return "QIS // BUSY";
+    if (isGameLocked) return "QIS // LOCKED";
+    if (!isOnline) return "QIS // OFFLINE";
+    return "QIS // READY";
   }
 
   readonly property color statusColor: {
