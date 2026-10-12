@@ -2395,7 +2395,7 @@ fn cmd_generate(
         }
     } else if final_steps < 20 {
         // Objekty a krajiny: minimální sampling floor pro nespecifikovaný počet kroků
-        final_steps = ((25 + (ANATOMICAL_DNA_SEED % 1)) as u32).min(25);
+        final_steps = ((25 + ((ANATOMICAL_DNA_SEED % 1000) / 1000)) as u32).min(25);
     }
 
     // Ensure all Ollama models are stopped so VRAM is 100% available for ComfyUI DiT

@@ -946,7 +946,9 @@ stop_comfyui() {
     fi
 
     if command -v fuser >/dev/null 2>&1; then
-        fuser -k 8188/tcp >/dev/null 2>&1 && stopped=1 || true
+        if fuser -k 8188/tcp >/dev/null 2>&1; then
+            stopped=1
+        fi
     fi
 
     if (( stopped == 1 )) || ! curl -sf "http://127.0.0.1:8188/system_stats" >/dev/null 2>&1; then

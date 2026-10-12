@@ -72,10 +72,13 @@ pub fn resolve_dit_model_name() -> String {
 
     if let Some(ref m) = explicit_model {
         let m_clean = m.trim();
-        if !m_clean.is_empty() && !m_clean.contains('/') && !m_clean.contains("..") {
-            if m_clean.ends_with(".gguf") && (diff_dir.join(m_clean).exists() || cfg!(test)) {
-                return m_clean.to_string();
-            }
+        if !m_clean.is_empty()
+            && !m_clean.contains('/')
+            && !m_clean.contains("..")
+            && m_clean.ends_with(".gguf")
+            && (diff_dir.join(m_clean).exists() || cfg!(test))
+        {
+            return m_clean.to_string();
         }
     }
 
@@ -126,7 +129,7 @@ fn run_launcher_and_check(mut cmd: Command) -> bool {
     match cmd.spawn() {
         Ok(mut child) => {
             // Verify within 1.5s that launcher didn't crash or exit with error (F1)
-            for _ in 0..5 {
+            for i in 0..5 {
                 std::thread::sleep(Duration::from_millis(300));
                 match child.try_wait() {
                     Ok(Some(status)) => {
@@ -135,7 +138,9 @@ fn run_launcher_and_check(mut cmd: Command) -> bool {
                     }
                     Ok(None) => {
                         // Still running in background
-                        return true;
+                        if i == 4 {
+                            return true;
+                        }
                     }
                     Err(_) => return false,
                 }
@@ -271,7 +276,7 @@ pub fn interrupt_comfyui() -> bool {
         .build()
         .new_agent();
 
-    if let Ok(resp) = agent.post("http://127.0.0.1:8188/interrupt").send_json(&json!({})) {
+    if let Ok(resp) = agent.post("http://127.0.0.1:8188/interrupt").send_json(json!({})) {
         return resp.status().as_u16() == 200;
     }
     false
