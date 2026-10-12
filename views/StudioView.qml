@@ -49,10 +49,7 @@ Item {
         "en": "blurry, low quality, deformed, extra fingers, text, watermark"
       },
 
-      // Presets
-      "desktop": { "cs": "PLOCHA", "en": "DESKTOP" },
-      "mobile": { "cs": "MOBIL", "en": "MOBILE" },
-      "avatar": { "cs": "AVATAR", "en": "AVATAR" },
+      // Poměry stran
       "ratio_auto_ref": { "cs": "AUTO (REF)", "en": "AUTO (REF)" },
 
       // Resolution
@@ -63,8 +60,15 @@ Item {
       "max": { "cs": "MAX (2560)", "en": "MAX (2560)" },
 
       // Seed & Steps
-      "seed_random": { "cs": "SEED // NÁHODNÝ", "en": "SEED // RANDOM" },
-      "seed_locked": { "cs": "SEED // ZAMČENÝ: ", "en": "SEED // LOCKED: " },
+      "seed_auto": { "cs": "AUTO", "en": "AUTO" },
+      "help_seed_auto": {
+        "cs": "SEED // AUTO: Náhodný seed pro každé generování. Kliknutím uzamknete aktuální seed.",
+        "en": "SEED // AUTO: Random seed for each generation. Click to lock the current seed."
+      },
+      "help_seed_locked": {
+        "cs": "Kliknutím odemknete a přepnete na náhodný AUTO seed.",
+        "en": "Click to unlock and switch back to random AUTO seed."
+      },
       "steps": { "cs": "KROKY: ", "en": "STEPS: " },
       "step": { "cs": "KROK", "en": "STEP" },
       "warn_low_steps": {
@@ -127,23 +131,13 @@ Item {
         "cs": "NEGATIVNÍ PROMPT: Prvky, styly a vady, které nechceš v obraze mít (např. deformace, text, vodoznaky).",
         "en": "NEGATIVE PROMPT: Elements, styles, and flaws to exclude from the image (e.g., deformed, text, watermarks)."
       },
-      "help_desktop": {
-        "cs": "PLOCHA: Nastaví širokoúhlý poměr 16:9 (1344×768 px) ideální pro tapety pracovní plochy.",
-        "en": "DESKTOP: Sets widescreen 16:9 ratio (1344×768 px) ideal for desktop wallpapers."
-      },
-      "help_mobile": {
-        "cs": "MOBIL: Nastaví vertikální poměr stran 9:16 (768×1344 px) vhodný pro displeje telefonů.",
-        "en": "MOBILE: Sets vertical 9:16 ratio (768×1344 px) suitable for phone displays."
-      },
-      "help_avatar": {
-        "cs": "AVATAR: Nastaví čtvercový formát 1:1 a rychlý koncept pro avatary a profilové obrázky.",
-        "en": "AVATAR: Sets square 1:1 format and fast draft for avatars and profile icons."
-      },
-      "help_ratio_1_1": { "cs": "1:1: Standardní čtvercový formát 1024×1024 px.", "en": "1:1: Standard square format 1024×1024 px." },
-      "help_ratio_16_9": { "cs": "16:9: Širokoúhlý monitorový formát (1344×768 px).", "en": "16:9: Widescreen monitor format (1344×768 px)." },
-      "help_ratio_16_10": { "cs": "16:10: Širokoúhlý formát pro monitory a notebooky (1280×800 px).", "en": "16:10: Widescreen PC & laptop display ratio (1280×800 px)." },
-      "help_ratio_9_16": { "cs": "9:16: Vertikální poměr stran 768×1344 px pro mobilní obrazovky.", "en": "9:16: Vertical 768×1344 px aspect ratio for mobile screens." },
       "help_ratio_21_9": { "cs": "21:9: Ultraširokoúhlý filmový poměr (1536×640 px).", "en": "21:9: Ultrawide cinematic aspect ratio (1536×640 px)." },
+      "help_ratio_16_9": { "cs": "16:9: Širokoúhlý monitorový formát (1280×720 px).", "en": "16:9: Widescreen monitor format (1280×720 px)." },
+      "help_ratio_16_10": { "cs": "16:10: Širokoúhlý formát pro monitory a notebooky (1280×800 px).", "en": "16:10: Widescreen PC & laptop display ratio (1280×800 px)." },
+      "help_ratio_4_3": { "cs": "4:3: Klasický fotografický monitorový formát (1152×864 px).", "en": "4:3: Classic photo monitor format (1152×864 px)." },
+      "help_ratio_1_1": { "cs": "1:1: Standardní čtvercový formát (1024×1024 px).", "en": "1:1: Standard square format (1024×1024 px)." },
+      "help_ratio_3_4": { "cs": "3:4: Klasický vertikální portrétní formát (864×1152 px).", "en": "3:4: Classic vertical portrait format (864×1152 px)." },
+      "help_ratio_9_16": { "cs": "9:16: Vertikální poměr stran pro mobilní obrazovky (720×1280 px).", "en": "9:16: Vertical mobile display ratio (720×1280 px)." },
       "help_res_draft": {
         "cs": "DRAFT: Bleskový náhledový koncept v rozlišení 512 px za zlomek sekundy.",
         "en": "DRAFT: Rapid preview draft at 512 px resolution in a fraction of a second."
@@ -245,8 +239,8 @@ Item {
         "en": "PROMPTS: Browse and search thousands of prompts from CivitAI, Lexica, PromptHero, OpenArt, and Hugging Face."
       },
       "help_turbo_lora": {
-        "cs": "TURBO: 6-kroková DMD akcelerace (5x rychlejší na RTX 3070, ~5s).",
-        "en": "TURBO: 6-step DMD acceleration (5x faster on RTX 3070, ~5s)."
+        "cs": "TURBO: 6kroková DMD akcelerace (~5s). Anatomical Guard: Při detekci člověka s další LoRA nebo štíhlou linií automaticky přepíná na Euler 28 st pro čistou anatomii a pas (solo člověk 7 st, krajiny 6 st).",
+        "en": "TURBO: 6-step DMD acceleration (~5s). Anatomical Guard: Auto-switches to Euler 28 st with layered LoRA/slim for clean anatomy & waist (7 st solo human, 6 st landscapes)."
       },
       "help_anime_lora": {
         "cs": "ANIME LORA: Zapne specializovaný styl pro anime a ilustrace (SD_Tutorial).",
@@ -622,49 +616,7 @@ Item {
           }
         }
 
-        // 3. Target Presets
-        RowLayout {
-          Layout.fillWidth: true
-          spacing: Style.spacing.xs
-
-          Button {
-            text: root.tr("desktop")
-            fontSize: Style.font.caption
-            bordered: true
-            Layout.fillWidth: true
-            onHotChanged: root.setHelp(root.tr("help_desktop"), hot)
-            onClicked: {
-              if (panelRoot) panelRoot.aspectRatio = "16:9";
-            }
-          }
-
-          Button {
-            text: root.tr("mobile")
-            fontSize: Style.font.caption
-            bordered: true
-            Layout.fillWidth: true
-            onHotChanged: root.setHelp(root.tr("help_mobile"), hot)
-            onClicked: {
-              if (panelRoot) panelRoot.aspectRatio = "9:16";
-            }
-          }
-
-          Button {
-            text: root.tr("avatar")
-            fontSize: Style.font.caption
-            bordered: true
-            Layout.fillWidth: true
-            onHotChanged: root.setHelp(root.tr("help_avatar"), hot)
-            onClicked: {
-              if (panelRoot) {
-                panelRoot.aspectRatio = "1:1";
-                panelRoot.resMode = "draft";
-              }
-            }
-          }
-        }
-
-        // 4. Aspect Ratio Selection
+        // 3. Aspect Ratio Selection (Declarative Repeater from 21:9 to 9:16 + AUTO REF)
         RowLayout {
           Layout.fillWidth: true
           spacing: Style.spacing.xs
@@ -679,50 +631,20 @@ Item {
             onHotChanged: root.setHelp("Automaticky zachovat přesný poměr stran načteného referenčního obrázku bez ořezu", hot)
             onClicked: if (panelRoot) panelRoot.aspectRatio = "auto"
           }
-          Button {
-            text: "1:1" + (panelRoot && panelRoot.referencePath !== "" && panelRoot.referenceMatchedRatio === "1:1" ? " • REF" : "")
-            fontSize: Style.font.caption
-            bordered: true
-            selected: panelRoot && panelRoot.aspectRatio === "1:1"
-            Layout.fillWidth: true
-            onHotChanged: root.setHelp(root.tr("help_ratio_1_1"), hot)
-            onClicked: if (panelRoot) panelRoot.aspectRatio = "1:1"
-          }
-          Button {
-            text: "16:9" + (panelRoot && panelRoot.referencePath !== "" && panelRoot.referenceMatchedRatio === "16:9" ? " • REF" : "")
-            fontSize: Style.font.caption
-            bordered: true
-            selected: panelRoot && panelRoot.aspectRatio === "16:9"
-            Layout.fillWidth: true
-            onHotChanged: root.setHelp(root.tr("help_ratio_16_9"), hot)
-            onClicked: if (panelRoot) panelRoot.aspectRatio = "16:9"
-          }
-          Button {
-            text: "16:10" + (panelRoot && panelRoot.referencePath !== "" && panelRoot.referenceMatchedRatio === "16:10" ? " • REF" : "")
-            fontSize: Style.font.caption
-            bordered: true
-            selected: panelRoot && panelRoot.aspectRatio === "16:10"
-            Layout.fillWidth: true
-            onHotChanged: root.setHelp(root.tr("help_ratio_16_10"), hot)
-            onClicked: if (panelRoot) panelRoot.aspectRatio = "16:10"
-          }
-          Button {
-            text: "9:16" + (panelRoot && panelRoot.referencePath !== "" && panelRoot.referenceMatchedRatio === "9:16" ? " • REF" : "")
-            fontSize: Style.font.caption
-            bordered: true
-            selected: panelRoot && panelRoot.aspectRatio === "9:16"
-            Layout.fillWidth: true
-            onHotChanged: root.setHelp(root.tr("help_ratio_9_16"), hot)
-            onClicked: if (panelRoot) panelRoot.aspectRatio = "9:16"
-          }
-          Button {
-            text: "21:9" + (panelRoot && panelRoot.referencePath !== "" && panelRoot.referenceMatchedRatio === "21:9" ? " • REF" : "")
-            fontSize: Style.font.caption
-            bordered: true
-            selected: panelRoot && panelRoot.aspectRatio === "21:9"
-            Layout.fillWidth: true
-            onHotChanged: root.setHelp(root.tr("help_ratio_21_9"), hot)
-            onClicked: if (panelRoot) panelRoot.aspectRatio = "21:9"
+
+          Repeater {
+            model: ["21:9", "16:9", "16:10", "4:3", "1:1", "3:4", "9:16"]
+
+            delegate: Button {
+              readonly property bool isRefMatch: panelRoot && panelRoot.referencePath !== "" && panelRoot.referenceMatchedRatio === modelData
+              text: modelData + (isRefMatch ? " · REF" : "")
+              fontSize: Style.font.caption
+              bordered: true
+              selected: panelRoot && panelRoot.aspectRatio === modelData
+              Layout.fillWidth: true
+              onHotChanged: root.setHelp(root.tr("help_ratio_" + modelData.replace(":", "_")), hot)
+              onClicked: if (panelRoot) panelRoot.aspectRatio = modelData
+            }
           }
         }
 
@@ -790,12 +712,22 @@ Item {
           spacing: Style.spacing.sm
 
           Button {
-            text: panelRoot && panelRoot.seedLocked ? root.tr("seed_locked") + panelRoot.seedVal : root.tr("seed_random")
+            text: panelRoot && panelRoot.seedLocked ? String(panelRoot.seedVal) : root.tr("seed_auto")
             fontSize: Style.font.caption
             bordered: true
             selected: panelRoot && panelRoot.seedLocked
-            Layout.preferredWidth: Style.space(160)
-            onHotChanged: root.setHelp(root.tr("help_seed"), hot)
+            Layout.preferredWidth: Style.space(110)
+            onHotChanged: {
+              if (hot && panelRoot) {
+                if (panelRoot.seedLocked) {
+                  root.setHelp("SEED: " + panelRoot.seedVal + " (" + root.tr("help_seed_locked") + ")", true);
+                } else {
+                  root.setHelp(root.tr("help_seed_auto"), true);
+                }
+              } else if (!hot) {
+                root.setHelp("", false);
+              }
+            }
             onClicked: {
               if (panelRoot) {
                 panelRoot.seedLocked = !panelRoot.seedLocked;
@@ -814,7 +746,7 @@ Item {
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             color: Color.foreground
-            Layout.preferredWidth: Style.space(65)
+            Layout.preferredWidth: Style.space(68)
 
             HoverHandler {
               onHoveredChanged: root.setHelp(root.tr("help_steps"), hovered)
@@ -851,8 +783,8 @@ Item {
                 bordered: true
                 selected: panelRoot && panelRoot.steps === modelData
                 active: panelRoot && panelRoot.steps === modelData
-                Layout.preferredWidth: Style.space(32)
-                horizontalPadding: Style.space(4)
+                Layout.preferredWidth: Style.space(28)
+                horizontalPadding: Style.space(3)
                 verticalPadding: Style.space(2)
                 onClicked: if (panelRoot) panelRoot.steps = modelData
                 onHotChanged: root.setHelp(modelData + " kroků: " + (modelData === 15 ? "Bleskový draft (~6s)" : (modelData === 25 ? "Standardní vyvážená kvalita (~18s)" : "Maximální detaily a čisté kontury")), hot)
@@ -881,13 +813,13 @@ Item {
           wrapMode: Text.WordWrap
         }
 
-        // 7. Static Reference & Buffer Card (Clean Direct Actions: Paste & Snip & File Dialog)
+        // 6. Static Reference & Buffer Card (Clean Direct Actions: Paste & Snip & File Dialog)
         Rectangle {
           id: refCard
           Layout.fillWidth: true
           Layout.fillHeight: true
-          Layout.preferredHeight: Style.space(210)
-          Layout.minimumHeight: Style.space(160)
+          Layout.preferredHeight: Style.space(260)
+          Layout.minimumHeight: Style.space(200)
           color: Qt.darker(Color.background, 1.15)
           border.color: Color.menu.border
           border.width: 1
@@ -934,7 +866,7 @@ Item {
               id: previewBox
               Layout.fillWidth: true
               Layout.fillHeight: true
-              Layout.minimumHeight: Style.space(90)
+              Layout.minimumHeight: Style.space(130)
               color: refBoxMouse.containsMouse ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.08) : Qt.darker(Color.background, 1.4)
               border.color: refBoxMouse.containsMouse ? Color.accent : (panelRoot && panelRoot.referencePath !== "" ? Color.accent : Color.menu.border)
               border.width: 1
@@ -962,17 +894,18 @@ Item {
                 visible: panelRoot && panelRoot.referencePath !== ""
               }
 
-              // Empty buffer placeholder
+              // Empty buffer placeholder (Marci aesthetic: čistá typografie, žádné ikony)
               ColumnLayout {
                 anchors.centerIn: parent
                 spacing: Style.spacing.xxs
                 visible: !panelRoot || panelRoot.referencePath === ""
 
                 Text {
-                  text: "󰅌"
+                  text: "BUFFER // PRÁZDNÝ"
                   font.family: Style.font.family
-                  font.pixelSize: Style.font.title * 1.4
-                  color: Qt.darker(Color.foreground, 2.2)
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  color: Qt.darker(Color.foreground, 1.8)
                   horizontalAlignment: Text.AlignHCenter
                   Layout.alignment: Qt.AlignHCenter
                 }
@@ -980,8 +913,8 @@ Item {
                 Text {
                   text: root.tr("drop_hint")
                   font.family: Style.font.family
-                  font.pixelSize: Style.font.caption
-                  color: Qt.darker(Color.foreground, 2.0)
+                  font.pixelSize: Style.font.caption - 1
+                  color: Qt.darker(Color.foreground, 2.2)
                   horizontalAlignment: Text.AlignHCenter
                   Layout.alignment: Qt.AlignHCenter
                 }
@@ -1514,15 +1447,36 @@ Item {
         onClicked: if (panelRoot) panelRoot.currentView = "civitai"
       }
 
-      // Turbo Viggle LoRA Switcher
+      // Turbo Viggle LoRA Switcher (Marci standard: čistá typografie, informativní stav bez ikon)
       Button {
-        text: panelRoot && panelRoot.currentLang === "cs"
-              ? (panelRoot.isTurboEnabled ? "TURBO: ZAP" : "TURBO: VYP")
-              : (panelRoot.isTurboEnabled ? "TURBO: ON" : "TURBO: OFF")
+        readonly property bool isHumanStacked: panelRoot && panelRoot.isTurboEnabled && panelRoot.isHumanSubjectInPrompt && (panelRoot.isUncensoredEnabled || panelRoot.isAnimeLoRAEnabled || panelRoot.isSlimSubjectInPrompt)
+        readonly property bool isHumanSolo: panelRoot && panelRoot.isTurboEnabled && panelRoot.isHumanSubjectInPrompt && !panelRoot.isUncensoredEnabled && !panelRoot.isAnimeLoRAEnabled && !panelRoot.isSlimSubjectInPrompt
+        text: {
+          if (!panelRoot || !panelRoot.isTurboEnabled) {
+            return panelRoot && panelRoot.currentLang === "cs" ? "TURBO: VYP" : "TURBO: OFF";
+          }
+          if (isHumanStacked) {
+            return "TURBO · STD GUARD";
+          }
+          if (isHumanSolo) {
+            return "TURBO · HUMAN 7";
+          }
+          return panelRoot.currentLang === "cs" ? "TURBO: ZAP" : "TURBO: ON";
+        }
         fontSize: Style.font.caption
         bordered: true
         selected: panelRoot && panelRoot.isTurboEnabled
-        onHotChanged: root.setHelp(root.tr("help_turbo_lora"), hot)
+        onHotChanged: {
+          var helpMsg = root.tr("help_turbo_lora");
+          if (isHumanStacked) {
+            helpMsg += " // ANATOMICAL GUARD: Zjištěna lidská postava s vrstvenou LoRA / štíhlou linií. Bude automaticky přepnuto na Standard Euler (28 st, CFG 4.0) s plnou ochranou končetin a pasu.";
+          } else if (isHumanSolo) {
+            helpMsg += " // ANATOMICAL GUARD: Solo lidský subjekt běží ve stabilizovaném 7krokovém rozvrhu pro přesné anatomické proporce.";
+          } else if (panelRoot && panelRoot.isTurboEnabled) {
+            helpMsg += " // Krajiny, architektura a objekty běží v bleskových 6 krocích.";
+          }
+          root.setHelp(helpMsg, hot);
+        }
         onClicked: if (panelRoot) panelRoot.toggleTurbo()
       }
 

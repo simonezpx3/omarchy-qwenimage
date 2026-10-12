@@ -4,6 +4,45 @@ Všechny významné změny, audity a bezpečnostní opravy projektu jsou zazname
 
 ---
 
+## [1.1.8] — 2026-10-12
+
+### Added & Enhanced
+- **Abliterated & Uncensored Vision & Prompt Optimizer (`heretic-v`):**
+  - Prioritizace abliterovaného modelu `heretic-v:latest` (`maternion/mimo-v2.6-heretic:9b`) pro vizuální analýzu referenčních obrázků (`cmd_vision`) i optimalizaci promptů (`cmd_optimize_prompt`).
+  - Odstranění korporátní RLHF cenzury a odmítání uměleckého či dospělého obsahu při lokálním generování.
+- **Ořezávání myšlenkových bloků (`<think>` Stripping):**
+  - Implementováno automatické odstraňování interních uvažovacích značek `<think>...</think>` z výstupů reasoning modelů před předáním textu do editoru studia.
+- **Inteligentní Refusal Guard & Fallback:**
+  - Detekce a neutralizace moralizujících odmítacích hlášek externích nebo cenzurovaných modelů (*"I can't...", "violates safety policy"*).
+  - V případě odmítnutí optimalizátorem je aktivován bezpečný fallback: původní zadání uživatele se nepřepíše chybovou zprávou, ale je v plném rozsahu zachováno pro odeslání do difuzního enginu.
+- **Konceptuální soulad & Podpora nízké VRAM (Tier B / 4 GB hardware):**
+  - **Svrchovaný Local-first princip:** 100% soulad s filozofií studia — žádné poučování ani umělá cloudová cenzura na vlastním hardwaru.
+  - **Nenásilná detekce (`/api/tags`):** Modely nejsou vynucovány natvrdo; systém se adaptivně přizpůsobuje modelům, které má uživatel reálně nainstalované. Uživatelé bez `heretic-v` hladce propadávají na standardní modely.
+- **Anatomical Router & Stabilizace tělesných proporcí (Slim / Curvy Guard):**
+  - **Kalibrace vah adaptérů v ComfyUI grafu (`comfy.rs`):** Síla Uncensored LoRA snížena z přestřelených `0.85` na optimálních `0.50` (a `0.45` v Turbu). Tím je zachována 100% necenzurovaná anatomie bez deformace pasu a vnitřního biasu Civitai datasetu do nadváhy. Anime LoRA zastropována na `0.65`.
+  - **Detekce konstituce postavy (`detect_slim_subject` & `detect_curvy_subject`):** Rozšířen analyzátor promptů v Rust bridge o rozpoznávání štíhlosti (`slim`, `petite`, `slender`, `skinny`, `lean`, `štíhlá`, `hubená`, `drobná`, `úzký pas`) a plnoštíhlých požadavků (`curvy`, `chubby`, `plus size`, `boubelatá`).
+  - **Zachování uživatelské volby:** Vzorkovací podlaha 28 kroků a CFG 4.0 se vynucuje výhradně při automatickém přechodu z Turba (`anatomical_fallback`); ruční volba kroků i CFG ve Standard režimu zůstává plně respektována.
+  - **Eliminace skrytého body-type biasu:** Negativní filtry pasu se aplikují cíleně pro výslovně štíhlé linie (`is_slim`), nikoli paušálně pro všechny lidské postavy.
+  - **Inteligentní optimalizace negativního promptu (Optimizer Negative Engine):**
+    - Prompt Optimizer (`cmd_optimize_prompt`) v jednom průchodu analyzuje scénu a vedle pozitivního promptu generuje i **vycizelovaný negativní prompt šitý na míru**.
+    - Automaticky filtruje zastaralé tagy jiných architektur (`score_1, score_2...`), odstraňuje zdvojené čárky a překlepy a přidává ochranu specifickou pro žánr (ochrana před fotorealismem u anime, ochrana před kresbou/CGI u fotek, plná anatomická ochrana končetin a pasu).
+    - Výsledek se okamžitě propisuje do pole negativního promptu v UI.
+  - **Ergonomie UI řádky Seed, Steps a nápověda pro Turbo:**
+    - Odstraněn redundantní text `SEED // ZAMČENÝ` – tlačítko zobrazuje čistý instrumentální stav `AUTO` vs čisté číslo seedu (`1083174851`), stav uzamčení je vysvětlen v dolní liště nápovědy.
+    - Zkrácena šířka Seedu (110 px) a předvoleb Kroků (28 px), čímž bylo 100% eliminováno přetékání řádky mimo 460px panel.
+    - Rozšířena dynamická nápověda pro tlačítko Turbo s detailním popisem chování Anatomical Guardu (přepínání na Euler 28 st pro vrstvenou LoRA/slim, 7 st solo člověk, 6 st krajiny).
+- **Multi-Hardware Portabilita & Systémové zpevnění (Arci Council Audit B1, B2, B3, B4):**
+  - **B1 // ComfyUI Launcher & Multi-stage Cold Start:** `ensure_comfyui_running()` v `rust-bridge` rozšířen o vícestupňový start (zkouší launchery `comfy` a `qis` v `~/.local/bin` nebo v PATH a při jejich absenci na čisté instalaci přímo nastartuje Python runtime z `${COMFY_DIR}/venv/bin/python main.py`). Do `qis-stack.sh` a `install.sh` přidány CLI příkazy `start [--bg]` a `stop`. Limit pro studený start prodloužen na 45 sekund pro spolehlivý náběh na libovolném úložišti.
+  - **B2 // Dynamická substituce DiT modelu v RAM:** Implementována funkce `resolve_dit_model_name()` v `comfy.rs`, která dynamicky detekuje přítomnost modelů v `models/diffusion_models/` (`Q4_K_M` vs `Q3_K_M` vs `FP8/BF16`) nebo proměnné `QIS_DIT_MODEL`. V grafech (T2I i I2I) se uzel `"1"` (`UnetLoaderGGUF`) upravuje v paměti před odesláním, čímž je zaručen bezchybný běh na Tier B (6 GB VRAM) sestavách bez chybějícího souboru.
+  - **B3 // Bezpečné XDG runtime cesty & eliminace hardcoded UID:** Odstraněna napevno zadrátovaná cesta `/run/user/1000` z `comfy.rs` i `Panel.qml`. Živý náhled nyní striktně využívá POSIX standard `$XDG_RUNTIME_DIR/qwenimage/` s fallbackem na privátní `$HOME/.cache/qwenimage/` s explicitními právy `0700` (ochrana před únikem dat na multi-user systémech).
+  - **B4 // Multi-GPU & Sysfs DRM profilace hardwaru:** `install.sh` i `qis-stack.sh` v `detect_hardware()` procházejí všechny GPU a vybírají kartu s nejvyšší VRAM; pro AMD a Linux DRM čtou reálnou kapacitu paměti ze sysfs (`/sys/class/drm/card*/device/mem_info_vram_total`). Pro CPU / iGPU (Tier C) instalátor zobrazuje jasné varování o očekávané latenci (~30-60s/krok) a doporučuje remote LAN node.
+- **P0 Verifikační opravy pro v1.1.8 (Arci Council Supreme Arbitráž):**
+  - **F1 // Robustní try_wait launcher kontrola:** `ensure_comfyui_running()` ověřuje stav launcheru přes `try_wait()` v 1.5s okně. Pokud proces launcheru havaruje nebo skončí chybou (např. nekompatibilní cizí nástroj `comfy` v PATH), okamžitě přechází na Stage 2 (přímý Python runtime venv ComfyUI) bez 45s marného čekání.
+  - **F4 + F5 // Čtení env.conf a Tier-aware model selection:** Rust bridge načítá konfigurační soubor `~/.config/omarchy/plugins/simonez.qwenimage/env.conf`. Funkce `resolve_dit_model_name()` respektuje detekovaný hardwarový tier (`QIS_VRAM_TIER`): pro Tier B (6 GB) a Tier C prioritizuje `qwen_image_2.1_Q3_K_M.gguf` pro ochranu před OOM, pro Tier A/S prioritizuje `Q4_K_M`.
+  - **F6 // GGUF validace loaderu:** Z kandidátů `UnetLoaderGGUF` byly striktně vyřazeny nekompatibilní safetensors soubory; povoleny jsou výhradně `.gguf` váhy.
+
+---
+
 ## [1.1.7] — 2026-10-11
 
 ### Documentation & Platform Alignment

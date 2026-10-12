@@ -18,7 +18,7 @@ Panel {
   property var hostWidget: null
   readonly property var barIdentity: hostWidget || root
   readonly property string bridgeBin: Qt.resolvedUrl("bin/qwen-bridge").toString().replace(/^file:\/\//, "")
-  readonly property string pluginVersion: "v1.1.7"
+  readonly property string pluginVersion: "v1.1.8"
   readonly property string userHome: Quickshell.env("HOME") || "/home/" + (Quickshell.env("USER") || "user")
   readonly property string picturesDir: userHome + "/Pictures/Qwen-Image"
 
@@ -150,12 +150,39 @@ Panel {
     saveSettingsProc.running = true;
   }
 
-  // Anatomical Safety Guard: Sledování lidského subjektu v promptu
+  // Anatomical Safety Guard: Sledování lidského subjektu v promptu (Marci standard: přesné hranice slov)
   readonly property bool isHumanSubjectInPrompt: {
     var p = promptText.toLowerCase();
-    var kw = ["woman", "man", "girl", "boy", "person", "body", "nude", "naked", "erotic", "portrait", "skin", "breasts", "legs", "face", "buttocks", "ass", "waist", "hips", "thighs", "female", "male", "model", "žena", "dívka", "muž", "tělo", "nahá", "nahý", "akt"];
-    for (var i = 0; i < kw.length; ++i) {
-      if (p.indexOf(kw[i]) !== -1) return true;
+    var kw = [
+      "woman", "women", "man", "men", "girl", "girls", "boy", "boys",
+      "person", "people", "human", "body", "nude", "naked", "erotic",
+      "portrait", "skin", "breasts", "legs", "face", "buttocks", "ass",
+      "waist", "hips", "thighs", "female", "male", "model", "hand", "hands",
+      "finger", "fingers", "child", "children", "character", "warrior", "elf",
+      "slim", "petite", "slender",
+      "dívka", "dívky", "žena", "ženy", "muž", "muži", "tělo", "nahá", "nahý",
+      "nahé", "akt", "ruce", "ruka", "prsty", "prst", "obličej", "tvář", "postava"
+    ];
+    var words = p.match(/[\p{L}\p{N}_]+/gu) || [];
+    for (var i = 0; i < words.length; ++i) {
+      if (kw.indexOf(words[i]) !== -1) return true;
+    }
+    return false;
+  }
+
+  // Sledování požadavku na štíhlé proporce (vyžaduje Euler fallback v Turbu pro aktivaci negativního filtru pasu)
+  readonly property bool isSlimSubjectInPrompt: {
+    var p = promptText.toLowerCase();
+    var kw = [
+      "slim", "petite", "slender", "skinny", "lean", "thin",
+      "štíhlá", "stíhlá", "stihla", "štíhlý", "stíhlý", "stihly",
+      "hubená", "hubena", "hubený", "hubeny",
+      "drobná", "drobna", "drobný", "drobny"
+    ];
+    if (p.indexOf("narrow waist") !== -1 || p.indexOf("flat stomach") !== -1 || p.indexOf("slim waist") !== -1 || p.indexOf("úzký pas") !== -1 || p.indexOf("ploché bříško") !== -1) return true;
+    var words = p.match(/[\p{L}\p{N}_]+/gu) || [];
+    for (var i = 0; i < words.length; ++i) {
+      if (kw.indexOf(words[i]) !== -1) return true;
     }
     return false;
   }
@@ -569,7 +596,7 @@ Panel {
     try {
       var res = JSON.parse(trimmed);
       if (res.event === "preview") {
-        root.livePreviewPath = res.path || "/run/user/1000/qis_live_preview.jpg";
+        root.livePreviewPath = res.path || "";
         root.livePreviewStep = res.step || 0;
         root.livePreviewMaxSteps = res.max_steps || root.steps;
         root.livePreviewTick += 1;
@@ -580,7 +607,8 @@ Panel {
         root.previousGeneratedPath = root.generatedPath;
         root.generatedPath = res.path;
         var elapsedSec = (typeof res.elapsed === "number") ? res.elapsed.toFixed(1) : String(res.elapsed || "0");
-        root.generationTelemetry = (res.ratio || "1:1") + " | " + (res.steps || root.steps) + " STEPS | " + elapsedSec + "s | SEED: " + (res.seed >= 0 ? res.seed : "RANDOM");
+        var fallbackSuffix = res.anatomical_fallback ? " · ANATOMY GUARD (STD)" : "";
+        root.generationTelemetry = (res.ratio || "1:1") + " | " + (res.steps || root.steps) + " STEPS | " + elapsedSec + "s" + fallbackSuffix + " | SEED: " + (res.seed >= 0 ? res.seed : "RANDOM");
         if (hostWidget) hostWidget.isBusy = false;
         root.fetchHistory();
       } else if (res.status === "error") {
@@ -874,6 +902,9 @@ Panel {
             root.promptText = res.rewritten_prompt.trim();
           } else if (res.optimized_prompt && res.optimized_prompt.trim() !== "") {
             root.promptText = res.optimized_prompt.trim();
+          }
+          if (res.negative_prompt && res.negative_prompt.trim() !== "") {
+            root.negativePromptText = res.negative_prompt.trim();
           }
           if (res.wh_ratio && res.wh_ratio.trim() !== "") {
             var ratio = res.wh_ratio.trim();

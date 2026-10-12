@@ -26,11 +26,124 @@ fn get_home() -> PathBuf {
         .unwrap_or_else(|_| PathBuf::from("."))
 }
 
+pub fn get_comfy_dir() -> PathBuf {
+    if let Ok(dir) = std::env::var("QIS_COMFY_DIR") {
+        let p = PathBuf::from(dir);
+        if p.exists() {
+            return p;
+        }
+    }
+    get_home().join(".local/share/comfyui")
+}
+
+fn load_env_conf() -> std::collections::HashMap<String, String> {
+    let mut map = std::collections::HashMap::new();
+    let conf_path = get_home().join(".config/omarchy/plugins/simonez.qwenimage/env.conf");
+    if let Ok(content) = fs::read_to_string(conf_path) {
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                continue;
+            }
+            if let Some((k, v)) = trimmed.split_once('=') {
+                let key = k.trim().to_string();
+                let val = v.trim().trim_matches('"').trim_matches('\'').to_string();
+                map.insert(key, val);
+            }
+        }
+    }
+    map
+}
+
+pub fn resolve_dit_model_name() -> String {
+    let conf = load_env_conf();
+    let tier = std::env::var("QIS_VRAM_TIER")
+        .ok()
+        .or_else(|| conf.get("QIS_VRAM_TIER").cloned())
+        .unwrap_or_else(|| "A".to_string())
+        .to_uppercase();
+
+    let diff_dir = get_comfy_dir().join("models/diffusion_models");
+
+    // 1. Explicit model override via env or env.conf (must exist and end with .gguf for UnetLoaderGGUF)
+    let explicit_model = std::env::var("QIS_DIT_MODEL")
+        .ok()
+        .or_else(|| conf.get("QIS_DIT_MODEL").cloned());
+
+    if let Some(ref m) = explicit_model {
+        let m_clean = m.trim();
+        if !m_clean.is_empty() && !m_clean.contains('/') && !m_clean.contains("..") {
+            if m_clean.ends_with(".gguf") && (diff_dir.join(m_clean).exists() || cfg!(test)) {
+                return m_clean.to_string();
+            }
+        }
+    }
+
+    // 2. Tier-aware candidates (F5 + F6: strictly .gguf models to prevent UnetLoaderGGUF crashes)
+    let candidates: &[&str] = if tier == "B" || tier == "C" {
+        &["qwen_image_2.1_Q3_K_M.gguf", "qwen_image_2.1_Q4_K_M.gguf"]
+    } else {
+        &["qwen_image_2.1_Q4_K_M.gguf", "qwen_image_2.1_Q3_K_M.gguf"]
+    };
+
+    for cand in candidates {
+        if diff_dir.join(cand).exists() {
+            return cand.to_string();
+        }
+    }
+
+    // 3. Dynamic scan for any valid qwen_image .gguf in diffusion_models
+    if let Ok(entries) = fs::read_dir(&diff_dir) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if let Some(name) = p.file_name().and_then(|n| n.to_str()) {
+                if name.ends_with(".gguf") && name.to_lowercase().contains("qwen_image") {
+                    return name.to_string();
+                }
+            }
+        }
+    }
+
+    if tier == "B" || tier == "C" {
+        "qwen_image_2.1_Q3_K_M.gguf".to_string()
+    } else {
+        "qwen_image_2.1_Q4_K_M.gguf".to_string()
+    }
+}
+
 fn now_millis() -> u128 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .as_millis()
+}
+
+fn run_launcher_and_check(mut cmd: Command) -> bool {
+    cmd.stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+
+    match cmd.spawn() {
+        Ok(mut child) => {
+            // Verify within 1.5s that launcher didn't crash or exit with error (F1)
+            for _ in 0..5 {
+                std::thread::sleep(Duration::from_millis(300));
+                match child.try_wait() {
+                    Ok(Some(status)) => {
+                        // Exited cleanly after backgrounding
+                        return status.success();
+                    }
+                    Ok(None) => {
+                        // Still running in background
+                        return true;
+                    }
+                    Err(_) => return false,
+                }
+            }
+            true
+        }
+        Err(_) => false,
+    }
 }
 
 pub fn ensure_comfyui_running() -> bool {
@@ -46,25 +159,81 @@ pub fn ensure_comfyui_running() -> bool {
         }
     }
 
+    // Stage 1: Try standalone helper launchers (~/.local/bin/qis, ~/.local/bin/comfy, or PATH)
+    let mut launched = false;
+    let qis_bin = get_home().join(".local").join("bin").join("qis");
     let comfy_bin = get_home().join(".local").join("bin").join("comfy");
-    if comfy_bin.exists() {
-        let _ = Command::new(&comfy_bin)
-            .args(["start", "--bg"])
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn();
-    } else {
-        let _ = Command::new("comfy")
-            .args(["start", "--bg"])
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn();
+
+    if qis_bin.exists() {
+        let mut cmd = Command::new(&qis_bin);
+        cmd.args(["start", "--bg"]);
+        launched = run_launcher_and_check(cmd);
+    }
+
+    if !launched && comfy_bin.exists() {
+        let mut cmd = Command::new(&comfy_bin);
+        cmd.args(["start", "--bg"]);
+        launched = run_launcher_and_check(cmd);
+    }
+
+    if !launched {
+        let mut cmd = Command::new("comfy");
+        cmd.args(["start", "--bg"]);
+        launched = run_launcher_and_check(cmd);
+    }
+
+    // Stage 2: Direct fallback to ComfyUI Python runtime in ~/.local/share/comfyui
+    if !launched {
+        let comfy_dir = get_comfy_dir();
+        let py_candidates = [
+            comfy_dir.join("venv/bin/python"),
+            comfy_dir.join(".venv/bin/python"),
+            comfy_dir.join("venv/bin/python3"),
+        ];
+        let main_py = comfy_dir.join("main.py");
+
+        if main_py.exists() {
+            let conf = load_env_conf();
+            let tier = std::env::var("QIS_VRAM_TIER")
+                .ok()
+                .or_else(|| conf.get("QIS_VRAM_TIER").cloned())
+                .unwrap_or_else(|| "A".to_string())
+                .to_uppercase();
+
+            let mut py_args = vec!["--listen", "127.0.0.1", "--port", "8188"];
+            if tier == "B" {
+                py_args.push("--lowvram");
+            } else if tier == "C" {
+                py_args.push("--cpu");
+            } else {
+                py_args.extend_from_slice(&["--reserve-vram", "1.5", "--async-offload", "2"]);
+            }
+
+            for py in &py_candidates {
+                if py.exists() {
+                    let mut cmd = Command::new(py);
+                    cmd.arg(&main_py)
+                        .args(&py_args)
+                        .stdin(std::process::Stdio::null())
+                        .stdout(std::process::Stdio::null())
+                        .stderr(std::process::Stdio::null());
+                    if let Ok(child) = cmd.spawn() {
+                        let _ = fs::write(comfy_dir.join("comfyui.pid"), child.id().to_string());
+                        launched = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    if !launched {
+        return false;
     }
 
     let start = Instant::now();
-    while start.elapsed() < Duration::from_secs(15) {
+    // Cold start timeout extended to 45s for diverse hardware and clean installs
+    while start.elapsed() < Duration::from_secs(45) {
         std::thread::sleep(Duration::from_millis(800));
         if let Ok(resp) = agent.get(url).call() {
             if resp.status().as_u16() == 200 {
@@ -114,12 +283,21 @@ pub fn free_comfyui_vram(force_unload: bool) -> bool {
 }
 
 fn get_preview_file_path() -> PathBuf {
-    let uid_dir = PathBuf::from("/run/user/1000");
-    if uid_dir.is_dir() {
-        uid_dir.join("qis_live_preview.jpg")
+    let base = std::env::var("XDG_RUNTIME_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from(format!("/run/user/{}", unsafe { libc::getuid() })));
+    let dir = if base.exists() && base.is_dir() {
+        base.join("qwenimage")
     } else {
-        std::env::temp_dir().join("qis_live_preview.jpg")
+        get_home().join(".cache").join("qwenimage")
+    };
+    let _ = fs::create_dir_all(&dir);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&dir, fs::Permissions::from_mode(0o700));
     }
+    dir.join("qis_live_preview.jpg")
 }
 
 pub fn calculate_dimensions(
@@ -207,7 +385,7 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     let (width, height) = calculate_dimensions(cfg.ratio, cfg.res_mode, cfg.is_human, cfg.image_ref);
     let res_val = width.max(height);
 
-    let loras_dir = get_home().join(".local/share/comfyui/models/loras");
+    let loras_dir = get_comfy_dir().join("models/loras");
     let turbo_candidates = [
         "Qwen-Image-2.1-viggle-turbo-v0.3-6step-lora-r128.safetensors",
         "qwen-image-2.1-viggle-turbo.safetensors",
@@ -245,7 +423,7 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
             return Err(format!("Reference image not found: {}", ref_path));
         }
 
-        let comfy_in_dir = get_home().join(".local/share/comfyui/input");
+        let comfy_in_dir = get_comfy_dir().join("input");
         let _ = fs::create_dir_all(&comfy_in_dir);
 
         let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("input_ref");
@@ -297,10 +475,18 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
         val
     };
 
+    // Dynamically assign resolved DiT model name (Q4_K_M vs Q3_K_M vs FP8/BF16)
+    let dit_model_name = resolve_dit_model_name();
+    if let Some(n1) = graph.get_mut("1").and_then(|n| n.get_mut("inputs")) {
+        n1["unet_name"] = json!(dit_model_name);
+    }
+
     let mut current_model = json!(["1", 0]);
 
     if has_uncensored {
-        let weight = if has_turbo { 0.55 } else { 0.85 };
+        // Uncensored LoRA: 0.85 causes heavy overweight/chubby distortion from Civitai dataset bias.
+        // Capped at 0.50 (standard) and 0.45 (turbo) to preserve anatomical fidelity without puritanical censorship.
+        let weight = if has_turbo { 0.45 } else { 0.50 };
         graph["14"] = json!({
             "class_type": "LoraLoaderModelOnly",
             "inputs": {
@@ -313,7 +499,8 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     }
 
     if has_anime {
-        let weight = if has_turbo { 0.60 } else { 0.85 };
+        // Anime LoRA: capped at 0.65 (standard) and 0.55 (turbo) to avoid anatomy warping
+        let weight = if has_turbo { 0.55 } else { 0.65 };
         graph["15"] = json!({
             "class_type": "LoraLoaderModelOnly",
             "inputs": {
@@ -359,11 +546,18 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
             }
         });
         let latent_node = if cfg.image_ref.is_some() { json!(["5b", 0]) } else { json!(["5", 0]) };
+        let turbo_nodes = if cfg.is_human {
+            // Official 7-step schedule: adds 0.9583 and 0.9167 for anatomical stability
+            "1.0, 0.9583, 0.9167, 0.875, 0.75, 0.5, 0.25"
+        } else {
+            // Standard 6-step rapid schedule for objects / landscapes
+            "1.0, 0.9375, 0.875, 0.75, 0.5, 0.25"
+        };
         graph["20"] = json!({
             "class_type": "ViggleTurboSigmas",
             "inputs": {
                 "latent": latent_node.clone(),
-                "nodes": "1.0, 0.9375, 0.875, 0.75, 0.5, 0.25"
+                "nodes": turbo_nodes
             }
         });
         graph["6"] = json!({
@@ -622,7 +816,7 @@ pub fn execute_wd14(image_path: &str, threshold: f32) -> Result<(String, Vec<Str
         return Err("ComfyUI server is offline".to_string());
     }
 
-    let comfy_in_dir = get_home().join(".local/share/comfyui/input");
+    let comfy_in_dir = get_comfy_dir().join("input");
     let _ = fs::create_dir_all(&comfy_in_dir);
 
     let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("input_tag");

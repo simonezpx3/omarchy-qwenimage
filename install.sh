@@ -37,6 +37,9 @@ case "${1:-}" in
         ;;
     esac
     ;;
+  start|stop)
+    exec "${SCRIPT_DIR}/scripts/qis-stack.sh" "$@"
+    ;;
   --status|status)
     exec "${SCRIPT_DIR}/scripts/qis-stack.sh" status
     ;;
@@ -53,7 +56,7 @@ case "${1:-}" in
     # Pokračovat na standardní instalaci
     ;;
   *)
-    echo "[ERROR] Neznámý parametr: ${1}. Povolené volby: update, status, rollback, --full, --stack, --force, --no-restart" >&2
+    echo "[ERROR] Neznámý parametr: ${1}. Povolené volby: start, stop, update, status, rollback, --full, --stack, --force, --no-restart" >&2
     exit 1
     ;;
 esac
@@ -68,14 +71,51 @@ GPU_NAME="Generic / Unknown GPU"
 VRAM_MB=0
 
 if command -v nvidia-smi >/dev/null 2>&1; then
-  GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -n 1 | xargs)
-  VRAM_MB=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -n 1 | xargs)
-elif command -v rocm-smi >/dev/null 2>&1; then
+  while IFS=',' read -r gname gvram; do
+    gname=$(echo "$gname" | xargs)
+    gvram=$(echo "$gvram" | xargs)
+    if [[ "$gvram" =~ ^[0-9]+$ ]] && (( gvram > VRAM_MB )); then
+      VRAM_MB=$gvram
+      GPU_NAME="$gname"
+    fi
+  done < <(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader,nounits 2>/dev/null || true)
+fi
+
+if (( VRAM_MB == 0 )) && command -v rocm-smi >/dev/null 2>&1; then
   GPU_NAME="AMD Radeon (ROCm)"
-  VRAM_MB=8192
-elif [[ -d "/sys/class/drm" ]]; then
-  GPU_NAME="Integrated / Standard Linux DRM"
-  VRAM_MB=4096
+  for vram_file in /sys/class/drm/card*/device/mem_info_vram_total; do
+    if [[ -f "$vram_file" ]]; then
+      bytes=$(cat "$vram_file" 2>/dev/null || echo 0)
+      if [[ "$bytes" =~ ^[0-9]+$ ]] && (( bytes > 0 )); then
+        mb=$(( bytes / 1048576 ))
+        if (( mb > VRAM_MB )); then
+          VRAM_MB=$mb
+        fi
+      fi
+    fi
+  done
+  if (( VRAM_MB == 0 )); then
+    VRAM_MB=8192
+  fi
+fi
+
+if (( VRAM_MB == 0 )) && [[ -d "/sys/class/drm" ]]; then
+  for vram_file in /sys/class/drm/card*/device/mem_info_vram_total; do
+    if [[ -f "$vram_file" ]]; then
+      bytes=$(cat "$vram_file" 2>/dev/null || echo 0)
+      if [[ "$bytes" =~ ^[0-9]+$ ]] && (( bytes > 0 )); then
+        mb=$(( bytes / 1048576 ))
+        if (( mb > VRAM_MB )); then
+          VRAM_MB=$mb
+          GPU_NAME="Linux DRM Device (${mb} MB)"
+        fi
+      fi
+    fi
+  done
+fi
+
+if (( VRAM_MB == 0 )); then
+  GPU_NAME="CPU / Standard System Memory"
 fi
 
 VRAM_GB=$(( VRAM_MB / 1024 ))
@@ -91,8 +131,8 @@ elif (( VRAM_MB >= 5000 )); then
   TIER="Tier B (Balanced: 6 GB VRAM)"
   PROFILE_HINT="Recommended: GGUF Q3_K_S DiT + Qwen2.5-VL 3B TE with sequential CPU offload."
 else
-  TIER="Tier C (Entry / iGPU: <=4 GB VRAM)"
-  PROFILE_HINT="Recommended: Remote LAN Cluster node or light CPU drafting."
+  TIER="Tier C (Entry / iGPU / CPU: <=4 GB VRAM)"
+  PROFILE_HINT="Recommended: Remote LAN Cluster node or light CPU drafting. CPU mode runs ~30-60s/step."
 fi
 
 echo "  [Tier] Profile: ${TIER}"

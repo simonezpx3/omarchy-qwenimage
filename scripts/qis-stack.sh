@@ -60,21 +60,60 @@ log_err()  { echo -e "${RED}✖${RESET} ${1}"; }
 detect_hardware() {
     GPU_NAME="Unknown GPU"
     VRAM_MB=0
+    GPU_VENDOR="cpu"
 
     if command -v nvidia-smi >/dev/null 2>&1; then
-        GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -n 1 | xargs)
-        VRAM_MB=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -n 1 | xargs)
-        GPU_VENDOR="nvidia"
-    elif command -v rocm-smi >/dev/null 2>&1; then
-        GPU_NAME="AMD Radeon (ROCm)"
-        VRAM_MB=8192
+        while IFS=',' read -r gname gvram; do
+            gname=$(echo "$gname" | xargs)
+            gvram=$(echo "$gvram" | xargs)
+            if [[ "$gvram" =~ ^[0-9]+$ ]] && (( gvram > VRAM_MB )); then
+                VRAM_MB=$gvram
+                GPU_NAME="$gname"
+                GPU_VENDOR="nvidia"
+            fi
+        done < <(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader,nounits 2>/dev/null || true)
+    fi
+
+    if (( VRAM_MB == 0 )) && command -v rocm-smi >/dev/null 2>&1; then
         GPU_VENDOR="amd"
-    elif [[ -d "/sys/class/drm" ]]; then
-        GPU_NAME="Standard Linux DRM / iGPU"
-        VRAM_MB=4096
-        GPU_VENDOR="drm"
-    else
+        GPU_NAME="AMD Radeon (ROCm)"
+        for vram_file in /sys/class/drm/card*/device/mem_info_vram_total; do
+            if [[ -f "$vram_file" ]]; then
+                local bytes
+                bytes=$(cat "$vram_file" 2>/dev/null || echo 0)
+                if [[ "$bytes" =~ ^[0-9]+$ ]] && (( bytes > 0 )); then
+                    local mb=$(( bytes / 1048576 ))
+                    if (( mb > VRAM_MB )); then
+                        VRAM_MB=$mb
+                    fi
+                fi
+            fi
+        done
+        if (( VRAM_MB == 0 )); then
+            VRAM_MB=8192
+        fi
+    fi
+
+    if (( VRAM_MB == 0 )) && [[ -d "/sys/class/drm" ]]; then
+        for vram_file in /sys/class/drm/card*/device/mem_info_vram_total; do
+            if [[ -f "$vram_file" ]]; then
+                local bytes
+                bytes=$(cat "$vram_file" 2>/dev/null || echo 0)
+                if [[ "$bytes" =~ ^[0-9]+$ ]] && (( bytes > 0 )); then
+                    local mb=$(( bytes / 1048576 ))
+                    if (( mb > VRAM_MB )); then
+                        VRAM_MB=$mb
+                        GPU_NAME="Linux DRM Device (${mb} MB)"
+                        GPU_VENDOR="drm"
+                    fi
+                fi
+            fi
+        done
+    fi
+
+    if (( VRAM_MB == 0 )); then
         GPU_VENDOR="cpu"
+        GPU_NAME="CPU / Standard System Memory"
     fi
 
     if (( VRAM_MB >= 14000 )); then
@@ -88,7 +127,7 @@ detect_hardware() {
         TIER_DESC="Tier B (6 GB VRAM: GGUF Q3_K_S + Sequential Offload)"
     else
         HW_TIER="C"
-        TIER_DESC="Tier C (<=4 GB VRAM / iGPU: Remote LAN Cluster or Light CPU)"
+        TIER_DESC="Tier C (<=4 GB VRAM / iGPU / CPU: Remote LAN Cluster or Light CPU)"
     fi
 }
 
@@ -423,6 +462,16 @@ download_models() {
         dit_sha="${HF_DIT_Q3_SHA256}"
     fi
     safe_download_model "$diff_dir" "$dit_file" "$dit_url" "DiT model" "$dit_sha"
+
+    # Save environment configuration for rust-bridge and runtime
+    local cfg_dir="${HOME}/.config/omarchy/plugins/simonez.qwenimage"
+    mkdir -p "$cfg_dir"
+    cat <<EOF > "${cfg_dir}/env.conf"
+# QIS Hardware & Model Environment Configuration
+QIS_VRAM_TIER=${HW_TIER}
+QIS_DIT_MODEL=${dit_file}
+EOF
+    chmod 0600 "${cfg_dir}/env.conf"
 
     # 2. Text Encoder (Qwen3-VL 8B Heretic Q4_K_M) - pinned to commit 4b78325
     local te_file="qwen3vl_8b_heretic-Q4_K_M.gguf"
@@ -812,12 +861,115 @@ interactive_menu() {
 }
 
 # ---------------------------------------------------------
+# Lifecycle Management (Start / Stop Backend)
+# ---------------------------------------------------------
+start_comfyui() {
+    local bg=0
+    for arg in "$@"; do
+        [[ "$arg" == "--bg" || "$arg" == "-b" ]] && bg=1
+    done
+
+    if curl -sf "http://127.0.0.1:8188/system_stats" >/dev/null 2>&1; then
+        log_ok "ComfyUI server již běží na http://127.0.0.1:8188."
+        return 0
+    fi
+
+    detect_hardware
+    log_info "Spouštím ComfyUI backend (Profil: ${TIER_DESC})..."
+
+    local py_bin="${COMFY_VENV}/bin/python"
+    if [[ ! -f "$py_bin" ]]; then
+        py_bin="${COMFY_DIR}/.venv/bin/python"
+    fi
+    if [[ ! -f "$py_bin" ]]; then
+        log_err "Nenalezen Python venv ComfyUI v ${COMFY_DIR}/venv ani .venv."
+        log_err "Spusťte: qis setup"
+        return 1
+    fi
+
+    local args=("--listen" "127.0.0.1" "--port" "8188")
+    if [[ "$HW_TIER" == "B" ]]; then
+        args+=("--lowvram")
+    elif [[ "$HW_TIER" == "C" ]]; then
+        args+=("--cpu")
+    else
+        args+=("--reserve-vram" "1.5" "--async-offload" "2")
+    fi
+
+    local log_file="${COMFY_DIR}/comfyui.log"
+    local pid_file="${COMFY_DIR}/comfyui.pid"
+
+    if (( bg == 1 )); then
+        nohup "$py_bin" "${COMFY_DIR}/main.py" "${args[@]}" > "$log_file" 2>&1 &
+        local pid=$!
+        echo "$pid" > "$pid_file"
+        log_info "Čekám na spuštění ComfyUI na pozadí (PID ${pid})..."
+        local started=0
+        for (( i=1; i<=45; i++ )); do
+            sleep 1
+            if curl -sf "http://127.0.0.1:8188/system_stats" >/dev/null 2>&1; then
+                started=1
+                break
+            fi
+            if ! kill -0 "$pid" 2>/dev/null; then
+                log_err "ComfyUI proces předčasně skončil. Zkontrolujte log: ${log_file}"
+                return 1
+            fi
+        done
+        if (( started == 1 )); then
+            log_ok "ComfyUI backend úspěšně nastartován na http://127.0.0.1:8188."
+        else
+            log_warn "ComfyUI byl spuštěn na pozadí, ale server zatím neodpovídá na portu 8188 (vypršel 45s limit)."
+        fi
+    else
+        exec "$py_bin" "${COMFY_DIR}/main.py" "${args[@]}"
+    fi
+}
+
+stop_comfyui() {
+    log_info "Zastavuji ComfyUI backend..."
+    local pid_file="${COMFY_DIR}/comfyui.pid"
+    local stopped=0
+
+    if [[ -f "$pid_file" ]]; then
+        local pid
+        pid=$(cat "$pid_file" 2>/dev/null || true)
+        if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+            kill "$pid" 2>/dev/null || true
+            sleep 1
+            if kill -0 "$pid" 2>/dev/null; then
+                kill -9 "$pid" 2>/dev/null || true
+            fi
+            rm -f "$pid_file"
+            stopped=1
+        fi
+    fi
+
+    if command -v fuser >/dev/null 2>&1; then
+        fuser -k 8188/tcp >/dev/null 2>&1 && stopped=1 || true
+    fi
+
+    if (( stopped == 1 )) || ! curl -sf "http://127.0.0.1:8188/system_stats" >/dev/null 2>&1; then
+        log_ok "ComfyUI server byl úspěšně zastaven."
+    else
+        log_warn "ComfyUI server se nepodařilo zastavit."
+    fi
+}
+
+# ---------------------------------------------------------
 # CLI Router
 # ---------------------------------------------------------
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     case "${1:-}" in
         status)
             check_status
+            ;;
+        start)
+            shift || true
+            start_comfyui "$@"
+            ;;
+        stop)
+            stop_comfyui
             ;;
         setup|install|--full)
             install_system_deps
