@@ -36,6 +36,20 @@ Všechny významné změny, audity a bezpečnostní opravy projektu jsou zazname
   - **B2 // Dynamická substituce DiT modelu v RAM:** Implementována funkce `resolve_dit_model_name()` v `comfy.rs`, která dynamicky detekuje přítomnost modelů v `models/diffusion_models/` (`Q4_K_M` vs `Q3_K_M` vs `FP8/BF16`) nebo proměnné `QIS_DIT_MODEL`. V grafech (T2I i I2I) se uzel `"1"` (`UnetLoaderGGUF`) upravuje v paměti před odesláním, čímž je zaručen bezchybný běh na Tier B (6 GB VRAM) sestavách bez chybějícího souboru.
   - **B3 // Bezpečné XDG runtime cesty & eliminace hardcoded UID:** Odstraněna napevno zadrátovaná cesta `/run/user/1000` z `comfy.rs` i `Panel.qml`. Živý náhled nyní striktně využívá POSIX standard `$XDG_RUNTIME_DIR/qwenimage/` s fallbackem na privátní `$HOME/.cache/qwenimage/` s explicitními právy `0700` (ochrana před únikem dat na multi-user systémech).
   - **B4 // Multi-GPU & Sysfs DRM profilace hardwaru:** `install.sh` i `qis-stack.sh` v `detect_hardware()` procházejí všechny GPU a vybírají kartu s nejvyšší VRAM; pro AMD a Linux DRM čtou reálnou kapacitu paměti ze sysfs (`/sys/class/drm/card*/device/mem_info_vram_total`). Pro CPU / iGPU (Tier C) instalátor zobrazuje jasné varování o očekávané latenci (~30-60s/krok) a doporučuje remote LAN node.
+- **Okamžité přerušení generování & Reset (`/interrupt` & `isCancelling`):**
+  - **ComfyUI REST Interrupt:** V `comfy.rs` implementována funkce `interrupt_comfyui()`, volající standardní endpoint `POST http://127.0.0.1:8188/interrupt` (timeout 1.2s), a uvolnění paměti GPU přes `/free`.
+  - **CLI příkaz `interrupt` / `cancel`:** Rust bridge vystavuje příkaz pro okamžité ukončení difuzního výpočtu a uvolnění VRAM.
+  - **Dynamické tlačítko PŘERUŠIT:** Během generování se tlačítko GENERATE v `StudioView.qml` změní na aktivní tlačítko `PŘERUŠIT // Xs` (v barvě `Color.urgent`), které okamžitě zastaví výpočet i lokální proces.
+  - **Stavový zámek `isCancelling`:** V `Panel.qml` zaveden zámek proti race conditions a klikacímu spamu; zabraňuje vícenásobnému volání přerušení a atomicky se resetuje až v `onExited` procesů.
+  - **Okamžité přerušení tlačítkem RESET:** Funkce `resetForm()` automaticky volá `cancelGeneration()`, pokud zrovna běží generování.
+- **Oprava poměrů stran v Image-to-Image (Aspect Ratio Override):**
+  - V `calculate_dimensions()` opraveno přebírání nativních rozměrů předlohy: aplikuje se výhradně při explicitní volbě `ratio == "auto"`.
+  - Při volbě konkrétního formátu (např. `3:4`, `16:9`, `1:1`, `4:3`) generátor vynutí zvolený poměr stran a uzel `ImageScale` ořízne předlohu přes `crop: center`.
+- **Zapouzdření posuvníku kroků (Steps Slider Layout Container):**
+  - V `StudioView.qml` zapouzdřen `PanelSlider` do striktního `Item` s `Layout.fillWidth: true`, `Layout.minimumWidth: Style.space(80)`, pevnou výškou a `clip: true`, čímž bylo trvale odstraněno přetékání jezdce při animaci vysunutí/zasunutí panelu.
+- **Zarovnání do Marci Aesthetic & Omarchy Plugin Standardu:**
+  - Odstranění všech hranatých a kulatých závorek z akčních tlačítek a stavových indikátorů: přechod na čistou instrumentální typografii s oddělovačem `//` (`PŘERUŠIT // Xs`, `QIS // READY`, `QIS // BUSY`, `QIS // LOCKED`, `QIS // OFFLINE`).
+  - 100% soulad s Omarchy plugin schématem ověřen přes `omarchy plugin validate .` (0 chyb).
 - **P0 Verifikační opravy pro v1.1.8 (Arci Council Supreme Arbitráž):**
   - **F1 // Robustní try_wait launcher kontrola:** `ensure_comfyui_running()` ověřuje stav launcheru přes `try_wait()` v 1.5s okně. Pokud proces launcheru havaruje nebo skončí chybou (např. nekompatibilní cizí nástroj `comfy` v PATH), okamžitě přechází na Stage 2 (přímý Python runtime venv ComfyUI) bez 45s marného čekání.
   - **F4 + F5 // Čtení env.conf a Tier-aware model selection:** Rust bridge načítá konfigurační soubor `~/.config/omarchy/plugins/simonez.qwenimage/env.conf`. Funkce `resolve_dit_model_name()` respektuje detekovaný hardwarový tier (`QIS_VRAM_TIER`): pro Tier B (6 GB) a Tier C prioritizuje `qwen_image_2.1_Q3_K_M.gguf` pro ochranu před OOM, pro Tier A/S prioritizuje `Q4_K_M`.

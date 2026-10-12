@@ -66,7 +66,8 @@ graph LR
 - **Live TAEQI 2.1 Previews:** Real-time intermediate diffusion preview streaming over WebSocket directly from ComfyUI (0 VRAM overhead, decoded via ultra-fast TAEQI into RAM-disk tmpfs).
 - **Quick Step Presets:** Instant step selection (`15`, `25`, `35`) with active state highlight and live elapsed timer.
 - **Universal Wayland Clipboard Engine:** Deep Rust integration decoding raw image formats (PNG, JPEG, WebP, BMP, TIFF), file manager URIs (`file://` from Nemo, Thunar, Nautilus), and web image URLs directly into the reference buffer.
-- **Image-to-Image & Auto Aspect Match:** Automatic aspect ratio extraction (`21:9`, `16:9`, `4:3`, `1:1`, `3:4`, `9:16`) preventing image distortion.
+- **Instant Generation Interrupt & Cancel:** Dynamic `PŘERUŠIT // Xs` button during active diffusion paired with a dedicated `interrupt_comfyui()` engine and `isCancelling` state machine in Rust bridge, instantly stopping the diffusion loop in ComfyUI and releasing GPU memory.
+- **Image-to-Image & Aspect Ratio Overrides:** Automatic aspect ratio extraction when set to `auto`, and explicit user aspect ratio enforcement (`21:9`, `16:9`, `16:10`, `4:3`, `1:1`, `3:4`, `9:16`) with center-crop scaling when specific proportions are desired.
 - **Anime LoRA & Adaptive Resolution Profiling:** Instant anime style injection and VRAM-aware resolution presets (`standard`, `performance`, `high`).
 - **WD14 Tag Interrogator:** Fast Danbooru tag extraction via ONNX / ViT models.
 - **Vision Prompt Engineering:** Reverse-engineering existing scenes into rich diffusion prompts.
