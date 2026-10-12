@@ -753,21 +753,29 @@ Item {
             }
           }
 
-          PanelSlider {
-            id: stepsSlider
+          Item {
+            id: stepsSliderContainer
             Layout.fillWidth: true
-            bar: panelRoot ? panelRoot.bar : null
-            minimum: 10
-            maximum: 50
-            integer: true
-            step: 1
-            value: panelRoot ? panelRoot.steps : 25
-            onMoved: function(val) {
-              if (panelRoot) panelRoot.steps = Math.round(val);
-            }
+            Layout.minimumWidth: Style.space(80)
+            implicitHeight: stepsSlider.implicitHeight
+            clip: true
 
-            HoverHandler {
-              onHoveredChanged: root.setHelp(root.tr("help_steps"), hovered)
+            PanelSlider {
+              id: stepsSlider
+              anchors.fill: parent
+              bar: panelRoot ? panelRoot.bar : null
+              minimum: 10
+              maximum: 50
+              integer: true
+              step: 1
+              value: panelRoot ? panelRoot.steps : 25
+              onMoved: function(val) {
+                if (panelRoot) panelRoot.steps = Math.round(val);
+              }
+
+              HoverHandler {
+                onHoveredChanged: root.setHelp(root.tr("help_steps"), hovered)
+              }
             }
           }
 
