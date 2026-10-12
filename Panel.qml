@@ -48,6 +48,7 @@ Panel {
   property string generatedPath: ""
   property string previousGeneratedPath: ""
   property bool isGenerating: false
+  property bool isCancelling: false
   property string generatingMode: "generate" // "generate", "scale", "enhance"
   property real currentScaleFactor: 0.0
   property bool isInterrogating: false
@@ -305,6 +306,9 @@ Panel {
   }
 
   function cancelGeneration() {
+    if ((!root.isGenerating && !genProc.running) || root.isCancelling) return;
+    root.isCancelling = true;
+
     if (genProc.running) {
       genProc.running = false;
     }
@@ -643,6 +647,9 @@ Panel {
   Process {
     id: interruptProc
     command: [root.bridgeBin, "interrupt"]
+    onExited: function(exitCode) {
+      root.isCancelling = false;
+    }
   }
 
   Process {
@@ -653,6 +660,7 @@ Panel {
       }
     }
     onExited: function(exitCode) {
+      root.isCancelling = false;
       if (root.isGenerating) {
         root.isGenerating = false;
         root.currentScaleFactor = 0.0;

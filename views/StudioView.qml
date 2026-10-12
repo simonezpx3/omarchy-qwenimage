@@ -1547,10 +1547,13 @@ Item {
       Item { Layout.fillWidth: true }
 
       Button {
-        readonly property bool isBusy: panelRoot && panelRoot.isGenerating
+        readonly property bool isBusy: panelRoot && (panelRoot.isGenerating || panelRoot.isCancelling)
         text: {
-          if (isBusy) {
-            return root.tr("cancel") + " (" + root.genElapsedSeconds + "s)";
+          if (panelRoot && panelRoot.isCancelling) {
+            return panelRoot.currentLang === "cs" ? "PŘERUŠUJI..." : "CANCELLING...";
+          }
+          if (panelRoot && panelRoot.isGenerating) {
+            return root.tr("cancel") + " // " + root.genElapsedSeconds + "s";
           }
           if (panelRoot && panelRoot.isGameLocked) return root.tr("locked_game");
           return root.tr("generate");
