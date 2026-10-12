@@ -2827,6 +2827,14 @@ fn main() {
 
             cmd_generate(prompt, ratio, steps, cfg, seed, negative, image_ref, denoise, anime, turbo, uncensored, res_mode.as_deref());
         }
+        "interrupt" | "cancel" => {
+            let ok = comfy::interrupt_comfyui();
+            let _ = comfy::free_comfyui_vram(false);
+            println!("{}", serde_json::json!({
+                "status": if ok { "ok" } else { "error" },
+                "interrupted": ok
+            }));
+        }
         other => {
             eprintln!("Unknown command: {}", other);
             std::process::exit(1);

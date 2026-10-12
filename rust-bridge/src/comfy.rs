@@ -265,6 +265,18 @@ pub fn get_vram_free_mb() -> u64 {
     8192
 }
 
+pub fn interrupt_comfyui() -> bool {
+    let agent = ureq::Agent::config_builder()
+        .timeout_global(Some(Duration::from_millis(1200)))
+        .build()
+        .new_agent();
+
+    if let Ok(resp) = agent.post("http://127.0.0.1:8188/interrupt").send_json(&json!({})) {
+        return resp.status().as_u16() == 200;
+    }
+    false
+}
+
 pub fn free_comfyui_vram(force_unload: bool) -> bool {
     let agent = ureq::Agent::config_builder()
         .timeout_global(Some(Duration::from_millis(1500)))

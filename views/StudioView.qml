@@ -112,6 +112,7 @@ Item {
       "civitai_prompts": { "cs": "PROMPTY & INSPIRACE", "en": "PROMPTS & INSPIRATION" },
       "history": { "cs": "HISTORIE", "en": "HISTORY" },
       "reset": { "cs": "RESETOVAT", "en": "RESET" },
+      "cancel": { "cs": "PŘERUŠIT", "en": "CANCEL" },
       "generate": { "cs": "GENEROVAT (CTRL+ENTER)", "en": "GENERATE (CTRL+ENTER)" },
       "generating": { "cs": "GENEROVÁNÍ...", "en": "GENERATING..." },
       "upscaling": { "cs": "ZVĚTŠOVÁNÍ (UPSCALE)...", "en": "UPSCALING..." },
@@ -123,6 +124,10 @@ Item {
       },
 
       // Contextual Hover Help
+      "help_cancel": {
+        "cs": "PŘERUŠIT: Okamžitě zastaví běžící generování v ComfyUI a uvolní GPU.",
+        "en": "CANCEL: Instantly interrupts running ComfyUI diffusion process and frees GPU."
+      },
       "help_prompt": {
         "cs": "PROMPT: Zadej popis scény v angličtině (automatický transparentní překlad na RTX 3070 za 0 tokenů).",
         "en": "PROMPT: Enter scene description in English (automatic local translation on RTX 3070 at 0 tokens)."
@@ -1545,9 +1550,7 @@ Item {
         readonly property bool isBusy: panelRoot && panelRoot.isGenerating
         text: {
           if (isBusy) {
-            if (panelRoot.generatingMode === "scale") return root.tr("upscaling") + " (" + root.genElapsedSeconds + "s)";
-            if (panelRoot.generatingMode === "enhance") return root.tr("enhancing") + " (" + root.genElapsedSeconds + "s)";
-            return root.tr("generating") + " (" + root.genElapsedSeconds + "s)";
+            return root.tr("cancel") + " (" + root.genElapsedSeconds + "s)";
           }
           if (panelRoot && panelRoot.isGameLocked) return root.tr("locked_game");
           return root.tr("generate");
@@ -1555,10 +1558,18 @@ Item {
         bordered: true
         active: isBusy
         selected: isBusy
-        foreground: isBusy ? Color.accent : Color.foreground
-        enabled: panelRoot && !isBusy && !panelRoot.isGameLocked
-        onHotChanged: root.setHelp(root.tr("help_generate"), hot)
-        onClicked: if (panelRoot) panelRoot.startGeneration()
+        foreground: isBusy ? Color.urgent : Color.foreground
+        enabled: panelRoot && (isBusy || !panelRoot.isGameLocked)
+        onHotChanged: root.setHelp(isBusy ? root.tr("help_cancel") : root.tr("help_generate"), hot)
+        onClicked: {
+          if (!panelRoot) return;
+          if (isBusy) {
+            panelRoot.cancelGeneration();
+            root.genElapsedSeconds = 0;
+          } else {
+            panelRoot.startGeneration();
+          }
+        }
       }
     }
   }

@@ -304,7 +304,25 @@ Panel {
     validateRefProc.running = true;
   }
 
+  function cancelGeneration() {
+    if (genProc.running) {
+      genProc.running = false;
+    }
+    interruptProc.running = false;
+    interruptProc.running = true;
+    root.isGenerating = false;
+    root.currentScaleFactor = 0.0;
+    root.livePreviewPath = "";
+    if (hostWidget) hostWidget.isBusy = false;
+    root.generationTelemetry = root.currentLang === "cs"
+      ? "GENEROVÁNÍ PŘERUŠENO"
+      : "GENERATION INTERRUPTED";
+  }
+
   function resetForm() {
+    if (root.isGenerating || genProc.running) {
+      root.cancelGeneration();
+    }
     root.promptText = "";
     root.negativePromptText = "blurry, low quality, deformed, extra fingers, text, watermark";
     root.aspectRatio = "1:1";
@@ -622,6 +640,11 @@ Panel {
   }
 
   // Backend Processes
+  Process {
+    id: interruptProc
+    command: [root.bridgeBin, "interrupt"]
+  }
+
   Process {
     id: genProc
     stdout: SplitParser {
