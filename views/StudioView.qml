@@ -209,21 +209,17 @@ Item {
         "cs": "DENOISE: Míra přepracování referenčního obrázku (0.10 = jemná úprava, 0.65 = vyvážená změna, 0.95 = maximální transformace při zachování předlohy).",
         "en": "DENOISE: Modification strength of reference image (0.10 = subtle edit, 0.65 = balanced redesign, 0.95 = max transformation preserving reference)."
       },
-      "help_scale_2x": {
-        "cs": "2X: Bleskově zvětší rozlišení obrázku na 200% pomocí nativního SIMD Lanczos algoritmu.",
-        "en": "2X: Blazingly resizes image to 200% resolution using native SIMD Lanczos algorithm."
+      "help_scale_esrgan": {
+        "cs": "4X ESRGAN: Neuronový 4X upscaling pomocí RealESRGAN_x4plus (silné potlačení šumu a artefaktů, nulová mřížka).",
+        "en": "4X ESRGAN: Neural 4X upscaling via RealESRGAN_x4plus (strong noise and artifact suppression, zero grid pattern)."
       },
-      "help_scale_4x": {
-        "cs": "4X: Čtyřnásobné zvětšení rozlišení na vysoké 4K rozlišení pomocí SIMD Lanczos filtru.",
-        "en": "4X: Quadruple upscaling to 4K resolution using SIMD Lanczos filter."
+      "help_scale_ultra": {
+        "cs": "4X ULTRA: Neuronový 4X upscaling pomocí 4x-UltraSharp (maximální mikroskopické textury a detaily).",
+        "en": "4X ULTRA: Neural 4X upscaling via 4x-UltraSharp (maximum micro-textures and fine detail preservation)."
       },
-      "help_scale_ai_2k": {
-        "cs": "AI 2K: Lokální neuronový upscaling na 2K (UltraSharp / AnimeSharp na RTX 3070).",
-        "en": "AI 2K: Local neural upscaling to 2K (UltraSharp / AnimeSharp on RTX 3070)."
-      },
-      "help_scale_ai_4k": {
-        "cs": "AI 4K: Lokální neuronový upscaling na 4K (UltraSharp / AnimeSharp na RTX 3070).",
-        "en": "AI 4K: Local neural upscaling to 4K (UltraSharp / AnimeSharp on RTX 3070)."
+      "help_scale_anime": {
+        "cs": "4X ANIME: Neuronový 4X upscaling pomocí 4x-AnimeSharp (dokonalé vyhlazení a ostré kontury pro ilustrace).",
+        "en": "4X ANIME: Neural 4X upscaling via 4x-AnimeSharp (perfect smoothing and crisp contours for illustrations)."
       },
       "help_scale_half": {
         "cs": "0.5X: Zmenší rozlišení vygenerovaného díla na polovinu.",
@@ -1310,8 +1306,8 @@ Item {
           }
 
           Button {
-            readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 2.0)
-            text: isBusy ? ("2X (" + root.genElapsedSeconds + "s)") : "2X"
+            readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale_esrgan")
+            text: isBusy ? ("ESRGAN " + root.genElapsedSeconds + "s") : "4X ESRGAN"
             fontSize: Style.font.caption
             bordered: true
             Layout.fillWidth: true
@@ -1319,13 +1315,13 @@ Item {
             selected: isBusy
             foreground: isBusy ? Color.accent : Color.foreground
             enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
-            onHotChanged: root.setHelp(root.tr("help_scale_2x"), hot)
-            onClicked: if (panelRoot) panelRoot.scaleImage(2.0)
+            onHotChanged: root.setHelp(root.tr("help_scale_esrgan"), hot)
+            onClicked: if (panelRoot) panelRoot.aiUpscale("esrgan")
           }
 
           Button {
-            readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 4.0)
-            text: isBusy ? ("4X (" + root.genElapsedSeconds + "s)") : "4X"
+            readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale_ultra")
+            text: isBusy ? ("ULTRA " + root.genElapsedSeconds + "s") : "4X ULTRA"
             fontSize: Style.font.caption
             bordered: true
             Layout.fillWidth: true
@@ -1333,13 +1329,13 @@ Item {
             selected: isBusy
             foreground: isBusy ? Color.accent : Color.foreground
             enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
-            onHotChanged: root.setHelp(root.tr("help_scale_4x"), hot)
-            onClicked: if (panelRoot) panelRoot.scaleImage(4.0)
+            onHotChanged: root.setHelp(root.tr("help_scale_ultra"), hot)
+            onClicked: if (panelRoot) panelRoot.aiUpscale("ultra")
           }
 
           Button {
-            readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "ai_2k")
-            text: isBusy ? ("AI 2K (" + root.genElapsedSeconds + "s)") : "AI 2K"
+            readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale_anime")
+            text: isBusy ? ("ANIME " + root.genElapsedSeconds + "s") : "4X ANIME"
             fontSize: Style.font.caption
             bordered: true
             Layout.fillWidth: true
@@ -1347,27 +1343,13 @@ Item {
             selected: isBusy
             foreground: isBusy ? Color.accent : Color.foreground
             enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
-            onHotChanged: root.setHelp(root.tr("help_scale_ai_2k"), hot)
-            onClicked: if (panelRoot) panelRoot.aiUpscale("2k")
-          }
-
-          Button {
-            readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "ai_4k")
-            text: isBusy ? ("AI 4K (" + root.genElapsedSeconds + "s)") : "AI 4K"
-            fontSize: Style.font.caption
-            bordered: true
-            Layout.fillWidth: true
-            active: isBusy
-            selected: isBusy
-            foreground: isBusy ? Color.accent : Color.foreground
-            enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
-            onHotChanged: root.setHelp(root.tr("help_scale_ai_4k"), hot)
-            onClicked: if (panelRoot) panelRoot.aiUpscale("4k")
+            onHotChanged: root.setHelp(root.tr("help_scale_anime"), hot)
+            onClicked: if (panelRoot) panelRoot.aiUpscale("anime")
           }
 
           Button {
             readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 0.5)
-            text: isBusy ? ("0.5X (" + root.genElapsedSeconds + "s)") : "0.5X"
+            text: isBusy ? ("0.5X " + root.genElapsedSeconds + "s") : "0.5X"
             fontSize: Style.font.caption
             bordered: true
             Layout.fillWidth: true
@@ -1381,7 +1363,7 @@ Item {
 
           Button {
             readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === -1.0)
-            text: isBusy ? ("FIT 1K (" + root.genElapsedSeconds + "s)") : "FIT 1K"
+            text: isBusy ? ("FIT 1K " + root.genElapsedSeconds + "s") : "FIT 1K"
             fontSize: Style.font.caption
             bordered: true
             Layout.fillWidth: true

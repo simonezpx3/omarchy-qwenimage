@@ -412,21 +412,21 @@ Panel {
     genProc.running = true;
   }
 
-  function aiUpscale(tier) {
+  function aiUpscale(modelChoice) {
     if (!root.isBridgeAvailable) return;
     var target = root.baseGeneratedPath !== "" ? root.baseGeneratedPath : (root.generatedPath !== "" ? root.generatedPath : root.referencePath);
     if (target === "" || isGenerating) return;
 
     isGenerating = true;
-    generatingMode = tier === "2k" ? "ai_2k" : "ai_4k";
-    currentScaleFactor = tier === "2k" ? 2.0 : 4.0;
+    generatingMode = "scale_" + modelChoice;
+    currentScaleFactor = 4.0;
     if (hostWidget) hostWidget.isBusy = true;
 
     var args = [
       root.bridgeBin,
       "upscale",
       target,
-      tier
+      modelChoice
     ];
 
     if (root.isAnimeLoRAEnabled) {
@@ -438,7 +438,7 @@ Panel {
   }
 
   function aiEnhance() {
-    aiUpscale("2k");
+    aiUpscale("ultra");
   }
 
   function scaleImage(factor) {
@@ -650,11 +650,11 @@ Panel {
           if (res.status === "ok" && res.path) {
             root.previousGeneratedPath = root.generatedPath;
             root.generatedPath = res.path;
-            var info = (res.tier ? ("AI " + res.tier + " ") : "") + (res.width || "2048") + "x" + (res.height || "2048");
+            var info = (res.factor ? (res.factor + " ") : (res.tier ? ("AI " + res.tier + " ") : "")) + (res.width || "2048") + "x" + (res.height || "2048");
             if (res.model) {
-              info += " (" + res.model.replace(".safetensors", "") + ")";
+              info += " // " + res.model.replace(".safetensors", "");
             } else {
-              info += " (SIMD LANCZOS)";
+              info += " // SIMD LANCZOS";
             }
             root.generationTelemetry = info;
             root.fetchHistory();
