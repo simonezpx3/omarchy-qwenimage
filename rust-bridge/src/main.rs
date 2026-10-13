@@ -1137,12 +1137,40 @@ fn cmd_wallpaper(input_path: &str) {
     );
 }
 
-fn cmd_scale(input_path: &str, factor: f32) {
+fn resolve_raw_image_path(input_path: &str) -> String {
     let p = Path::new(input_path);
+    if !p.exists() {
+        return input_path.to_string();
+    }
+
+    let stem = match p.file_stem().and_then(|s| s.to_str()) {
+        Some(s) => s,
+        None => return input_path.to_string(),
+    };
+
+    let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("png");
+    let parent = p.parent().unwrap_or_else(|| Path::new("."));
+
+    for tag in &["_ai2k_", "_ai4k_", "_4k_", "_2k_", "_4x_", "_2x_", "_fit1k_", "_scaled_"] {
+        if let Some(pos) = stem.find(tag) {
+            let base_stem = &stem[..pos];
+            let candidate = parent.join(format!("{}.{}", base_stem, ext));
+            if candidate.exists() {
+                return candidate.to_string_lossy().to_string();
+            }
+        }
+    }
+
+    input_path.to_string()
+}
+
+fn cmd_scale(input_path: &str, factor: f32) {
+    let resolved = resolve_raw_image_path(input_path);
+    let p = Path::new(&resolved);
     if !p.exists() {
         println!(
             "{}",
-            serde_json::json!({"status": "error", "message": format!("File not found: {}", input_path)})
+            serde_json::json!({"status": "error", "message": format!("File not found: {}", resolved)})
         );
         return;
     }
@@ -1179,19 +1207,12 @@ fn cmd_scale(input_path: &str, factor: f32) {
         };
         let ts = now_millis();
         let base_name = p.file_stem().and_then(|s| s.to_str()).unwrap_or("image");
-        let clean_base = if let Some(idx) = base_name.find("_4x_") {
-            &base_name[..idx]
-        } else if let Some(idx) = base_name.find("_2x_") {
-            &base_name[..idx]
-        } else if let Some(idx) = base_name.find("_0.5x_") {
-            &base_name[..idx]
-        } else if let Some(idx) = base_name.find("_fit1k_") {
-            &base_name[..idx]
-        } else if let Some(idx) = base_name.find("_scaled_") {
-            &base_name[..idx]
-        } else {
-            base_name
-        };
+        let mut clean_base = base_name;
+        for sfx in &["_ai2k_", "_ai4k_", "_4x_", "_2x_", "_0.5x_", "_fit1k_", "_scaled_"] {
+            if let Some(idx) = clean_base.find(sfx) {
+                clean_base = &clean_base[..idx];
+            }
+        }
 
         let candidate_name = format!("{}_{}_{}x{}.png", clean_base, factor_str, final_w, final_h);
         let gallery_dir = get_gallery_dir();
@@ -1244,16 +1265,17 @@ fn cmd_scale(input_path: &str, factor: f32) {
 }
 
 fn cmd_upscale_ai(input_path: &str, tier: &str, is_anime: bool) {
-    let p = Path::new(input_path);
+    let resolved = resolve_raw_image_path(input_path);
+    let p = Path::new(&resolved);
     if !p.exists() {
         println!(
             "{}",
-            serde_json::json!({"status": "error", "message": format!("File not found: {}", input_path)})
+            serde_json::json!({"status": "error", "message": format!("File not found: {}", resolved)})
         );
         return;
     }
 
-    match comfy::run_neural_upscale(input_path, tier, is_anime) {
+    match comfy::run_neural_upscale(&resolved, tier, is_anime) {
         Ok(val) => {
             play_chime();
             let fn_str = val.get("filename").and_then(|s| s.as_str()).unwrap_or("image.png");
@@ -1270,7 +1292,7 @@ fn cmd_upscale_ai(input_path: &str, tier: &str, is_anime: bool) {
         Err(e) => {
             eprintln!("ComfyUI neural upscale failed ({}), falling back to SIMD Lanczos", e);
             let factor = if tier.eq_ignore_ascii_case("2k") { 2.0f32 } else { 4.0f32 };
-            cmd_scale(input_path, factor);
+            cmd_scale(&resolved, factor);
         }
     }
 }

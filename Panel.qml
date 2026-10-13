@@ -46,6 +46,7 @@ Panel {
   property int referenceRevision: 0
   property real denoise: 0.65
   property string generatedPath: ""
+  property string baseGeneratedPath: ""
   property string previousGeneratedPath: ""
   property bool isGenerating: false
   property bool isCancelling: false
@@ -413,7 +414,7 @@ Panel {
 
   function aiUpscale(tier) {
     if (!root.isBridgeAvailable) return;
-    var target = generatedPath !== "" ? generatedPath : referencePath;
+    var target = root.baseGeneratedPath !== "" ? root.baseGeneratedPath : (root.generatedPath !== "" ? root.generatedPath : root.referencePath);
     if (target === "" || isGenerating) return;
 
     isGenerating = true;
@@ -442,7 +443,7 @@ Panel {
 
   function scaleImage(factor) {
     if (!root.isBridgeAvailable) return;
-    var target = generatedPath !== "" ? generatedPath : referencePath;
+    var target = root.baseGeneratedPath !== "" ? root.baseGeneratedPath : (root.generatedPath !== "" ? root.generatedPath : root.referencePath);
     if (target === "" || isGenerating) return;
     isGenerating = true;
     generatingMode = "scale";
@@ -530,6 +531,7 @@ Panel {
     }
     if (ratio) aspectRatio = ratio;
     generatedPath = path;
+    baseGeneratedPath = path;
   }
 
   function fetchPrompts(source, query) {
@@ -588,6 +590,7 @@ Panel {
         root.livePreviewPath = "";
         root.previousGeneratedPath = root.generatedPath;
         root.generatedPath = res.path;
+        root.baseGeneratedPath = res.path;
         var elapsedSec = (typeof res.elapsed === "number") ? res.elapsed.toFixed(1) : String(res.elapsed || "0");
         root.generationTelemetry = (res.ratio || "1:1") + " | " + (res.steps || root.steps) + " STEPS | " + elapsedSec + "s | SEED: " + (res.seed >= 0 ? res.seed : "RANDOM");
         if (hostWidget) hostWidget.isBusy = false;
