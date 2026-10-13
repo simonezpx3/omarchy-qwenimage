@@ -217,9 +217,13 @@ Item {
         "cs": "4X: Čtyřnásobné zvětšení rozlišení na vysoké 4K rozlišení pomocí SIMD Lanczos filtru.",
         "en": "4X: Quadruple upscaling to 4K resolution using SIMD Lanczos filter."
       },
-      "help_scale_ai": {
-        "cs": "AI 2X: Difuzní zvětšení a domodelování mikroskopických detailů pomocí neuronové sítě na RTX 3070.",
-        "en": "AI 2X: Neural super-resolution generating microscopic details on RTX 3070."
+      "help_scale_ai_2k": {
+        "cs": "AI 2K: Lokální neuronový upscaling na 2K (UltraSharp / AnimeSharp na RTX 3070).",
+        "en": "AI 2K: Local neural upscaling to 2K (UltraSharp / AnimeSharp on RTX 3070)."
+      },
+      "help_scale_ai_4k": {
+        "cs": "AI 4K: Lokální neuronový upscaling na 4K (UltraSharp / AnimeSharp na RTX 3070).",
+        "en": "AI 4K: Local neural upscaling to 4K (UltraSharp / AnimeSharp on RTX 3070)."
       },
       "help_scale_half": {
         "cs": "0.5X: Zmenší rozlišení vygenerovaného díla na polovinu.",
@@ -1334,8 +1338,8 @@ Item {
           }
 
           Button {
-            readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "enhance")
-            text: isBusy ? ("AI 2X (" + root.genElapsedSeconds + "s)") : "AI 2X"
+            readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "ai_2k")
+            text: isBusy ? ("AI 2K (" + root.genElapsedSeconds + "s)") : "AI 2K"
             fontSize: Style.font.caption
             bordered: true
             Layout.fillWidth: true
@@ -1343,8 +1347,22 @@ Item {
             selected: isBusy
             foreground: isBusy ? Color.accent : Color.foreground
             enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
-            onHotChanged: root.setHelp(root.tr("help_scale_ai"), hot)
-            onClicked: if (panelRoot) panelRoot.aiEnhance()
+            onHotChanged: root.setHelp(root.tr("help_scale_ai_2k"), hot)
+            onClicked: if (panelRoot) panelRoot.aiUpscale("2k")
+          }
+
+          Button {
+            readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "ai_4k")
+            text: isBusy ? ("AI 4K (" + root.genElapsedSeconds + "s)") : "AI 4K"
+            fontSize: Style.font.caption
+            bordered: true
+            Layout.fillWidth: true
+            active: isBusy
+            selected: isBusy
+            foreground: isBusy ? Color.accent : Color.foreground
+            enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
+            onHotChanged: root.setHelp(root.tr("help_scale_ai_4k"), hot)
+            onClicked: if (panelRoot) panelRoot.aiUpscale("4k")
           }
 
           Button {

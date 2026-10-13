@@ -411,53 +411,33 @@ Panel {
     genProc.running = true;
   }
 
-  function aiEnhance() {
+  function aiUpscale(tier) {
     if (!root.isBridgeAvailable) return;
     var target = generatedPath !== "" ? generatedPath : referencePath;
-    if (target === "" || isGenerating || isGameLocked) return;
-
-    var pText = promptText.trim();
-    if (pText === "") {
-      pText = "masterpiece, best quality, ultra detailed, sharp focus, 8k";
-    }
+    if (target === "" || isGenerating) return;
 
     isGenerating = true;
-    generatingMode = "enhance";
-    currentScaleFactor = 2.0;
-    livePreviewPath = "";
-    livePreviewStep = 0;
-    livePreviewMaxSteps = steps;
-    livePreviewTick = 0;
+    generatingMode = tier === "2k" ? "ai_2k" : "ai_4k";
+    currentScaleFactor = tier === "2k" ? 2.0 : 4.0;
     if (hostWidget) hostWidget.isBusy = true;
 
-    var actualSeed = seedLocked ? Number(seedVal) : -1;
     var args = [
       root.bridgeBin,
-      "generate",
-      pText,
-      "ai2x",
-      String(steps),
-      String(cfg),
-      String(actualSeed),
-      negativePromptText,
+      "upscale",
       target,
-      "0.35"
+      tier
     ];
 
     if (root.isAnimeLoRAEnabled) {
       args.push("--anime");
     }
 
-    if (root.isTurboEnabled) {
-      args.push("--turbo");
-    }
+    scaleProc.command = args;
+    scaleProc.running = true;
+  }
 
-    if (root.isUncensoredEnabled) {
-      args.push("--uncensored");
-    }
-
-    genProc.command = args;
-    genProc.running = true;
+  function aiEnhance() {
+    aiUpscale("2k");
   }
 
   function scaleImage(factor) {
@@ -667,7 +647,13 @@ Panel {
           if (res.status === "ok" && res.path) {
             root.previousGeneratedPath = root.generatedPath;
             root.generatedPath = res.path;
-            root.generationTelemetry = (res.width || "2048") + "x" + (res.height || "2048") + " (SIMD LANCZOS)";
+            var info = (res.tier ? ("AI " + res.tier + " ") : "") + (res.width || "2048") + "x" + (res.height || "2048");
+            if (res.model) {
+              info += " (" + res.model.replace(".safetensors", "") + ")";
+            } else {
+              info += " (SIMD LANCZOS)";
+            }
+            root.generationTelemetry = info;
             root.fetchHistory();
           }
         } catch (e) {}

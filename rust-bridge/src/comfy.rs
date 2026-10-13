@@ -959,3 +959,191 @@ pub fn execute_wd14(image_path: &str, threshold: f32) -> Result<(String, Vec<Str
 
     Err("WD14 tagging timed out".to_string())
 }
+
+pub fn run_neural_upscale(
+    input_path: &str,
+    tier: &str,
+    is_anime: bool,
+) -> Result<Value, String> {
+    let p = Path::new(input_path);
+    if !p.exists() {
+        return Err(format!("File not found: {}", input_path));
+    }
+
+    if !ensure_comfyui_running() {
+        return Err("ComfyUI server is offline".to_string());
+    }
+
+    let comfy_in_dir = get_comfy_dir().join("input");
+    let _ = fs::create_dir_all(&comfy_in_dir);
+
+    let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("input_upscale");
+    let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("png");
+    let clean_stem: String = stem.chars().filter(|c| c.is_alphanumeric() || *c == '_' || *c == '-').take(48).collect();
+    let dest_name = format!("upscale_{}_{}.{}", if clean_stem.is_empty() { "img" } else { &clean_stem }, std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() % 100000, ext);
+    let dest_file = comfy_in_dir.join(&dest_name);
+    let _ = fs::copy(p, &dest_file);
+
+    // Read input dimensions
+    let (src_w, src_h) = match image::open(p) {
+        Ok(img) => {
+            use image::GenericImageView;
+            img.dimensions()
+        }
+        Err(e) => return Err(format!("Failed to read input image dimensions: {}", e)),
+    };
+
+    let aspect = src_w as f32 / src_h as f32;
+    let is_tier_2k = tier.eq_ignore_ascii_case("2k");
+
+    let (target_w, target_h) = if is_tier_2k {
+        if aspect >= 1.0 {
+            let tw = if aspect > 1.2 { 2560 } else { 2048 };
+            let th = (((tw as f32 / aspect) / 8.0).round() * 8.0) as u32;
+            (tw, th)
+        } else {
+            let th = if aspect < 0.8 { 2560 } else { 2048 };
+            let tw = (((th as f32 * aspect) / 8.0).round() * 8.0) as u32;
+            (tw, th)
+        }
+    } else {
+        if aspect >= 1.0 {
+            let tw = 3840;
+            let th = (((tw as f32 / aspect) / 8.0).round() * 8.0) as u32;
+            (tw, th)
+        } else {
+            let th = 3840;
+            let tw = (((th as f32 * aspect) / 8.0).round() * 8.0) as u32;
+            (tw, th)
+        }
+    };
+
+    let models_dir = get_comfy_dir().join("models/upscale_models");
+    let preferred = if is_anime {
+        ["4x-AnimeSharp.safetensors", "4x-UltraSharp.safetensors", "RealESRGAN_x4plus.safetensors"]
+    } else {
+        ["4x-UltraSharp.safetensors", "RealESRGAN_x4plus.safetensors", "4x-AnimeSharp.safetensors"]
+    };
+
+    let mut selected_model = "4x-UltraSharp.safetensors".to_string();
+    for cand in &preferred {
+        if models_dir.join(cand).exists() {
+            selected_model = cand.to_string();
+            break;
+        }
+    }
+
+    let prefix = format!("QIS_AI_{}_{}x{}", if is_tier_2k { "2K" } else { "4K" }, target_w, target_h);
+
+    let graph = json!({
+        "1": {
+            "class_type": "LoadImage",
+            "inputs": {
+                "image": dest_name
+            }
+        },
+        "2": {
+            "class_type": "UpscaleModelLoader",
+            "inputs": {
+                "model_name": selected_model
+            }
+        },
+        "3": {
+            "class_type": "ImageUpscaleWithModel",
+            "inputs": {
+                "upscale_model": ["2", 0],
+                "image": ["1", 0]
+            }
+        },
+        "4": {
+            "class_type": "ImageScale",
+            "inputs": {
+                "image": ["3", 0],
+                "upscale_method": "lanczos",
+                "width": target_w,
+                "height": target_h,
+                "crop": "disabled"
+            }
+        },
+        "5": {
+            "class_type": "SaveImage",
+            "inputs": {
+                "filename_prefix": prefix,
+                "images": ["4", 0]
+            }
+        }
+    });
+
+    let agent = ureq::Agent::config_builder()
+        .timeout_global(Some(Duration::from_secs(60)))
+        .build()
+        .new_agent();
+
+    let resp_json: Value = agent.post("http://127.0.0.1:8188/prompt")
+        .send_json(json!({"prompt": graph}))
+        .map_err(|e| format!("Failed to submit upscale prompt: {}", e))?
+        .body_mut()
+        .read_json()
+        .map_err(|e| format!("Invalid JSON from /prompt: {}", e))?;
+
+    let prompt_id = resp_json.get("prompt_id").and_then(|p| p.as_str()).ok_or("No prompt_id returned for upscale")?;
+
+    let poll_start = Instant::now();
+    let hist_url = format!("http://127.0.0.1:8188/history/{}", prompt_id);
+
+    while poll_start.elapsed() < Duration::from_secs(90) {
+        if let Ok(mut h_resp) = agent.get(&hist_url).call() {
+            if let Ok(h_val) = h_resp.body_mut().read_json::<Value>() {
+                if let Some(p_info) = h_val.get(prompt_id) {
+                    if let Some(outputs) = p_info.get("outputs").and_then(|o| o.as_object()) {
+                        if let Some(n5) = outputs.get("5") {
+                            if let Some(images) = n5.get("images").and_then(|i| i.as_array()) {
+                                if let Some(first) = images.first() {
+                                    if let Some(fn_str) = first.get("filename").and_then(|f| f.as_str()) {
+                                        let subfolder = first.get("subfolder").and_then(|s| s.as_str()).unwrap_or("");
+                                        let out_dir = get_comfy_dir().join("output");
+                                        let src_out_file = if subfolder.is_empty() {
+                                            out_dir.join(fn_str)
+                                        } else {
+                                            out_dir.join(subfolder).join(fn_str)
+                                        };
+
+                                        if src_out_file.exists() {
+                                            let gallery_dir = get_home().join("Pictures").join("Qwen-Image");
+                                            let _ = fs::create_dir_all(&gallery_dir);
+
+                                            let clean_bname = stem;
+                                            let tier_label = if is_tier_2k { "ai2k" } else { "ai4k" };
+                                            let cand_name = format!("{}_{}_{}x{}.png", clean_bname, tier_label, target_w, target_h);
+                                            let final_path = if gallery_dir.join(&cand_name).exists() {
+                                                let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() % 100000;
+                                                gallery_dir.join(format!("{}_{}_{}x{}_{}.png", clean_bname, tier_label, target_w, target_h, ts))
+                                            } else {
+                                                gallery_dir.join(&cand_name)
+                                            };
+
+                                            let _ = fs::copy(&src_out_file, &final_path);
+
+                                            return Ok(json!({
+                                                "status": "ok",
+                                                "path": final_path.to_string_lossy(),
+                                                "filename": final_path.file_name().unwrap_or_default().to_string_lossy(),
+                                                "width": target_w,
+                                                "height": target_h,
+                                                "model": selected_model,
+                                                "tier": if is_tier_2k { "2K" } else { "4K" }
+                                            }));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        std::thread::sleep(Duration::from_millis(300));
+    }
+
+    Err("Upscale timed out".to_string())
+}

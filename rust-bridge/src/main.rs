@@ -1243,6 +1243,38 @@ fn cmd_scale(input_path: &str, factor: f32) {
     );
 }
 
+fn cmd_upscale_ai(input_path: &str, tier: &str, is_anime: bool) {
+    let p = Path::new(input_path);
+    if !p.exists() {
+        println!(
+            "{}",
+            serde_json::json!({"status": "error", "message": format!("File not found: {}", input_path)})
+        );
+        return;
+    }
+
+    match comfy::run_neural_upscale(input_path, tier, is_anime) {
+        Ok(val) => {
+            play_chime();
+            let fn_str = val.get("filename").and_then(|s| s.as_str()).unwrap_or("image.png");
+            let w_val = val.get("width").and_then(|w| w.as_u64()).unwrap_or(0);
+            let h_val = val.get("height").and_then(|h| h.as_u64()).unwrap_or(0);
+            let model_str = val.get("model").and_then(|m| m.as_str()).unwrap_or("UltraSharp");
+            let out_path = val.get("path").and_then(|p| p.as_str()).unwrap_or("");
+            
+            let notif_title = format!("AI {} Upscale Dokončen", tier.to_uppercase());
+            let notif_body = format!("Uloženo do Qwen-Image: {}\nModel: {} ({}x{})", fn_str, model_str, w_val, h_val);
+            send_notification(&notif_title, &notif_body, Some(out_path));
+            println!("{}", val);
+        }
+        Err(e) => {
+            eprintln!("ComfyUI neural upscale failed ({}), falling back to SIMD Lanczos", e);
+            let factor = if tier.eq_ignore_ascii_case("2k") { 2.0f32 } else { 4.0f32 };
+            cmd_scale(input_path, factor);
+        }
+    }
+}
+
 fn cmd_interrogate(input_path: &str) {
     let p = Path::new(input_path);
     if !p.exists() {
@@ -2682,6 +2714,14 @@ fn main() {
                     }
                 }
                 cmd_scale(&args[2], factor);
+            }
+        }
+        "upscale" | "upscale-ai" => {
+            if args.len() >= 3 {
+                let input_path = &args[2];
+                let tier = args.get(3).map(|s| s.as_str()).unwrap_or("4k");
+                let is_anime = args.iter().any(|a| a == "--anime");
+                cmd_upscale_ai(input_path, tier, is_anime);
             }
         }
         "interrogate" => {

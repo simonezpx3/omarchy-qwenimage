@@ -40,6 +40,12 @@ HF_UNCENSORED_LORA_SHA256="00ee2cb7f00a37b097640c1880ed0d17e368e30599f34bb348fee
 HF_ANIME_COMMIT="c4ab5473bfdf585fc19cfd1e280f79d2b0c79947"
 HF_ANIME_LORA_SHA256="0c171eb802ea8051b511f2d93c1743eeadd030316255aa98fa65d40809366752"
 
+# Neural AI Upscale Models (4x-UltraSharp & 4x-AnimeSharp)
+HF_ULTRASHARP_COMMIT="69c656372579df646399b3353982e0fb5cfcbb79"
+HF_ULTRASHARP_SHA256="36a340b5509b699d2c06cb445ddc1d3d39199ac734d889ed6d7915f60e05bcbc"
+HF_ANIMESHARP_COMMIT="94d4d8ef55601dfa83d73507b538ef8d910feea0"
+HF_ANIMESHARP_SHA256="7fc60054d291579acac4fb537efd91c80611cbd281ef8b90f434048cc1313b39"
+
 # Colors & Formatting
 BOLD="\033[1m"
 GREEN="\033[0;32m"
@@ -611,6 +617,17 @@ EOF
     local anime_file="qwen-image-2.1-anime-lora.safetensors"
     local anime_url="https://huggingface.co/WarmBloodAban/Qwen-Image-2.1-LoRAs/resolve/${HF_ANIME_COMMIT}/Qwen2.1_Anime_consistency.safetensors"
     safe_download_model "$loras_dir" "$anime_file" "$anime_url" "Anime Consistency LoRA" "${HF_ANIME_LORA_SHA256}"
+
+    # 7. Neural AI Upscale Models (4x-UltraSharp & 4x-AnimeSharp)
+    local upscale_dir="${COMFY_DIR}/models/upscale_models"
+    mkdir -p "${upscale_dir}"
+    local ultrasharp_file="4x-UltraSharp.safetensors"
+    local ultrasharp_url="https://huggingface.co/Kim2091/UltraSharp/resolve/${HF_ULTRASHARP_COMMIT}/4x-UltraSharp.safetensors"
+    safe_download_model "$upscale_dir" "$ultrasharp_file" "$ultrasharp_url" "4x-UltraSharp Neural Upscaler" "${HF_ULTRASHARP_SHA256}"
+
+    local animesharp_file="4x-AnimeSharp.safetensors"
+    local animesharp_url="https://huggingface.co/Kim2091/AnimeSharp/resolve/${HF_ANIMESHARP_COMMIT}/4x-AnimeSharp.safetensors"
+    safe_download_model "$upscale_dir" "$animesharp_file" "$animesharp_url" "4x-AnimeSharp Neural Upscaler" "${HF_ANIMESHARP_SHA256}"
 }
 
 # ---------------------------------------------------------
