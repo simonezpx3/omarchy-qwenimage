@@ -191,6 +191,8 @@ QIS stands on the shoulders of giants. We express our gratitude to the open-sour
 - **[Quickshell](https://github.com/outfoxxed/quickshell)** by [@outfoxxed](https://github.com/outfoxxed) – The lightning-fast, reactive QtQuick/Wayland environment that gives QIS its sub-millisecond desktop responsiveness.
 - **[WD14 Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger)** by [@pythongosssss](https://github.com/pythongosssss) & [@SmilingWolf](https://github.com/SmilingWolf) – State-of-the-art anime & photography tag interrogation models.
 - **[TAEQI / Tiny AutoEncoder](https://github.com/madebyollin/taesd)** by [@madebyollin](https://github.com/madebyollin) – Ultra-fast, lightweight latent autoencoder powering real-time zero-VRAM step previews.
+- **[Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)** by [@xinntao](https://github.com/xinntao) & **[Comfy-Org](https://huggingface.co/Comfy-Org/Real-ESRGAN_repackaged)** – Foundation super-resolution architecture and repacked weights providing 4X super-resolution and cinematic denoising.
+- **[4x-UltraSharp & 4x-AnimeSharp](https://huggingface.co/Kim2091)** by [@Kim2091](https://huggingface.co/Kim2091) – State-of-the-art super-resolution checkpoints delivering exceptional micro-contrast and clean cell-shaded vector-like linework.
 - **[Civitai](https://civitai.com/)** – For fostering a vibrant community of prompt artists, checkpoint creators, and open model sharing.
 - **[Omarchy Linux & Hyprland](https://github.com/hyprwm/Hyprland)** – For providing the premier Wayland tiling desktop ecosystem.
 
