@@ -523,8 +523,11 @@ Panel {
     metaProc.running = true;
   }
 
-  function restoreFromHistory(path, prompt, seed, ratio) {
+  function restoreFromHistory(path, prompt, seed, ratio, negative) {
     if (prompt) promptText = prompt;
+    if (negative !== undefined && negative !== null && negative !== "") {
+      negativePromptText = negative;
+    }
     if (seed && seed > 0) {
       seedVal = seed;
       seedLocked = true;

@@ -106,11 +106,26 @@ Item {
               }
 
               Text {
-                text: (modelData.timestamp || "") + " | " + (modelData.size_mb || "0") + " MB"
+                visible: !!modelData.negative_prompt && modelData.negative_prompt.trim() !== ""
+                text: "// NEG: " + (modelData.negative_prompt || "")
+                textFormat: Text.PlainText
+                font.family: Style.font.family
+                font.pixelSize: Math.max(10, Style.font.caption * 0.9)
+                color: Qt.darker(Color.foreground, 1.8)
+                elide: Text.ElideRight
+                maximumLineCount: 1
+                Layout.preferredWidth: 0
+                Layout.fillWidth: true
+              }
+
+              Text {
+                text: (modelData.size_mb ? (modelData.size_mb + " MB") : "")
+                      + (modelData.seed && modelData.seed > 0 ? (" // SEED " + modelData.seed) : "")
+                      + (modelData.steps ? (" // " + modelData.steps + " STEPS") : "")
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
-                color: Qt.darker(Color.foreground, 1.8)
+                color: Qt.darker(Color.foreground, 2.0)
                 Layout.fillWidth: true
               }
             }
@@ -130,7 +145,7 @@ Item {
                 Layout.fillWidth: true
                 onClicked: {
                   if (panelRoot) {
-                    panelRoot.restoreFromHistory(modelData.path, modelData.prompt, modelData.seed, modelData.ratio);
+                    panelRoot.restoreFromHistory(modelData.path, modelData.prompt, modelData.seed, modelData.ratio, modelData.negative_prompt);
                     panelRoot.currentView = "studio";
                   }
                 }

@@ -508,29 +508,104 @@ fn read_png_chunks<P: AsRef<Path>>(path: P) -> HashMap<String, String> {
     map
 }
 
-fn parse_comfy_prompt(raw_json: &str) -> Option<String> {
-    if let Ok(v) = serde_json::from_str::<serde_json::Value>(raw_json) {
-        if let Some(obj) = v.as_object() {
-            for (_node_id, node_val) in obj {
-                let class_type = node_val.get("class_type").and_then(|c| c.as_str()).unwrap_or("");
-                if class_type.contains("CLIPTextEncode") || class_type.contains("TextEncode") {
-                    if let Some(inputs) = node_val.get("inputs") {
-                        if let Some(text) = inputs.get("text").and_then(|t| t.as_str()) {
-                            if !text.is_empty() {
-                                return Some(text.to_string());
-                            }
-                        }
-                        if let Some(prompt) = inputs.get("prompt").and_then(|t| t.as_str()) {
-                            if !prompt.is_empty() {
-                                return Some(prompt.to_string());
-                            }
-                        }
-                    }
+#[derive(Debug, Default, Clone, PartialEq)]
+struct ComfyExtractedMetadata {
+    prompt: Option<String>,
+    negative_prompt: Option<String>,
+    seed: Option<i64>,
+    steps: Option<u32>,
+    cfg: Option<f64>,
+}
+
+fn parse_comfy_metadata(raw_json: &str) -> ComfyExtractedMetadata {
+    let mut meta = ComfyExtractedMetadata::default();
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(raw_json) else {
+        return meta;
+    };
+    let Some(obj) = v.as_object() else {
+        return meta;
+    };
+
+    // First pass: identify negative node id if separate CLIPTextEncode nodes exist
+    let mut negative_node_id: Option<String> = None;
+    for (_node_id, node_val) in obj {
+        if let Some(inputs) = node_val.get("inputs") {
+            if let Some(neg_link) = inputs.get("negative").and_then(|n| n.as_array()) {
+                if let Some(target_id) = neg_link.first().and_then(|id| id.as_str()) {
+                    negative_node_id = Some(target_id.to_string());
                 }
             }
         }
     }
-    None
+
+    for (node_id, node_val) in obj {
+        let class_type = node_val.get("class_type").and_then(|c| c.as_str()).unwrap_or("");
+        let inputs = match node_val.get("inputs") {
+            Some(i) => i,
+            None => continue,
+        };
+
+        // 1. Text prompts (TextEncodeQwenImage21 or standard CLIPTextEncode)
+        if class_type.contains("TextEncode") || class_type.contains("CLIPText") {
+            if let Some(p) = inputs.get("prompt").and_then(|t| t.as_str()) {
+                if !p.is_empty() && meta.prompt.is_none() {
+                    meta.prompt = Some(p.to_string());
+                }
+            }
+            if let Some(np) = inputs.get("negative_prompt").and_then(|t| t.as_str()) {
+                if !np.is_empty() && meta.negative_prompt.is_none() {
+                    meta.negative_prompt = Some(np.to_string());
+                }
+            }
+
+            if let Some(t) = inputs.get("text").and_then(|t| t.as_str()) {
+                if !t.is_empty() {
+                    let is_neg_node = negative_node_id.as_deref() == Some(node_id.as_str())
+                        || class_type.to_lowercase().contains("negative");
+                    if is_neg_node {
+                        if meta.negative_prompt.is_none() {
+                            meta.negative_prompt = Some(t.to_string());
+                        }
+                    } else if meta.prompt.is_none() {
+                        meta.prompt = Some(t.to_string());
+                    }
+                }
+            }
+        }
+
+        // 2. Sampler / Seed / Steps / CFG
+        if class_type.contains("KSampler") || class_type.contains("Sampler") || class_type.contains("Noise") {
+            if meta.seed.is_none() {
+                if let Some(s) = inputs.get("seed").and_then(|s| s.as_i64()) {
+                    meta.seed = Some(s);
+                } else if let Some(s) = inputs.get("noise_seed").and_then(|s| s.as_i64()) {
+                    meta.seed = Some(s);
+                }
+            }
+            if meta.steps.is_none() {
+                if let Some(st) = inputs.get("steps").and_then(|s| s.as_u64()) {
+                    meta.steps = Some(st as u32);
+                }
+            }
+            if meta.cfg.is_none() {
+                if let Some(c) = inputs.get("cfg").and_then(|c| c.as_f64()) {
+                    meta.cfg = Some(c);
+                }
+            }
+        }
+
+        // 3. Fallback for Turbo custom schedules (e.g. ViggleTurboSigmas has comma-separated steps)
+        if class_type.contains("TurboSigmas") && meta.steps.is_none() {
+            if let Some(nodes_str) = inputs.get("nodes").and_then(|n| n.as_str()) {
+                let count = nodes_str.split(',').filter(|s| !s.trim().is_empty()).count();
+                if count > 0 {
+                    meta.steps = Some(count as u32);
+                }
+            }
+        }
+    }
+
+    meta
 }
 
 fn detect_qwen_model() -> String {
@@ -2118,17 +2193,63 @@ fn cmd_read_meta(image_path: &str) {
     let (width, height) = image::image_dimensions(p).unwrap_or((1024, 1024));
     let chunks = read_png_chunks(p);
 
-    let mut prompt = chunks.get("prompt").cloned().unwrap_or_default();
-    if prompt.starts_with('{') {
-        if let Some(extracted) = parse_comfy_prompt(&prompt) {
-            prompt = extracted;
+    let raw_prompt = chunks.get("prompt").cloned().unwrap_or_default();
+    let mut comfy_meta = if raw_prompt.starts_with('{') {
+        parse_comfy_metadata(&raw_prompt)
+    } else {
+        ComfyExtractedMetadata::default()
+    };
+
+    // Fallback to raw base image if this is an upscale derivative
+    if comfy_meta.prompt.is_none() {
+        let raw_src = resolve_raw_image_path(image_path);
+        if raw_src != image_path {
+            let src_p = Path::new(&raw_src);
+            if src_p.exists() {
+                let src_chunks = read_png_chunks(src_p);
+                if let Some(src_prompt) = src_chunks.get("prompt") {
+                    if src_prompt.starts_with('{') {
+                        comfy_meta = parse_comfy_metadata(src_prompt);
+                    } else {
+                        comfy_meta.prompt = Some(src_prompt.clone());
+                    }
+                }
+                if comfy_meta.negative_prompt.is_none() {
+                    comfy_meta.negative_prompt = src_chunks.get("negative_prompt").cloned();
+                }
+                if comfy_meta.seed.is_none() {
+                    comfy_meta.seed = src_chunks.get("seed").and_then(|s| s.parse::<i64>().ok());
+                }
+                if comfy_meta.steps.is_none() {
+                    comfy_meta.steps = src_chunks.get("steps").and_then(|s| s.parse::<u32>().ok());
+                }
+                if comfy_meta.cfg.is_none() {
+                    comfy_meta.cfg = src_chunks.get("cfg").and_then(|c| c.parse::<f64>().ok());
+                }
+            }
         }
     }
 
-    let negative = chunks.get("negative_prompt").cloned().unwrap_or_default();
-    let seed = chunks.get("seed").and_then(|s| s.parse::<i64>().ok()).unwrap_or(-1);
-    let steps = chunks.get("steps").and_then(|s| s.parse::<u32>().ok()).unwrap_or(25);
-    let cfg = chunks.get("cfg").and_then(|c| c.parse::<f64>().ok()).unwrap_or(4.0);
+    let prompt = comfy_meta.prompt.or_else(|| {
+        if !raw_prompt.starts_with('{') && !raw_prompt.is_empty() {
+            Some(raw_prompt)
+        } else {
+            None
+        }
+    }).unwrap_or_default();
+
+    let negative = comfy_meta.negative_prompt
+        .or_else(|| chunks.get("negative_prompt").cloned())
+        .unwrap_or_default();
+    let seed = comfy_meta.seed
+        .or_else(|| chunks.get("seed").and_then(|s| s.parse::<i64>().ok()))
+        .unwrap_or(-1);
+    let steps = comfy_meta.steps
+        .or_else(|| chunks.get("steps").and_then(|s| s.parse::<u32>().ok()))
+        .unwrap_or(25);
+    let cfg = comfy_meta.cfg
+        .or_else(|| chunks.get("cfg").and_then(|c| c.parse::<f64>().ok()))
+        .unwrap_or(4.0);
     let ratio = chunks.get("ratio").cloned().unwrap_or_else(|| {
         if height == 0 {
             return "1:1".to_string();
@@ -2185,11 +2306,46 @@ fn cmd_history(limit: usize) {
             let (width, height) = image::image_dimensions(&p).unwrap_or((1024, 1024));
             let chunks = read_png_chunks(&p);
 
-            let mut prompt = chunks.get("prompt").cloned().unwrap_or_default();
-            if prompt.starts_with('{') {
-                if let Some(extracted) = parse_comfy_prompt(&prompt) {
-                    prompt = extracted;
+            let raw_prompt = chunks.get("prompt").cloned().unwrap_or_default();
+            let mut comfy_meta = if raw_prompt.starts_with('{') {
+                parse_comfy_metadata(&raw_prompt)
+            } else {
+                ComfyExtractedMetadata::default()
+            };
+
+            // Fallback to raw base image if this is an upscale derivative
+            if comfy_meta.prompt.is_none() {
+                let raw_src = resolve_raw_image_path(&p.to_string_lossy());
+                if raw_src != p.to_string_lossy() {
+                    let src_p = Path::new(&raw_src);
+                    if src_p.exists() {
+                        let src_chunks = read_png_chunks(src_p);
+                        if let Some(src_prompt) = src_chunks.get("prompt") {
+                            if src_prompt.starts_with('{') {
+                                comfy_meta = parse_comfy_metadata(src_prompt);
+                            } else {
+                                comfy_meta.prompt = Some(src_prompt.clone());
+                            }
+                        }
+                        if comfy_meta.negative_prompt.is_none() {
+                            comfy_meta.negative_prompt = src_chunks.get("negative_prompt").cloned();
+                        }
+                        if comfy_meta.seed.is_none() {
+                            comfy_meta.seed = src_chunks.get("seed").and_then(|s| s.parse::<i64>().ok());
+                        }
+                        if comfy_meta.steps.is_none() {
+                            comfy_meta.steps = src_chunks.get("steps").and_then(|s| s.parse::<u32>().ok());
+                        }
+                        if comfy_meta.cfg.is_none() {
+                            comfy_meta.cfg = src_chunks.get("cfg").and_then(|c| c.parse::<f64>().ok());
+                        }
+                    }
                 }
+            }
+
+            let mut prompt = comfy_meta.prompt.unwrap_or_default();
+            if prompt.is_empty() && !raw_prompt.starts_with('{') {
+                prompt = raw_prompt;
             }
             if prompt.is_empty() {
                 prompt = filename
@@ -2204,9 +2360,18 @@ fn cmd_history(limit: usize) {
                 }
             }
 
-            let negative = chunks.get("negative_prompt").cloned().unwrap_or_default();
-            let seed = chunks.get("seed").and_then(|s| s.parse::<i64>().ok()).unwrap_or(-1);
-            let steps = chunks.get("steps").and_then(|s| s.parse::<u32>().ok()).unwrap_or(25);
+            let negative = comfy_meta.negative_prompt
+                .or_else(|| chunks.get("negative_prompt").cloned())
+                .unwrap_or_default();
+            let seed = comfy_meta.seed
+                .or_else(|| chunks.get("seed").and_then(|s| s.parse::<i64>().ok()))
+                .unwrap_or(-1);
+            let steps = comfy_meta.steps
+                .or_else(|| chunks.get("steps").and_then(|s| s.parse::<u32>().ok()))
+                .unwrap_or(25);
+            let cfg = comfy_meta.cfg
+                .or_else(|| chunks.get("cfg").and_then(|c| c.parse::<f64>().ok()))
+                .unwrap_or(4.0);
             let ratio = chunks.get("ratio").cloned().unwrap_or_else(|| "1:1".to_string());
 
             items.push(serde_json::json!({
@@ -2219,6 +2384,7 @@ fn cmd_history(limit: usize) {
                 "negative_prompt": negative,
                 "seed": seed,
                 "steps": steps,
+                "cfg": cfg,
                 "ratio": ratio,
                 "size_mb": (size_mb * 100.0).round() / 100.0,
             }));
@@ -2872,7 +3038,7 @@ fn main() {
             let q = tag_words.join(" ");
             cmd_tags(&q, limit);
         }
-        "read-meta" => {
+        "read-meta" | "metadata" => {
             if args.len() >= 3 {
                 cmd_read_meta(&args[2]);
             } else {
@@ -3191,5 +3357,48 @@ mod tests {
 
         let object_prompt = "futuristic neon city street at night, rain";
         assert!(!detect_human_subject(object_prompt));
+    }
+
+    #[test]
+    fn test_parse_comfy_metadata_extraction() {
+        let qwen_graph = r#"{
+            "4": {
+                "class_type": "TextEncodeQwenImage21",
+                "inputs": {
+                    "prompt": "cyberpunk city street",
+                    "negative_prompt": "blurry, low quality, deformed"
+                }
+            },
+            "6": {
+                "class_type": "KSampler",
+                "inputs": {
+                    "seed": 908563111,
+                    "steps": 35,
+                    "cfg": 4.5
+                }
+            }
+        }"#;
+
+        let meta = parse_comfy_metadata(qwen_graph);
+        assert_eq!(meta.prompt.as_deref(), Some("cyberpunk city street"));
+        assert_eq!(meta.negative_prompt.as_deref(), Some("blurry, low quality, deformed"));
+        assert_eq!(meta.seed, Some(908563111));
+        assert_eq!(meta.steps, Some(35));
+        assert_eq!(meta.cfg, Some(4.5));
+    }
+
+    #[test]
+    fn test_resolve_raw_image_path() {
+        let dir = std::env::temp_dir();
+        let base = dir.join("qis_test_raw_image_base.png");
+        let upscaled = dir.join("qis_test_raw_image_base_4x_esrgan_6144x3776.png");
+        let _ = fs::write(&base, b"dummy");
+        let _ = fs::write(&upscaled, b"dummy");
+
+        let resolved = resolve_raw_image_path(&upscaled.to_string_lossy());
+        assert_eq!(resolved, base.to_string_lossy().to_string());
+
+        let _ = fs::remove_file(&base);
+        let _ = fs::remove_file(&upscaled);
     }
 }
