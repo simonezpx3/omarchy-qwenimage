@@ -250,8 +250,8 @@ Item {
         "en": "PROMPTS: Browse and search thousands of prompts from CivitAI, Lexica, PromptHero, OpenArt, and Hugging Face."
       },
       "help_turbo_lora": {
-        "cs": "TURBO: 6kroková DMD akcelerace (~5s). Anatomical Guard: Aktivuje plný negativní prompt s anatomickou ochranou (bad anatomy, extra limbs, extra fingers, deformed hands...).",
-        "en": "TURBO: 6-step DMD acceleration (~5s). Anatomical Guard: Activates full negative prompt with anatomical protection (bad anatomy, extra limbs, extra fingers, deformed hands...)."
+        "cs": "TURBO (5s): <font color='#ffd166'>VAROVÁNÍ: Při lidských tělech a anatomii doporučujeme TURBO vypnout.</font>",
+        "en": "TURBO (5s): <font color='#ffd166'>WARNING: For human bodies and anatomy, turning TURBO off is recommended.</font>"
       },
       "help_anime_lora": {
         "cs": "ANIME LORA: Zapne specializovaný styl pro anime a ilustrace (SD_Tutorial).",
@@ -1431,7 +1431,11 @@ Item {
       Layout.fillWidth: true
       Layout.preferredHeight: Style.space(26)
       color: Qt.darker(Color.background, 1.2)
-      border.color: root.activeHelpText !== "" ? Qt.darker(Color.accent, 1.8) : Color.menu.border
+      border.color: root.activeHelpText !== ""
+        ? (root.activeHelpText.indexOf("VAROVÁNÍ") !== -1 || root.activeHelpText.indexOf("WARNING") !== -1
+            ? Qt.rgba(1.0, 0.82, 0.40, 0.55)
+            : Qt.darker(Color.accent, 1.8))
+        : Color.menu.border
       border.width: 1
       radius: Style.cornerRadius
 
@@ -1442,14 +1446,20 @@ Item {
         spacing: Style.spacing.xs
 
         Text {
-          text: root.activeHelpText !== "" ? "󰛩" : "󰌌"
+          text: "//"
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
-          color: root.activeHelpText !== "" ? Color.accent : Qt.darker(Color.foreground, 1.6)
+          font.bold: true
+          color: root.activeHelpText !== ""
+            ? (root.activeHelpText.indexOf("VAROVÁNÍ") !== -1 || root.activeHelpText.indexOf("WARNING") !== -1
+                ? "#ffd166"
+                : Color.accent)
+            : Qt.darker(Color.foreground, 1.6)
         }
 
         Text {
           Layout.fillWidth: true
+          textFormat: Text.StyledText
           text: root.activeHelpText !== "" ? root.activeHelpText : root.tr("default_tip")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
