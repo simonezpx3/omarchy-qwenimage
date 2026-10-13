@@ -1053,8 +1053,9 @@ fn cmd_wallpaper(input_path: &str) {
         return;
     }
 
+    // 1. Primary: omarchy theme bg set <path>
     let res = Command::new("omarchy")
-        .args(["wallpaper", "set", input_path])
+        .args(["theme", "bg", "set", input_path])
         .output();
 
     if let Ok(o) = res {
@@ -1067,14 +1068,72 @@ fn cmd_wallpaper(input_path: &str) {
         }
     }
 
-    let res2 = Command::new("swww")
+    // 2. Direct binary fallback: omarchy-theme-bg-set <path>
+    let res_bin = Command::new("omarchy-theme-bg-set")
+        .arg(input_path)
+        .output();
+
+    if let Ok(o) = res_bin {
+        if o.status.success() {
+            println!(
+                "{}",
+                serde_json::json!({"status": "ok", "message": "Wallpaper updated successfully via Omarchy script"})
+            );
+            return;
+        }
+    }
+
+    // 3. Fallback: direct atomic symlink + omarchy-shell background set IPC
+    if let Ok(canonical) = p.canonicalize() {
+        let home = get_home();
+        let current_bg_link = home.join(".local/state/omarchy/current/background");
+        if let Some(parent) = current_bg_link.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        let _ = fs::remove_file(&current_bg_link);
+        #[cfg(unix)]
+        let symlink_res = std::os::unix::fs::symlink(&canonical, &current_bg_link);
+        #[cfg(not(unix))]
+        let symlink_res: Result<(), std::io::Error> = Err(std::io::Error::new(std::io::ErrorKind::Other, "non-unix"));
+
+        if symlink_res.is_ok() {
+            let _ = Command::new("omarchy-shell")
+                .args(["-q", "background", "set", canonical.to_str().unwrap_or(input_path)])
+                .output();
+            println!(
+                "{}",
+                serde_json::json!({"status": "ok", "message": "Wallpaper updated via Omarchy shell IPC"})
+            );
+            return;
+        }
+    }
+
+    // 4. Fallback for generic Wayland compositors (swww, hyprpaper)
+    let res_swww = Command::new("swww")
         .args(["img", input_path, "--transition-type", "fade", "--transition-duration", "1"])
         .output();
 
-    let success = res2.map(|o| o.status.success()).unwrap_or(false);
+    if let Ok(o) = res_swww {
+        if o.status.success() {
+            println!(
+                "{}",
+                serde_json::json!({"status": "ok", "message": "Wallpaper fallback applied via swww"})
+            );
+            return;
+        }
+    }
+
+    let res_hypr = Command::new("hyprctl")
+        .args(["hyprpaper", "wallpaper", &format!(",{}", input_path)])
+        .output();
+
+    let success = res_hypr.map(|o| o.status.success()).unwrap_or(false);
     println!(
         "{}",
-        serde_json::json!({"status": if success { "ok" } else { "error" }, "message": "Wallpaper fallback applied"})
+        serde_json::json!({
+            "status": if success { "ok" } else { "error" },
+            "message": if success { "Wallpaper applied via hyprpaper" } else { "Failed to set wallpaper across all backends" }
+        })
     );
 }
 

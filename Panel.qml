@@ -675,7 +675,20 @@ Panel {
     }
   }
 
-  Process { id: wallProc }
+  Process {
+    id: wallProc
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var res = JSON.parse(text || "{}");
+          if (res.status === "ok") {
+            root.generationTelemetry = "WALLPAPER SET";
+          }
+        } catch (e) {}
+      }
+    }
+  }
   Process { id: clipCopyProc }
   Process { id: openExternalProc }
 
