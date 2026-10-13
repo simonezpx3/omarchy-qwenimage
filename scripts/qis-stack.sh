@@ -243,6 +243,35 @@ check_status() {
     else
         echo -e "  [✖] Anime Consistency: ${RED}Chybí (${anime_lora})${RESET}"
     fi
+
+    echo -e "\n${BOLD}Neural AI Upscalers (4X Super-Resolution):${RESET}"
+    local esrgan_model="${COMFY_DIR}/models/upscale_models/RealESRGAN_x4plus.safetensors"
+    local ultrasharp_model="${COMFY_DIR}/models/upscale_models/4x-UltraSharp.safetensors"
+    local animesharp_model="${COMFY_DIR}/models/upscale_models/4x-AnimeSharp.safetensors"
+
+    if [[ -f "$esrgan_model" ]]; then
+        local sz_esrgan
+        sz_esrgan=$(du -h "$esrgan_model" | awk '{print $1}')
+        echo -e "  [✔] 4X ESRGAN (Denoise): ${GREEN}RealESRGAN_x4plus.safetensors (${sz_esrgan})${RESET}"
+    else
+        echo -e "  [✖] 4X ESRGAN (Denoise): ${RED}Chybí (${esrgan_model})${RESET}"
+    fi
+
+    if [[ -f "$ultrasharp_model" ]]; then
+        local sz_ultra
+        sz_ultra=$(du -h "$ultrasharp_model" | awk '{print $1}')
+        echo -e "  [✔] 4X ULTRA (Textures): ${GREEN}4x-UltraSharp.safetensors (${sz_ultra})${RESET}"
+    else
+        echo -e "  [✖] 4X ULTRA (Textures): ${RED}Chybí (${ultrasharp_model})${RESET}"
+    fi
+
+    if [[ -f "$animesharp_model" ]]; then
+        local sz_anime_up
+        sz_anime_up=$(du -h "$animesharp_model" | awk '{print $1}')
+        echo -e "  [✔] 4X ANIME (Contours): ${GREEN}4x-AnimeSharp.safetensors (${sz_anime_up})${RESET}"
+    else
+        echo -e "  [✖] 4X ANIME (Contours): ${RED}Chybí (${animesharp_model})${RESET}"
+    fi
 }
 
 # ---------------------------------------------------------
