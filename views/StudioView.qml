@@ -916,6 +916,7 @@ Item {
                 anchors.fill: parent
                 anchors.margins: Style.spacing.xxs
                 fillMode: Image.PreserveAspectFit
+                sourceSize: Qt.size(512, 0)
                 source: panelRoot && panelRoot.referencePath !== "" ? "file://" + panelRoot.referencePath + (panelRoot.referenceRevision ? "?v=" + panelRoot.referenceRevision : "") : ""
                 cache: false
                 asynchronous: true
@@ -1226,6 +1227,7 @@ Item {
                 anchors.fill: parent
                 anchors.margins: Style.spacing.xxs
                 fillMode: Image.PreserveAspectFit
+                sourceSize: Qt.size(Math.min(Math.max(width * (Screen.devicePixelRatio > 0 ? Screen.devicePixelRatio : 1.0), 1280), 2560), 0)
                 source: panelRoot && panelRoot.generatedPath !== "" ? "file://" + panelRoot.generatedPath : ""
                 cache: false
                 asynchronous: true
@@ -1238,6 +1240,7 @@ Item {
                 anchors.fill: parent
                 anchors.margins: Style.spacing.xxs
                 fillMode: Image.PreserveAspectFit
+                sourceSize: Qt.size(1280, 0)
                 source: (panelRoot && panelRoot.isGenerating && panelRoot.livePreviewPath !== "")
                   ? ("file://" + panelRoot.livePreviewPath)
                   : ""

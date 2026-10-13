@@ -48,6 +48,23 @@ fn get_temp_dir() -> PathBuf {
         use std::os::unix::fs::PermissionsExt;
         let _ = fs::set_permissions(&p, fs::Permissions::from_mode(0o700));
     }
+    // Automatický úklid dočasných souborů starších než 24 hodin (1440 min)
+    if let Ok(entries) = fs::read_dir(&p) {
+        let cutoff = SystemTime::now()
+            .checked_sub(std::time::Duration::from_secs(86400))
+            .unwrap_or(SystemTime::UNIX_EPOCH);
+        for entry in entries.flatten() {
+            if let Ok(meta) = entry.metadata() {
+                if meta.is_file() {
+                    if let Ok(modified) = meta.modified() {
+                        if modified < cutoff {
+                            let _ = fs::remove_file(entry.path());
+                        }
+                    }
+                }
+            }
+        }
+    }
     p
 }
 

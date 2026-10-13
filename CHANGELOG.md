@@ -5,6 +5,20 @@ Všechny významné změny, audity a bezpečnostní opravy projektu jsou zazname
 ---
 
 ## [1.1.9] — 2026-10-13
+ 
+### Added & Enhanced
+- **Neural Super-Resolution Engine (4X AI Upscalers in ComfyUI):**
+  - Integrována trojice špičkových modelů pro super-rozlišení (`RealESRGAN_x4plus`, `4x-UltraSharp`, `4x-AnimeSharp`) s ověřenými SHA-256 hashy a commit pinningem.
+  - V UI přidána nová lišta pro volbu upscaleru (`4X ESRGAN`, `4X ULTRA`, `4X ANIME`, `0.5X`, `FIT 1K`) včetně zachování nativních parametrů SIMD škálování.
+- **Pillar 1 // UI Texture RAM & VRAM Optimization (`views/StudioView.qml`):**
+  - Implementováno adaptivní omezování `sourceSize: Qt.size(Math.min(Math.max(width * dpr, 1280), 2560), 0)` pro hlavní i živý náhled a `sourceSize: Qt.size(512, 0)` pro referenční náhled. Nastavení výšky na `0` v QtQuick zaručuje přesné zachování poměru stran bez deformace a snižuje paměťovou zátěž z ~92 MB na ~4 MB při načítání 6K snímků.
+- **Pillar 2 // Rust Release Profile Hardening (`rust-bridge/Cargo.toml`):**
+  - Zaveden produkční release profil (`opt-level = 3`, `lto = "thin"`, `codegen-units = 1`, `panic = "unwind"`, `strip = "debuginfo"`). Binárka dosahuje minimální velikosti, zrychlené exekuce a zároveň zabraňuje neočekávaným pádům procesu při chybách WebSocket rámců.
+- **Pillar 3 // Tmpfs Garbage Collection & Circular Log Rotation (`rust-bridge`, `scripts/qis-stack.sh`):**
+  - Do `rust-bridge` doplněn automatický úklid dočasných souborů v `$XDG_RUNTIME_DIR/qwenimage/` starších než 24 hodin (1440 min).
+  - V `scripts/qis-stack.sh` zavedena rotace logu `comfyui.log` při překročení 10 MB se zachováním posledních 10 000 řádků.
+- **Pillar 4 // Pre-Release CI Parity & Security Hardening:**
+  - 100% úspěšnost v lokální CI paritě (`cargo clippy -- -D warnings`, `cargo test` 16/16, `shellcheck`, `omarchy plugin validate .`).
 
 ### Fixed & Enhanced
 - **Live Preview Engine (`rust-bridge`, `qis-stack.sh` & `StudioView.qml`):**

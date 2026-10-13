@@ -252,25 +252,25 @@ check_status() {
     if [[ -f "$esrgan_model" ]]; then
         local sz_esrgan
         sz_esrgan=$(du -h "$esrgan_model" | awk '{print $1}')
-        echo -e "  [✔] 4X ESRGAN (Denoise): ${GREEN}RealESRGAN_x4plus.safetensors (${sz_esrgan})${RESET}"
+        echo -e "  · OK · 4X ESRGAN (Denoise): ${GREEN}RealESRGAN_x4plus.safetensors (${sz_esrgan})${RESET}"
     else
-        echo -e "  [✖] 4X ESRGAN (Denoise): ${RED}Chybí (${esrgan_model})${RESET}"
+        echo -e "  · ERR · 4X ESRGAN (Denoise): ${RED}Chybí (${esrgan_model})${RESET}"
     fi
 
     if [[ -f "$ultrasharp_model" ]]; then
         local sz_ultra
         sz_ultra=$(du -h "$ultrasharp_model" | awk '{print $1}')
-        echo -e "  [✔] 4X ULTRA (Textures): ${GREEN}4x-UltraSharp.safetensors (${sz_ultra})${RESET}"
+        echo -e "  · OK · 4X ULTRA (Textures): ${GREEN}4x-UltraSharp.safetensors (${sz_ultra})${RESET}"
     else
-        echo -e "  [✖] 4X ULTRA (Textures): ${RED}Chybí (${ultrasharp_model})${RESET}"
+        echo -e "  · ERR · 4X ULTRA (Textures): ${RED}Chybí (${ultrasharp_model})${RESET}"
     fi
 
     if [[ -f "$animesharp_model" ]]; then
         local sz_anime_up
         sz_anime_up=$(du -h "$animesharp_model" | awk '{print $1}')
-        echo -e "  [✔] 4X ANIME (Contours): ${GREEN}4x-AnimeSharp.safetensors (${sz_anime_up})${RESET}"
+        echo -e "  · OK · 4X ANIME (Contours): ${GREEN}4x-AnimeSharp.safetensors (${sz_anime_up})${RESET}"
     else
-        echo -e "  [✖] 4X ANIME (Contours): ${RED}Chybí (${animesharp_model})${RESET}"
+        echo -e "  · ERR · 4X ANIME (Contours): ${RED}Chybí (${animesharp_model})${RESET}"
     fi
 }
 
@@ -1067,6 +1067,19 @@ start_comfyui() {
 
     local log_file="${COMFY_DIR}/comfyui.log"
     local pid_file="${COMFY_DIR}/comfyui.pid"
+
+    # Rotace logu ComfyUI při překročení 10 MB (zachování posledních 10 000 řádků)
+    if [[ -f "$log_file" ]] && ! [[ -L "$log_file" ]]; then
+        local log_sz
+        log_sz=$(stat -c%s "$log_file" 2>/dev/null || echo 0)
+        if (( log_sz > 10485760 )); then
+            local tmp_log
+            tmp_log=$(mktemp "${COMFY_DIR}/comfyui.log.tmp.XXXXXX")
+            tail -n 10000 "$log_file" > "$tmp_log" 2>/dev/null || true
+            chmod 0600 "$tmp_log"
+            mv -f "$tmp_log" "$log_file"
+        fi
+    fi
 
     if (( bg == 1 )); then
         nohup "$py_bin" "${COMFY_DIR}/main.py" "${args[@]}" > "$log_file" 2>&1 &

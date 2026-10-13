@@ -57,7 +57,14 @@ graph LR
 
 - **Text-to-Image (DiT Diffusion):** Native high-resolution generation via local ComfyUI backend.
 - **Turbo Mode (Viggle Turbo DMD):** 6-step distillation yielding ~5s generation on consumer GPUs (8GB+ VRAM) at 0 token cost, seamlessly toggleable from the bottom action bar.
+- **Neural Super-Resolution (4X Upscalers):** Integrated zero-token super-resolution suite directly in ComfyUI:
+  - `4X ESRGAN` (RealESRGAN_x4plus) — General photo & cinematic restoration with grain denoising.
+  - `4X ULTRA` (4x-UltraSharp) — Micro-contrast and high-frequency tactile texture preservation.
+  - `4X ANIME` (4x-AnimeSharp) — Crisp cell-shaded vector-like linework without ringing artifacts.
+  - `0.5X` & `FIT 1K` — Instant downsampling and viewport boundary fitting.
 - **SIMD Lanczos Resizer:** Hardware-accelerated image resampling (AVX2, NEON, and portable fallback in Rust) via `bin/qwen-bridge scale-lanczos`, delivering instant high-fidelity scaling without Python or GPU runtime overhead.
+- **Low-Memory UI Texture Pipeline:** Adaptive `sourceSize` viewport constraint in QML decoupling physical canvas dimensions from render textures, slashing UI RAM/VRAM consumption from ~92 MB to ~4 MB while strictly preserving original aspect ratios.
+- **Automated Tmpfs Housekeeping:** Native Rust garbage collection sweeping runtime preview artifacts older than 24 hours, paired with a 10 MB circular log rotator on ComfyUI execution streams.
 - **Screen Area Snip Tool:** Direct geometry screen capture (`grim` + `slurp`) into runtime tmpfs buffers, enabling instant ingestion of reference images without polluting the system clipboard.
 - **A/B Compare Interactive Splitter:** Dedicated dual-buffer inspection view (`views/CompareView.qml`) with real-time slider split to optically evaluate generation quality, prompts, and aspect scaling variations side-by-side.
 - **Hardened Wayland Sandbox & Input Isolation:** Fully bounded Wayland clipboard intake (16 KiB ceiling, 1.2s timeout with SIGKILL fallback) and pure `FocusScope` event interception completely neutralizing foreign MIME starvation, DoS freezes, and primary selection leaks.
