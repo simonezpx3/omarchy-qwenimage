@@ -205,13 +205,13 @@ pub fn ensure_comfyui_running() -> bool {
                 .unwrap_or_else(|| "A".to_string())
                 .to_uppercase();
 
-            let mut py_args = vec!["--listen", "127.0.0.1", "--port", "8188"];
+            let mut py_args = vec!["--listen", "127.0.0.1", "--port", "8188", "--preview-method", "auto"];
             if tier == "B" {
-                py_args.push("--lowvram");
+                py_args.extend_from_slice(&["--lowvram", "--enable-dynamic-vram"]);
             } else if tier == "C" {
                 py_args.push("--cpu");
             } else {
-                py_args.extend_from_slice(&["--reserve-vram", "1.5", "--async-offload", "2"]);
+                py_args.extend_from_slice(&["--reserve-vram", "1.2", "--async-offload", "1", "--enable-dynamic-vram", "--fp8_e4m3fn-text-enc"]);
             }
 
             for py in &py_candidates {
@@ -299,7 +299,7 @@ pub fn free_comfyui_vram(force_unload: bool) -> bool {
     false
 }
 
-fn get_preview_file_path() -> PathBuf {
+fn get_preview_file_path(tick: u64) -> PathBuf {
     let base = std::env::var("XDG_RUNTIME_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from(format!("/run/user/{}", unsafe { libc::getuid() })));
@@ -314,13 +314,13 @@ fn get_preview_file_path() -> PathBuf {
         use std::os::unix::fs::PermissionsExt;
         let _ = fs::set_permissions(&dir, fs::Permissions::from_mode(0o700));
     }
-    dir.join("qis_live_preview.jpg")
+    dir.join(format!("qis_live_preview_{}.jpg", tick % 2))
 }
 
 pub fn calculate_dimensions(
     ratio: &str,
     res_mode: &str,
-    is_human: bool,
+    _is_human: bool,
     input_image: Option<&str>,
 ) -> (u32, u32) {
     let hardware_max = 1536u32; // Tier B: RTX 3070 8GB
@@ -360,18 +360,13 @@ pub fn calculate_dimensions(
         _ => (1024, 1024),
     };
 
-    let mut mult = match res_mode.to_lowercase().as_str() {
+    let mult = match res_mode.to_lowercase().as_str() {
         "draft" | "preview" | "fast" => 0.5f32,
         "high" | "hi" => 1.25f32,
         "ultra" | "2k" | "2048" => 1.6f32,
         "max" | "4k" | "2560" => 2.0f32,
         _ => 1.0f32,
     };
-
-    // Anatomical Safety Guard: draft mode under 768px degrades fine facial anatomy
-    if is_human && mult < 1.0 {
-        mult = 1.0;
-    }
 
     // 16-pixel VAE patch alignment
     let mut w = (((base_w as f32 * mult) as u32) / 16) * 16;
@@ -606,12 +601,61 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
         }
     }
 
+    // VRAM Guard (Council standard): Pro rozlišení nad 1024px automaticky přepnout standardní
+    // VAEDecode na VAEDecodeTiled (dlaždice 512px, překryv 64px, temporal 64/8) pro zamezení špiček VRAM
+    // a eliminaci CUDA OOM pádů na 8GB kartách.
+    let needs_tiling = (width * height > 1024 * 1024) || width > 1024 || height > 1024;
+    let vae_node_key = graph.as_object()
+        .and_then(|obj| {
+            obj.iter().find(|(_, node)| {
+                let ct = node.get("class_type").and_then(|v| v.as_str()).unwrap_or("");
+                ct == "VAEDecode" || ct == "VAEDecodeTiled"
+            }).map(|(k, _)| k.clone())
+        })
+        .unwrap_or_else(|| "7".to_string());
+
+    if let Some(node) = graph.get_mut(&vae_node_key) {
+        let samples_ref = node.get("inputs")
+            .and_then(|i| i.get("samples"))
+            .cloned()
+            .unwrap_or_else(|| json!(["6", 0]));
+
+        let vae_ref = node.get("inputs")
+            .and_then(|i| i.get("vae"))
+            .cloned()
+            .unwrap_or_else(|| json!(["3", 0]));
+
+        if needs_tiling {
+            *node = json!({
+                "class_type": "VAEDecodeTiled",
+                "inputs": {
+                    "samples": samples_ref,
+                    "vae": vae_ref,
+                    "tile_size": 512,
+                    "overlap": 64,
+                    "temporal_size": 64,
+                    "temporal_overlap": 8
+                }
+            });
+        } else {
+            *node = json!({
+                "class_type": "VAEDecode",
+                "inputs": {
+                    "samples": samples_ref,
+                    "vae": vae_ref
+                }
+            });
+        }
+    }
+
     Ok((graph, final_seed, width, height))
 }
 
 pub fn execute_comfy_workflow(prompt_graph: &Value) -> Result<String, String> {
     let client_id = generate_session_client_id(now_millis());
-    let preview_file = get_preview_file_path();
+    let mut preview_counter: u64 = 0;
+    let _ = fs::remove_file(get_preview_file_path(0));
+    let _ = fs::remove_file(get_preview_file_path(1));
 
     let mut output_nodes = Vec::new();
     if let Some(obj) = prompt_graph.as_object() {
@@ -679,38 +723,31 @@ pub fn execute_comfy_workflow(prompt_graph: &Value) -> Result<String, String> {
 
                 match msg {
                     tungstenite::Message::Binary(bin) => {
-                        // ComfyUI Binary Frame:
-                        // Bytes 0..4 = event_type (1 = PREVIEW_IMAGE, 2 = PREVIEW_IMAGE_WITH_METADATA)
-                        // If type 1: JPEG payload starts at offset 8
-                        // If type 2: metadata length at 4..8, payload starts at 8 + meta_len
-                        if bin.len() > 8 {
-                            let event_type = u32::from_be_bytes(bin[0..4].try_into().unwrap_or([0, 0, 0, 0]));
-                            let img_bytes = if event_type == 1 {
-                                &bin[8..]
-                            } else if event_type == 2 && bin.len() > 12 {
-                                let meta_len = u32::from_be_bytes(bin[4..8].try_into().unwrap_or([0, 0, 0, 0])) as usize;
-                                if bin.len() > 8 + meta_len {
-                                    &bin[8 + meta_len..]
-                                } else {
-                                    &bin[8..]
-                                }
-                            } else {
-                                &bin[8..]
-                            };
+                        let img_bytes: Option<&[u8]> = if let Some(pos) = bin.windows(2).position(|w| w == [0xFF, 0xD8]) {
+                            Some(&bin[pos..])
+                        } else if let Some(pos) = bin.windows(4).position(|w| w == [0x89, 0x50, 0x4E, 0x47]) {
+                            Some(&bin[pos..])
+                        } else {
+                            None
+                        };
 
-                            let tmp_p = preview_file.with_extension("tmp");
-                            if fs::write(&tmp_p, img_bytes).is_ok() {
-                                let _ = fs::rename(&tmp_p, &preview_file);
+                        if let Some(payload) = img_bytes {
+                            let target_path = get_preview_file_path(preview_counter);
+                            let tmp_p = target_path.with_extension("tmp");
+                            if fs::write(&tmp_p, payload).is_ok() {
+                                let _ = fs::rename(&tmp_p, &target_path);
                                 println!(
                                     "{}",
                                     json!({
                                         "event": "preview",
                                         "step": current_step,
                                         "max_steps": max_steps,
-                                        "path": preview_file.to_string_lossy()
+                                        "path": target_path.to_string_lossy(),
+                                        "tick": preview_counter
                                     })
                                 );
                                 let _ = std::io::stdout().flush();
+                                preview_counter = preview_counter.wrapping_add(1);
                             }
                         }
                     }
@@ -723,13 +760,19 @@ pub fn execute_comfy_workflow(prompt_graph: &Value) -> Result<String, String> {
                                 if let Some(d) = data {
                                     current_step = d.get("value").and_then(|v| v.as_u64()).unwrap_or(current_step as u64) as u32;
                                     max_steps = d.get("max").and_then(|m| m.as_u64()).unwrap_or(max_steps as u64) as u32;
+                                    let active_path = if preview_counter > 0 {
+                                        get_preview_file_path(preview_counter.saturating_sub(1)).to_string_lossy().to_string()
+                                    } else {
+                                        String::new()
+                                    };
                                     println!(
                                         "{}",
                                         json!({
                                             "event": "preview",
                                             "step": current_step,
                                             "max_steps": max_steps,
-                                            "path": preview_file.to_string_lossy()
+                                            "path": active_path,
+                                            "tick": preview_counter
                                         })
                                     );
                                     let _ = std::io::stdout().flush();

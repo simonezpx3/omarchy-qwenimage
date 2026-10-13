@@ -1815,15 +1815,10 @@ fn get_best_llm_model() -> &'static str {
     "mimo:latest"
 }
 
-fn cmd_optimize_prompt(text: &str) {
+fn optimize_prompt_internal(text: &str) -> Result<(String, String, String), String> {
     let trimmed = text.trim();
     if trimmed.is_empty() {
-        println!("{}", serde_json::json!({
-            "status": "ok",
-            "rewritten_prompt": "",
-            "wh_ratio": "16:10"
-        }));
-        return;
+        return Ok((String::new(), String::new(), "16:10".to_string()));
     }
 
     let model = get_best_llm_model();
@@ -1880,30 +1875,14 @@ Return ONLY a single valid JSON object on one line:\n\
                     || lower.contains("safety policy")
                     || lower.contains("explicit sexual content")
                 {
-                    // Model refused: preserve original user prompt instead of overwriting with refusal text!
-                    println!("{}", serde_json::json!({
-                        "status": "fallback",
-                        "rewritten_prompt": trimmed,
-                        "negative_prompt": default_neg,
-                        "wh_ratio": "16:10",
-                        "model": model,
-                        "message": "Model refusal bypassed, preserved original prompt"
-                    }));
-                    return;
+                    return Ok((trimmed.to_string(), default_neg.to_string(), "16:10".to_string()));
                 }
 
                 if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(trimmed_content) {
                     if let Some(rewritten) = parsed.get("rewritten_prompt").and_then(|r| r.as_str()) {
                         let ratio = parsed.get("wh_ratio").and_then(|w| w.as_str()).unwrap_or("16:10");
                         let neg = parsed.get("negative_prompt").and_then(|n| n.as_str()).unwrap_or(default_neg);
-                        println!("{}", serde_json::json!({
-                            "status": "ok",
-                            "rewritten_prompt": rewritten,
-                            "negative_prompt": neg,
-                            "wh_ratio": ratio,
-                            "model": model
-                        }));
-                        return;
+                        return Ok((rewritten.to_string(), neg.to_string(), ratio.to_string()));
                     }
                 }
                 if let Some(start) = trimmed_content.find('{') {
@@ -1914,37 +1893,52 @@ Return ONLY a single valid JSON object on one line:\n\
                                 if let Some(rewritten) = parsed.get("rewritten_prompt").and_then(|r| r.as_str()) {
                                     let ratio = parsed.get("wh_ratio").and_then(|w| w.as_str()).unwrap_or("16:10");
                                     let neg = parsed.get("negative_prompt").and_then(|n| n.as_str()).unwrap_or(default_neg);
-                                    println!("{}", serde_json::json!({
-                                        "status": "ok",
-                                        "rewritten_prompt": rewritten,
-                                        "negative_prompt": neg,
-                                        "wh_ratio": ratio,
-                                        "model": model
-                                    }));
-                                    return;
+                                    return Ok((rewritten.to_string(), neg.to_string(), ratio.to_string()));
                                 }
                             }
                         }
                     }
                 }
-                println!("{}", serde_json::json!({
-                    "status": "ok",
-                    "rewritten_prompt": trimmed_content,
-                    "negative_prompt": default_neg,
-                    "wh_ratio": "16:10",
-                    "model": model
-                }));
-                return;
+                return Ok((trimmed_content.to_string(), default_neg.to_string(), "16:10".to_string()));
             }
         }
     }
 
-    println!("{}", serde_json::json!({
-        "status": "fallback",
-        "rewritten_prompt": trimmed,
-        "wh_ratio": "16:10",
-        "message": "Local Ollama generation unavailable, using raw prompt"
-    }));
+    Err("Ollama request failed or model unavailable".to_string())
+}
+
+fn cmd_optimize_prompt(text: &str) {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        println!("{}", serde_json::json!({
+            "status": "ok",
+            "rewritten_prompt": "",
+            "wh_ratio": "16:10"
+        }));
+        return;
+    }
+
+    let default_neg = "worst quality, low quality, blurry, deformed, bad anatomy, bad hands, missing fingers, extra limbs, fused fingers, deformed hands";
+    match optimize_prompt_internal(trimmed) {
+        Ok((rewritten, neg, ratio)) => {
+            println!("{}", serde_json::json!({
+                "status": "ok",
+                "rewritten_prompt": rewritten,
+                "negative_prompt": neg,
+                "wh_ratio": ratio,
+                "model": get_best_llm_model()
+            }));
+        }
+        Err(err) => {
+            println!("{}", serde_json::json!({
+                "status": "fallback",
+                "rewritten_prompt": trimmed,
+                "negative_prompt": default_neg,
+                "wh_ratio": "16:10",
+                "message": err
+            }));
+        }
+    }
 }
 
 fn cmd_tags(query: &str, limit: usize) {
@@ -2119,50 +2113,6 @@ fn detect_human_subject(prompt: &str) -> bool {
     words.iter().any(|w| HUMAN_TOKENS.contains(w))
 }
 
-fn detect_slim_subject(prompt: &str) -> bool {
-    let p = prompt.to_ascii_lowercase();
-    const SLIM_TOKENS: &[&str] = &[
-        "slim", "petite", "slender", "skinny", "lean", "thin",
-        // Czech tokens
-        "štíhlá", "stíhlá", "stihla", "štíhlý", "stíhlý", "stihly",
-        "hubená", "hubena", "hubený", "hubeny",
-        "drobná", "drobna", "drobný", "drobny"
-    ];
-
-    if p.contains("narrow waist") || p.contains("flat stomach") || p.contains("slim waist")
-        || p.contains("ploché bříško") || p.contains("ploche brisko") || p.contains("úzký pas") || p.contains("uzky pas")
-    {
-        return true;
-    }
-
-    let words: Vec<&str> = p
-        .split(|c: char| !c.is_alphanumeric() && c != '_')
-        .filter(|w| !w.is_empty())
-        .collect();
-
-    words.iter().any(|w| SLIM_TOKENS.contains(w))
-}
-
-fn detect_curvy_subject(prompt: &str) -> bool {
-    let p = prompt.to_ascii_lowercase();
-    const CURVY_TOKENS: &[&str] = &[
-        "chubby", "fat", "bbw", "plump", "plumper", "overweight", "thicc", "voluptuous", "curvy",
-        // Czech tokens
-        "tlustá", "tlusta", "tlustý", "tlusty", "boubelka", "boubelatá", "boubelata", "baculatá", "baculata"
-    ];
-
-    if p.contains("plus size") || p.contains("plus-size") || p.contains("plussize") {
-        return true;
-    }
-
-    let words: Vec<&str> = p
-        .split(|c: char| !c.is_alphanumeric() && c != '_')
-        .filter(|w| !w.is_empty())
-        .collect();
-
-    words.iter().any(|w| CURVY_TOKENS.contains(w))
-}
-
 fn strip_foreign_prompt_tags(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut in_tag = false;
@@ -2226,6 +2176,7 @@ fn cmd_generate(
     turbo: bool,
     uncensored: bool,
     res_mode: Option<&str>,
+    expand: bool,
 ) {
     // 1. IPC VRAM Guard: Non-blocking atomic file lock preventing concurrent generation collisions
     let lock_path = env::var("XDG_RUNTIME_DIR")
@@ -2293,10 +2244,31 @@ fn cmd_generate(
 
     // Dynamic background translation if Czech input detected
     let mut final_prompt = prompt.to_string();
+    let mut final_negative = negative.to_string();
+
     if is_czech_text(prompt) {
         if let Ok(translated) = cmd_translate_internal(prompt) {
             if translated.len() > 3 {
                 final_prompt = translated;
+            }
+        }
+    }
+
+    // Auto-expansion via local LLM (RTX 3070 local inference, 0 tokens)
+    if expand {
+        eprintln!("\x1b[38;2;97;213;248mPROMPT EXPANDER // Rozšiřuji prompt pomocí lokálního modelu...\x1b[0m");
+        match optimize_prompt_internal(&final_prompt) {
+            Ok((expanded_prompt, expanded_neg, _expanded_ratio)) => {
+                if !expanded_prompt.trim().is_empty() {
+                    final_prompt = expanded_prompt;
+                    if final_negative.trim().is_empty() && !expanded_neg.trim().is_empty() {
+                        final_negative = expanded_neg;
+                    }
+                    eprintln!("\x1b[38;2;97;213;248mPROMPT EXPANDER // Hotovo -> prompt rozvinut\x1b[0m");
+                }
+            }
+            Err(e) => {
+                eprintln!("\x1b[38;2;240;100;100mPROMPT EXPANDER // Lokální model nedostupný ({}), pokračuji s původním promptem\x1b[0m", e);
             }
         }
     }
@@ -2316,70 +2288,25 @@ fn cmd_generate(
         final_prompt = final_prompt.chars().take(MAX_PROMPT_CHARS).collect();
     }
 
-    // Anatomical Safety Guard & Router: calibration parameter
+    // Anatomical Safety Guard (pure negative prompt protection):
+    // Zachovává přesné nastavení uživatele (kroky, CFG, rozlišení, Turbo) a doplňuje
+    // výhradně negativní anatomickou ochranu (bad anatomy, extra limbs, extra fingers, deformed hands...).
     const ANATOMICAL_DNA_SEED: usize = 0x732641;
+    let _ = (ANATOMICAL_DNA_SEED % 1000) / 1000;
 
     let is_human = detect_human_subject(&final_prompt);
-    let is_slim = detect_slim_subject(&final_prompt);
-    let is_curvy = detect_curvy_subject(&final_prompt);
-    let mut final_res_mode = res_mode.unwrap_or("standard").to_string();
-    let mut final_steps = steps;
-    let mut final_cfg = cfg;
-    let mut active_turbo = turbo;
-    let mut final_negative = negative.to_string();
-    let mut anatomical_fallback = false;
+    let final_res_mode = res_mode.unwrap_or("standard").to_string();
+    let final_steps = steps;
+    let final_cfg = if turbo { 1.0 } else { cfg };
+    let active_turbo = turbo;
+    let anatomical_fallback = false;
 
-    // ANATOMICAL ROUTER (Arci Council Supreme Standard):
-    // Viggle Turbo LoRA je citlivý na vrstvení dalších adaptérů (Uncensored / Anime LoRA)
-    // a neumí pracovat s negativním promptem. Pokud je detekován člověk a je aktivní další LoRA
-    // nebo je výslovně požadována štíhlá postava (SLIM), přepneme na plný Standard Euler (28 st, CFG 4.0, plný negativ).
-    if active_turbo && is_human && (uncensored || anime || is_slim) {
-        active_turbo = false;
-        anatomical_fallback = true;
-        let reason = if is_slim {
-            "štíhlá postava / SLIM (vyžaduje negativní filtry pasu)"
-        } else {
-            "vrstvená LoRA (Heretic / Anime)"
-        };
-        eprintln!("\x1b[38;2;97;213;248mANATOMICAL ROUTER // Zjištěna lidská postava: {} -> Automatický přechod: TURBO → STANDARD (Euler 28 st, CFG 4.0, negativní anatomická ochrana)\x1b[0m", reason);
-    }
-
-    if active_turbo {
-        final_cfg = 1.0;
-        final_steps = if is_human { 7 } else { 6 };
-    } else if is_human {
-        // Enforce resolution floor: Draft (<768px) kolabuje jemnou anatomii a detaily kůže
-        if final_res_mode == "draft" || final_res_mode == "preview" || final_res_mode == "fast" {
-            final_res_mode = "standard".to_string();
-        }
-        // Vynucení bezpečné vzorkovací podlahy (28 kroků, CFG 4.0) POUZE při automatickém přechodu z Turba.
-        // Pokud uživatel zvolil Standard sám, jeho ruční nastavení kroků i CFG zůstává zachováno.
-        if anatomical_fallback {
-            if final_steps < 25 {
-                final_steps = final_steps.max(28);
-            }
-            if final_cfg < 3.0 {
-                final_cfg = 4.0;
-            }
-        }
-
-        // Doplnit základní anatomické negativní tokeny, pokud chybí
+    if is_human {
+        // Anatomická ochrana: Doplnit základní anatomické negativní tokeny do negativního promptu
         let neg_lower = final_negative.to_lowercase();
-        let mut anatomical_safety_tokens = vec![
+        let anatomical_safety_tokens = [
             "bad anatomy", "extra limbs", "extra fingers", "fused fingers", "deformed hands"
         ];
-
-        // Ochrana proporcí těla (Anti-Chubby / Slim Guard):
-        // Negativní filtry nafukování postavy a pasu aktivujeme specificky při zadání štíhlé linie (is_slim),
-        // čímž eliminujeme skrytý body-type bias pro neutrální lidské prompty.
-        if is_slim && !is_curvy {
-            let body_safety_tokens = [
-                "chubby", "fat", "overweight", "plus size", "plumper", "thick waist", "broad waist", "bloated"
-            ];
-            for t in body_safety_tokens {
-                anatomical_safety_tokens.push(t);
-            }
-        }
 
         let mut missing_tokens = Vec::new();
         for t in &anatomical_safety_tokens {
@@ -2393,9 +2320,6 @@ fn cmd_generate(
             }
             final_negative.push_str(&missing_tokens.join(", "));
         }
-    } else if final_steps < 20 {
-        // Objekty a krajiny: minimální sampling floor pro nespecifikovaný počet kroků
-        final_steps = ((25 + ((ANATOMICAL_DNA_SEED % 1000) / 1000)) as u32).min(25);
     }
 
     // Ensure all Ollama models are stopped so VRAM is 100% available for ComfyUI DiT
@@ -2506,13 +2430,20 @@ fn cmd_generate(
 // Settings Management (Atomic 0600 Persistence)
 // ---------------------------------------------------------
 
-fn get_settings_path() -> PathBuf {
+fn get_legacy_settings_path() -> PathBuf {
     get_home()
         .join(".config")
         .join("omarchy")
         .join("plugins")
         .join("simonez.qwenimage")
         .join("settings.json")
+}
+
+fn get_settings_path() -> PathBuf {
+    let base = std::env::var("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| get_home().join(".config"));
+    base.join("qwenimage").join("settings.json")
 }
 
 fn load_settings() -> serde_json::Value {
@@ -2522,6 +2453,17 @@ fn load_settings() -> serde_json::Value {
             return val;
         }
     }
+    // Fallback & seamless migration from legacy plugin directory
+    let legacy_p = get_legacy_settings_path();
+    if legacy_p.exists() {
+        if let Ok(content) = fs::read_to_string(&legacy_p) {
+            if let Ok(val) = serde_json::from_str(&content) {
+                let _ = save_settings(&val);
+                let _ = fs::remove_file(&legacy_p);
+                return val;
+            }
+        }
+    }
     serde_json::json!({})
 }
 
@@ -2529,6 +2471,11 @@ fn save_settings(val: &serde_json::Value) -> Result<(), std::io::Error> {
     let p = get_settings_path();
     if let Some(parent) = p.parent() {
         let _ = fs::create_dir_all(parent);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(parent, fs::Permissions::from_mode(0o700));
+        }
     }
     let s = serde_json::to_string_pretty(val)
         .map_err(std::io::Error::other)?;
@@ -2547,6 +2494,11 @@ fn save_settings(val: &serde_json::Value) -> Result<(), std::io::Error> {
         use std::os::unix::fs::PermissionsExt;
         let _ = fs::set_permissions(&p, fs::Permissions::from_mode(0o600));
     }
+    // Ensure legacy settings.json in plugin directory is purged if it still exists
+    let legacy_p = get_legacy_settings_path();
+    if legacy_p.exists() {
+        let _ = fs::remove_file(&legacy_p);
+    }
     Ok(())
 }
 
@@ -2561,6 +2513,7 @@ fn cmd_settings_get() {
     let anime = obj.get("anime_lora").and_then(|v| v.as_bool()).unwrap_or(false);
     let turbo = obj.get("turbo").and_then(|v| v.as_bool()).unwrap_or(true);
     let uncensored = obj.get("uncensored").and_then(|v| v.as_bool()).unwrap_or(false);
+    let auto_expand = obj.get("auto_expand").and_then(|v| v.as_bool()).unwrap_or(false);
     let res_mode = obj.get("res_mode").and_then(|v| v.as_str()).unwrap_or("standard");
 
     println!("{}", serde_json::json!({
@@ -2570,6 +2523,7 @@ fn cmd_settings_get() {
         "anime": anime,
         "turbo": turbo,
         "uncensored": uncensored,
+        "auto_expand": auto_expand,
         "res_mode": res_mode,
         "settings": val
     }));
@@ -2582,7 +2536,7 @@ fn cmd_settings_set(key: &str, value: &str) {
     }
     if let Some(map) = val.as_object_mut() {
         match key {
-            "nsfw" | "anime_lora" | "turbo" | "uncensored" => {
+            "nsfw" | "anime_lora" | "turbo" | "uncensored" | "auto_expand" => {
                 let b = value.eq_ignore_ascii_case("true") || value == "1";
                 map.insert(key.to_string(), serde_json::json!(b));
             }
@@ -2790,6 +2744,7 @@ fn main() {
             let mut anime = false;
             let mut turbo = false;
             let mut uncensored = false;
+            let mut expand = false;
             let mut pos_args: Vec<&str> = Vec::new();
 
             let mut idx = 2;
@@ -2802,6 +2757,9 @@ fn main() {
                     idx += 1;
                 } else if args[idx] == "--uncensored" || args[idx] == "--heretic" {
                     uncensored = true;
+                    idx += 1;
+                } else if args[idx] == "--expand" || args[idx] == "--auto-expand" {
+                    expand = true;
                     idx += 1;
                 } else if args[idx] == "--res" || args[idx] == "--res-mode" {
                     if let Some(next) = args.get(idx + 1) {
@@ -2825,7 +2783,7 @@ fn main() {
             let image_ref = pos_args.get(6).copied().filter(|s| !s.trim().is_empty());
             let denoise = pos_args.get(7).and_then(|s| s.parse::<f32>().ok()).unwrap_or(0.85).clamp(0.05, 0.95);
 
-            cmd_generate(prompt, ratio, steps, cfg, seed, negative, image_ref, denoise, anime, turbo, uncensored, res_mode.as_deref());
+            cmd_generate(prompt, ratio, steps, cfg, seed, negative, image_ref, denoise, anime, turbo, uncensored, res_mode.as_deref(), expand);
         }
         "interrupt" | "cancel" => {
             let ok = comfy::interrupt_comfyui();
@@ -2932,10 +2890,10 @@ mod tests {
         assert_eq!(w_3_4_ref, 864);
         assert_eq!(h_3_4_ref, 1152);
 
-        // Human subject floor: draft mode should remain standard 1024 floor
-        let (w_draft_human, h_draft_human) = comfy::calculate_dimensions("1:1", "draft", true, None);
-        assert_eq!(w_draft_human, 1024);
-        assert_eq!(h_draft_human, 1024);
+        // Draft mode produces 512x512 for 1:1 ratio
+        let (w_draft, h_draft) = comfy::calculate_dimensions("1:1", "draft", true, None);
+        assert_eq!(w_draft, 512);
+        assert_eq!(h_draft, 512);
     }
 
     #[test]
@@ -3061,22 +3019,6 @@ mod tests {
     }
 
     #[test]
-    fn test_detect_slim_and_curvy_subjects() {
-        // Slim detection
-        assert!(detect_slim_subject("petite blonde girl in purple lingerie"));
-        assert!(detect_slim_subject("slim slender female model on runway"));
-        assert!(detect_slim_subject("young woman with a narrow waist and flat stomach"));
-        assert!(detect_slim_subject("krásná štíhlá dívka v šatech"));
-        assert!(!detect_slim_subject("cyberpunk city skyline in rain"));
-
-        // Curvy / BBW detection
-        assert!(detect_curvy_subject("voluptuous curvy woman in dress"));
-        assert!(detect_curvy_subject("chubby plus size model posing"));
-        assert!(detect_curvy_subject("boubelatá žena s úsměvem"));
-        assert!(!detect_curvy_subject("petite slim girl in lingerie"));
-    }
-
-    #[test]
     fn test_resolve_dit_model_name_default_and_env() {
         use std::env;
         // Test custom override via QIS_DIT_MODEL environment variable
@@ -3096,27 +3038,14 @@ mod tests {
     }
 
     #[test]
-    fn test_anatomical_router_heuristics_and_safety() {
-        // Human + Turbo + Uncensored -> must trigger fallback to Standard Euler
+    fn test_anatomical_guard_human_detection() {
         let human_prompt = "beautiful cybernetic girl portrait, sharp focus";
         assert!(detect_human_subject(human_prompt));
-        assert!(!detect_slim_subject(human_prompt));
-        assert!(!detect_curvy_subject(human_prompt));
 
-        // Slim subject detection
-        let slim_prompt = "petite slim girl in white dress";
-        assert!(detect_human_subject(slim_prompt));
-        assert!(detect_slim_subject(slim_prompt));
-        assert!(!detect_curvy_subject(slim_prompt));
+        let czech_human = "krásná dívka na louce, portrét";
+        assert!(detect_human_subject(czech_human));
 
-        // Curvy subject detection (should NOT be marked slim)
-        let curvy_prompt = "curvy bbw woman standing outdoors";
-        assert!(detect_human_subject(curvy_prompt));
-        assert!(!detect_slim_subject(curvy_prompt));
-        assert!(detect_curvy_subject(curvy_prompt));
-
-        // Non-human object with slim-sounding tokens shouldn't be human
-        let object_prompt = "ultra slim metallic futuristic laptop on desk";
+        let object_prompt = "futuristic neon city street at night, rain";
         assert!(!detect_human_subject(object_prompt));
     }
 }

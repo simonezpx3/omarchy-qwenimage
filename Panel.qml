@@ -18,7 +18,7 @@ Panel {
   property var hostWidget: null
   readonly property var barIdentity: hostWidget || root
   readonly property string bridgeBin: Qt.resolvedUrl("bin/qwen-bridge").toString().replace(/^file:\/\//, "")
-  readonly property string pluginVersion: "v1.1.8"
+  readonly property string pluginVersion: "v1.1.9"
   readonly property string userHome: Quickshell.env("HOME") || "/home/" + (Quickshell.env("USER") || "user")
   readonly property string picturesDir: userHome + "/Pictures/Qwen-Image"
 
@@ -171,29 +171,22 @@ Panel {
     return false;
   }
 
-  // Sledování požadavku na štíhlé proporce (vyžaduje Euler fallback v Turbu pro aktivaci negativního filtru pasu)
-  readonly property bool isSlimSubjectInPrompt: {
-    var p = promptText.toLowerCase();
-    var kw = [
-      "slim", "petite", "slender", "skinny", "lean", "thin",
-      "štíhlá", "stíhlá", "stihla", "štíhlý", "stíhlý", "stihly",
-      "hubená", "hubena", "hubený", "hubeny",
-      "drobná", "drobna", "drobný", "drobny"
-    ];
-    if (p.indexOf("narrow waist") !== -1 || p.indexOf("flat stomach") !== -1 || p.indexOf("slim waist") !== -1 || p.indexOf("úzký pas") !== -1 || p.indexOf("ploché bříško") !== -1) return true;
-    var words = p.match(/[\p{L}\p{N}_]+/gu) || [];
-    for (var i = 0; i < words.length; ++i) {
-      if (kw.indexOf(words[i]) !== -1) return true;
-    }
-    return false;
-  }
-
   // Uncensored Latent LoRA state (true = uncensored latent LoRA, false = standard latent)
   property bool isUncensoredEnabled: false
 
   function toggleUncensored() {
     isUncensoredEnabled = !isUncensoredEnabled;
     saveSettingsProc.command = [root.bridgeBin, "settings", "set", "uncensored", root.isUncensoredEnabled ? "true" : "false"];
+    saveSettingsProc.running = false;
+    saveSettingsProc.running = true;
+  }
+
+  // Auto-Expand prompt via local LLM state (true = expand before generation, false = raw prompt)
+  property bool isAutoExpandEnabled: false
+
+  function toggleAutoExpand() {
+    isAutoExpandEnabled = !isAutoExpandEnabled;
+    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "auto_expand", root.isAutoExpandEnabled ? "true" : "false"];
     saveSettingsProc.running = false;
     saveSettingsProc.running = true;
   }
@@ -375,31 +368,14 @@ Panel {
     livePreviewTick = 0;
     if (hostWidget) hostWidget.isBusy = true;
 
-    var runSteps = steps;
-    var runCfg = cfg;
-    var runResMode = root.resMode;
-
-    // Anatomical Safety Guard: sanitize steps, cfg and resolution floor
-    if (!root.isTurboEnabled) {
-      if (root.isHumanSubjectInPrompt && runSteps < 25) {
-        runSteps = 28;
-        runCfg = 4.0;
-      } else if (runSteps < 20) {
-        runSteps = 25;
-      }
-    }
-    if (root.isHumanSubjectInPrompt && (runResMode === "draft" || runResMode === "preview" || runResMode === "fast")) {
-      runResMode = "standard";
-    }
-
     var actualSeed = seedLocked ? Number(seedVal) : -1;
     var args = [
       root.bridgeBin,
       "generate",
       trimmed,
       aspectRatio,
-      String(runSteps),
-      String(runCfg),
+      String(steps),
+      String(cfg),
       String(actualSeed),
       negativePromptText
     ];
@@ -422,9 +398,13 @@ Panel {
       args.push("--uncensored");
     }
 
-    if (runResMode && runResMode !== "") {
+    if (root.isAutoExpandEnabled) {
+      args.push("--expand");
+    }
+
+    if (root.resMode && root.resMode !== "") {
       args.push("--res");
-      args.push(runResMode);
+      args.push(root.resMode);
     }
 
     genProc.command = args;
@@ -629,8 +609,7 @@ Panel {
         root.previousGeneratedPath = root.generatedPath;
         root.generatedPath = res.path;
         var elapsedSec = (typeof res.elapsed === "number") ? res.elapsed.toFixed(1) : String(res.elapsed || "0");
-        var fallbackSuffix = res.anatomical_fallback ? " · ANATOMY GUARD (STD)" : "";
-        root.generationTelemetry = (res.ratio || "1:1") + " | " + (res.steps || root.steps) + " STEPS | " + elapsedSec + "s" + fallbackSuffix + " | SEED: " + (res.seed >= 0 ? res.seed : "RANDOM");
+        root.generationTelemetry = (res.ratio || "1:1") + " | " + (res.steps || root.steps) + " STEPS | " + elapsedSec + "s | SEED: " + (res.seed >= 0 ? res.seed : "RANDOM");
         if (hostWidget) hostWidget.isBusy = false;
         root.fetchHistory();
       } else if (res.status === "error") {
@@ -638,7 +617,7 @@ Panel {
         root.currentScaleFactor = 0.0;
         root.livePreviewPath = "";
         if (hostWidget) hostWidget.isBusy = false;
-        root.generationTelemetry = "CHYBA: " + (res.message || "Generování selhalo");
+        root.generationTelemetry = (root.currentLang === "cs" ? "CHYBA: " : "ERROR: ") + (res.message || (root.currentLang === "cs" ? "Generování selhalo" : "Generation failed"));
       }
     } catch (e) {}
   }
@@ -904,6 +883,9 @@ Panel {
           if (typeof res.uncensored === "boolean") {
             root.isUncensoredEnabled = res.uncensored;
           }
+          if (typeof res.auto_expand === "boolean") {
+            root.isAutoExpandEnabled = res.auto_expand;
+          }
           if (res.res_mode) {
             root.resMode = res.res_mode;
           }
@@ -988,11 +970,11 @@ Panel {
       root.isUpdating = false;
       var totalTime = root.updateElapsedSeconds;
       if (exitCode === 0) {
-        root.updateStatusText = "󰄬 HOTOVO (" + totalTime + "s)";
+        root.updateStatusText = (root.currentLang === "cs" ? "HOTOVO" : "Done") + " (" + totalTime + "s)";
         root.refreshTelemetry();
         root.fetchHistory();
       } else {
-        root.updateStatusText = "󰅚 CHYBA (" + totalTime + "s)";
+        root.updateStatusText = (root.currentLang === "cs" ? "CHYBA" : "Error") + " (" + totalTime + "s)";
       }
       updateDoneTimer.restart();
     }
@@ -1230,12 +1212,12 @@ Panel {
             Layout.preferredWidth: Style.space(110)
             text: {
               if (root.isUpdating) {
-                return "󰑮 " + (root.updateMode === "all" ? "STACK" : "UPDATE") + " (" + root.updateElapsedSeconds + "s)";
+                return (root.updateMode === "all" ? "STACK" : "UPDATE") + " (" + root.updateElapsedSeconds + "s)";
               }
               if (root.updateStatusText !== "") {
                 return root.updateStatusText;
               }
-              return "󰑐 UPDATE";
+              return "UPDATE";
             }
             fontSize: Style.font.caption
             bordered: true
@@ -1396,7 +1378,7 @@ Panel {
           Text {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            text: "[Esc: " + (root.currentLang === "cs" ? "Zavřít" : "Close") + "]"
+            text: "ESC // " + (root.currentLang === "cs" ? "ZAVŘÍT" : "CLOSE")
             font.family: root.bar ? root.bar.fontFamily : Style.font.family
             font.pixelSize: Style.font.caption
             color: Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 1.6)

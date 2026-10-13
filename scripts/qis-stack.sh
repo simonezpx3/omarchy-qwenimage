@@ -366,6 +366,48 @@ install_comfyui() {
 # ---------------------------------------------------------
 # Step 3: Download Diffusion Models (Hugging Face with Resume)
 # ---------------------------------------------------------
+# Nízkoúrovňová inspekce binárních hlaviček modelů (Magic Bytes Guard // DNA: 0x732641)
+verify_model_magic_bytes() {
+    local file_path="$1"
+    if [[ ! -f "${file_path}" ]]; then
+        log_err "SECURITY REJECT // Soubor modelu neexistuje: ${file_path}"
+        return 1
+    fi
+
+    # Přečtení prvních 16 bajtů v hex formátu
+    local hex_header
+    hex_header=$(od -N 16 -t x1 -An "${file_path}" 2>/dev/null | tr -d ' \n' | awk '{print tolower($0)}')
+
+    # 1. Okamžitá blokace Python Pickle (protokoly 2, 3, 4, 5: 0x80 0x02..0x05)
+    if [[ "${hex_header}" =~ ^800[2-5] ]]; then
+        log_err "SECURITY CRITICAL // Odmítnut nebezpečný Python Pickle soubor (RCE vektor)!"
+        return 1
+    fi
+
+    # 2. Blokace ZIP / PyTorch .bin archivu (PK\x03\x04 = 504b0304)
+    if [[ "${hex_header}" =~ ^504b0304 ]]; then
+        log_err "SECURITY CRITICAL // Odmítnut komprimovaný ZIP/PyTorch archiv maskovaný jako model!"
+        return 1
+    fi
+
+    # 3. Validace GGUF (0x47 0x47 0x55 0x46 = "GGUF")
+    if [[ "${hex_header}" =~ ^47475546 ]]; then
+        log_ok "Magic Bytes // Identifikován platný datový formát GGUF."
+        return 0
+    fi
+
+    # 4. Validace Safetensors (8-bajtová uint64 délka následovaná bajtem 0x7B '{')
+    local ninth_byte
+    ninth_byte=$(od -j 8 -N 1 -t x1 -An "${file_path}" 2>/dev/null | tr -d ' \n' | awk '{print tolower($0)}')
+    if [[ "${ninth_byte}" == "7b" ]]; then
+        log_ok "Magic Bytes // Identifikován platný datový formát Safetensors (JSON hlavička '{' potvrzena)."
+        return 0
+    fi
+
+    log_err "SECURITY REJECT // Neznámý nebo nepovolený binární formát souboru. Povoleny jsou výhradně GGUF a Safetensors."
+    return 1
+}
+
 # Helper: Safe model downloader refusing symlinks, using exclusive tempfiles and verifying SHA-256
 safe_download_model() {
     local target_dir="$1"
@@ -373,6 +415,26 @@ safe_download_model() {
     local url="$3"
     local desc="$4"
     local expected_sha256="${5:-}"
+    local p2p_source="${6:-}"
+
+    # Strict Anti-Pickle Rule (AGENTS.md Security Policy):
+    # Pro modely jsou povoleny výhradně datové tenzorové kontejnery GGUF a safetensors.
+    # Spustitelné Python pickle formáty (.bin, .pt, .pth, .ckpt) jsou přísně zakázány.
+    if [[ "$file_name" != "__init__.py" ]]; then
+        case "$file_name" in
+            *.gguf|*.safetensors)
+                ;;
+            *.bin|*.pt|*.pth|*.ckpt)
+                log_err "SECURITY POLICY VIOLATION // Detekován zakázaný spustitelný pickle formát: ${file_name}"
+                log_err "Povoleny jsou výhradně bezpečné datové kontejnery GGUF a safetensors."
+                return 1
+                ;;
+            *)
+                log_err "SECURITY WARNING // Nepovolený formát váhy modelu: ${file_name}"
+                return 1
+                ;;
+        esac
+    fi
 
     if [[ -L "$target_dir" ]]; then
         log_err "Cílový adresář modelů je symlink: $target_dir"
@@ -421,7 +483,31 @@ safe_download_model() {
     tmp_part="$(mktemp "${target_dir}/${file_name}.part.XXXXXX")"
     chmod 0644 "$tmp_part"
 
-    if curl -L --fail --progress-bar -o "$tmp_part" "$url"; then
+    local download_success=0
+
+    # 1. Prioritní stažení: Oficiální HTTPS (curl s resume -C -)
+    if curl -L --fail -C - --progress-bar -o "$tmp_part" "$url"; then
+        download_success=1
+    elif [[ -n "$p2p_source" ]]; then
+        # 2. P2P Fallback (Pirate Face BitTorrent / WebSeed přes aria2c s povinným šifrováním)
+        if command -v aria2c >/dev/null 2>&1; then
+            log_warn "Primární HTTPS selhalo. Spouštím P2P Fallback přes aria2c (--bt-require-crypto=true)..."
+            if aria2c --bt-require-crypto=true \
+                      --summary-interval=5 \
+                      --max-connection-per-server=4 \
+                      --split=4 \
+                      --dir="$target_dir" \
+                      --out="$(basename "$tmp_part")" \
+                      "$p2p_source"; then
+                download_success=1
+            fi
+        else
+            log_warn "HTTPS selhalo a aria2c není k dispozici pro P2P fallback."
+        fi
+    fi
+
+    if (( download_success == 1 )); then
+        # Kryptografická SHA-256 verifikace (Strict Ingestion Guard)
         if [[ -n "$expected_sha256" ]]; then
             local downloaded_sha
             downloaded_sha="$(sha256sum "$tmp_part" | awk '{print $1}')"
@@ -434,6 +520,29 @@ safe_download_model() {
             fi
             log_ok "Kryptografický otisk ${desc} ověřen (SHA-256 OK)."
         fi
+
+        # Nízkoúrovňová binární kontrola magických bajtů (Magic Bytes Security Guard)
+        if [[ "$file_name" != "__init__.py" ]]; then
+            if ! verify_model_magic_bytes "$tmp_part"; then
+                log_err "SECURITY REJECT // Binární hlavička souboru neprošla bezpečnostní validací!"
+                rm -f "$tmp_part"
+                return 1
+            fi
+        fi
+
+        # Povinná AI inspekce payloadu (Google Magika Anomaly Detection):
+        # Detekce skrytých spustitelných polyglotů před přesunem do ostrých složek
+        if command -v magika >/dev/null 2>&1 && [[ "$file_name" != "__init__.py" ]]; then
+            local magika_type
+            magika_type=$(magika --json "$tmp_part" 2>/dev/null | grep -o '"label": *"[^"]*"' | head -n1 | cut -d'"' -f4 || echo "unknown")
+            if [[ "$magika_type" =~ elf|pebin|mach-o|python|sh|bash|powershell|jar ]]; then
+                log_err "SECURITY ALERT // Google Magika AI detekovala spustitelný payload maskovaný v modelu: ${magika_type}"
+                rm -f "$tmp_part"
+                return 1
+            fi
+            log_ok "Google Magika AI inspekce: ${magika_type} (žádné polyglotní anomálie)."
+        fi
+
         mv -f "$tmp_part" "$target_path"
         chmod 0644 "$target_path"
         log_ok "${desc} úspěšně stažen a integrován."
@@ -887,13 +996,21 @@ start_comfyui() {
         return 1
     fi
 
-    local args=("--listen" "127.0.0.1" "--port" "8188")
+    local args=("--listen" "127.0.0.1" "--port" "8188" "--preview-method" "auto")
     if [[ "$HW_TIER" == "B" ]]; then
-        args+=("--lowvram")
+        args+=("--lowvram" "--enable-dynamic-vram")
     elif [[ "$HW_TIER" == "C" ]]; then
         args+=("--cpu")
     else
-        args+=("--reserve-vram" "1.5" "--async-offload" "2")
+        local reserve_val="1.2"
+        if command -v nvidia-smi >/dev/null 2>&1; then
+            local free_vram
+            free_vram=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits 2>/dev/null | head -n1 | tr -d ' ' || echo 4000)
+            if [[ "$free_vram" =~ ^[0-9]+$ ]] && (( free_vram < 2000 )); then
+                reserve_val="1.5"
+            fi
+        fi
+        args+=("--reserve-vram" "${reserve_val}" "--async-offload" "1" "--enable-dynamic-vram" "--fp8_e4m3fn-text-enc")
     fi
 
     local log_file="${COMFY_DIR}/comfyui.log"

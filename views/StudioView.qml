@@ -29,8 +29,8 @@ Item {
     var strings = {
       // Prompt Box
       "prompt_title": {
-        "cs": "PROMPT (ALT+↑/↓ HISTORIE, CTRL+ENTER RUN)",
-        "en": "PROMPT (ALT+↑/↓ HISTORY, CTRL+ENTER RUN)"
+        "cs": "PROMPT (ALT+↑/↓ HISTORIE)",
+        "en": "PROMPT (ALT+↑/↓ HISTORY)"
       },
       "prompt_placeholder": {
         "cs": "Zadej prompt v angličtině (automatický lokální překlad)...",
@@ -39,9 +39,15 @@ Item {
       "words": { "cs": "slov", "en": "words" },
       "optimize": { "cs": "VYLEPŠIT", "en": "OPTIMIZE" },
       "optimizing": { "cs": "VYLEPŠUJI...", "en": "OPTIMIZING..." },
+      "auto_expand_on": { "cs": "Expand: ON", "en": "Expand: ON" },
+      "auto_expand_off": { "cs": "Expand: OFF", "en": "Expand: OFF" },
       "help_optimize": {
-        "cs": "VYLEPŠIT: Automaticky rozvine zadaný nápad do detailního difuzního promptu na RTX 3070 (0 tokenů).",
-        "en": "OPTIMIZE: Automatically turns user idea into a rich diffusion prompt on RTX 3070 (0 tokens)."
+        "cs": "VYLEPŠIT: Jednorázově rozvine zadaný prompt do detailního difuzního promptu na RTX 3070 (0 tokenů).",
+        "en": "OPTIMIZE: One-time prompt expansion into rich diffusion prompt on RTX 3070 (0 tokens)."
+      },
+      "help_auto_expand": {
+        "cs": "AUTO-EXPAND: Automaticky rozvine každý prompt před generováním pomocí lokálního LLM (RTX 3070, 0 tokenů).",
+        "en": "AUTO-EXPAND: Automatically expands prompt via local LLM before generation (RTX 3070, 0 tokens)."
       },
       "negative_title": { "cs": "NEGATIVNÍ PROMPT", "en": "NEGATIVE PROMPT" },
       "negative_placeholder": {
@@ -76,8 +82,8 @@ Item {
         "en": "WARNING // Low step count without Turbo degrades denoise and anatomy"
       },
       "warn_human_draft": {
-        "cs": "DOPORUČENÍ // Lidská anatomie vyžaduje STD rozlišení (1024 px)",
-        "en": "RECOMMENDED // Human anatomy requires STD resolution (1024 px)"
+        "cs": "VAROVÁNÍ // Nízké rozlišení (Draft) degraduje lidskou anatomii a detaily",
+        "en": "WARNING // Low resolution (Draft) degrades human anatomy and facial details"
       },
 
       // Reference & Buffer
@@ -244,8 +250,8 @@ Item {
         "en": "PROMPTS: Browse and search thousands of prompts from CivitAI, Lexica, PromptHero, OpenArt, and Hugging Face."
       },
       "help_turbo_lora": {
-        "cs": "TURBO: 6kroková DMD akcelerace (~5s). Anatomical Guard: Při detekci člověka s další LoRA nebo štíhlou linií automaticky přepíná na Euler 28 st pro čistou anatomii a pas (solo člověk 7 st, krajiny 6 st).",
-        "en": "TURBO: 6-step DMD acceleration (~5s). Anatomical Guard: Auto-switches to Euler 28 st with layered LoRA/slim for clean anatomy & waist (7 st solo human, 6 st landscapes)."
+        "cs": "TURBO: 6kroková DMD akcelerace (~5s). Anatomical Guard: Aktivuje plný negativní prompt s anatomickou ochranou (bad anatomy, extra limbs, extra fingers, deformed hands...).",
+        "en": "TURBO: 6-step DMD acceleration (~5s). Anatomical Guard: Activates full negative prompt with anatomical protection (bad anatomy, extra limbs, extra fingers, deformed hands...)."
       },
       "help_anime_lora": {
         "cs": "ANIME LORA: Zapne specializovaný styl pro anime a ilustrace (SD_Tutorial).",
@@ -421,17 +427,27 @@ Item {
                 font.bold: true
                 color: promptInput.activeFocus ? Color.accent : Color.foreground
                 Layout.fillWidth: true
+                elide: Text.ElideRight
               }
 
               Button {
                 visible: promptInput.text.trim() !== ""
-                text: (panelRoot && panelRoot.isOptimizingPrompt) ? ("󱫠 " + root.tr("optimizing") + " (" + root.optElapsedSeconds + "s)") : root.tr("optimize")
+                text: (panelRoot && panelRoot.isOptimizingPrompt) ? (root.tr("optimizing") + " " + root.optElapsedSeconds + "s") : root.tr("optimize")
                 fontSize: Style.font.caption
                 bordered: true
                 active: panelRoot && panelRoot.isOptimizingPrompt
                 enabled: panelRoot && !panelRoot.isOptimizingPrompt
                 onHotChanged: root.setHelp(root.tr("help_optimize"), hot)
                 onClicked: if (panelRoot) panelRoot.optimizePrompt(promptInput.text)
+              }
+
+              Button {
+                text: (panelRoot && panelRoot.isAutoExpandEnabled) ? root.tr("auto_expand_on") : root.tr("auto_expand_off")
+                fontSize: Style.font.caption
+                bordered: true
+                active: panelRoot && panelRoot.isAutoExpandEnabled
+                onHotChanged: root.setHelp(root.tr("help_auto_expand"), hot)
+                onClicked: if (panelRoot) panelRoot.toggleAutoExpand()
               }
 
               Text {
@@ -806,13 +822,13 @@ Item {
           }
         }
 
-        // Status & Anatomical Warning Line (Marci aesthetic: čistá typografie, oddělovač //, bez ikon a závorek)
+        // Status & Anatomical Warning Line (Marci aesthetic: čistá typografie, oddělovač //, bez ikon a závorek, žlutá barva pro varování)
         Text {
           visible: panelRoot && !panelRoot.isTurboEnabled && panelRoot.steps < 25
           text: root.tr("warn_low_steps")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
-          color: Color.urgent
+          color: "#f59e0b"
           Layout.fillWidth: true
           wrapMode: Text.WordWrap
         }
@@ -821,7 +837,7 @@ Item {
           text: root.tr("warn_human_draft")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
-          color: Color.accent
+          color: "#f59e0b"
           Layout.fillWidth: true
           wrapMode: Text.WordWrap
         }
@@ -1223,7 +1239,7 @@ Item {
                 anchors.margins: Style.spacing.xxs
                 fillMode: Image.PreserveAspectFit
                 source: (panelRoot && panelRoot.isGenerating && panelRoot.livePreviewPath !== "")
-                  ? ("file://" + panelRoot.livePreviewPath + "?v=" + panelRoot.livePreviewTick)
+                  ? ("file://" + panelRoot.livePreviewPath)
                   : ""
                 cache: false
                 asynchronous: false
@@ -1462,34 +1478,13 @@ Item {
 
       // Turbo Viggle LoRA Switcher (Marci standard: čistá typografie, informativní stav bez ikon)
       Button {
-        readonly property bool isHumanStacked: panelRoot && panelRoot.isTurboEnabled && panelRoot.isHumanSubjectInPrompt && (panelRoot.isUncensoredEnabled || panelRoot.isAnimeLoRAEnabled || panelRoot.isSlimSubjectInPrompt)
-        readonly property bool isHumanSolo: panelRoot && panelRoot.isTurboEnabled && panelRoot.isHumanSubjectInPrompt && !panelRoot.isUncensoredEnabled && !panelRoot.isAnimeLoRAEnabled && !panelRoot.isSlimSubjectInPrompt
-        text: {
-          if (!panelRoot || !panelRoot.isTurboEnabled) {
-            return panelRoot && panelRoot.currentLang === "cs" ? "TURBO: VYP" : "TURBO: OFF";
-          }
-          if (isHumanStacked) {
-            return "TURBO · STD GUARD";
-          }
-          if (isHumanSolo) {
-            return "TURBO · HUMAN 7";
-          }
-          return panelRoot.currentLang === "cs" ? "TURBO: ZAP" : "TURBO: ON";
-        }
+        text: panelRoot && panelRoot.currentLang === "cs"
+              ? (panelRoot.isTurboEnabled ? "TURBO: ZAP" : "TURBO: VYP")
+              : (panelRoot.isTurboEnabled ? "TURBO: ON" : "TURBO: OFF")
         fontSize: Style.font.caption
         bordered: true
         selected: panelRoot && panelRoot.isTurboEnabled
-        onHotChanged: {
-          var helpMsg = root.tr("help_turbo_lora");
-          if (isHumanStacked) {
-            helpMsg += " // ANATOMICAL GUARD: Zjištěna lidská postava s vrstvenou LoRA / štíhlou linií. Bude automaticky přepnuto na Standard Euler (28 st, CFG 4.0) s plnou ochranou končetin a pasu.";
-          } else if (isHumanSolo) {
-            helpMsg += " // ANATOMICAL GUARD: Solo lidský subjekt běží ve stabilizovaném 7krokovém rozvrhu pro přesné anatomické proporce.";
-          } else if (panelRoot && panelRoot.isTurboEnabled) {
-            helpMsg += " // Krajiny, architektura a objekty běží v bleskových 6 krocích.";
-          }
-          root.setHelp(helpMsg, hot);
-        }
+        onHotChanged: root.setHelp(root.tr("help_turbo_lora"), hot)
         onClicked: if (panelRoot) panelRoot.toggleTurbo()
       }
 

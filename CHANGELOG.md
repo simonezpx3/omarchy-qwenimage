@@ -4,6 +4,31 @@ Všechny významné změny, audity a bezpečnostní opravy projektu jsou zazname
 
 ---
 
+## [1.1.9] — 2026-10-13
+
+### Fixed & Enhanced
+- **Live Preview Engine (`rust-bridge`, `qis-stack.sh` & `StudioView.qml`):**
+  - **ComfyUI Preview Pipeline:** Do konfigurace spuštění ComfyUI (`qis-stack.sh`, `~/.local/bin/comfy` i `rust-bridge`) sjednocen přepínač `--preview-method auto`. Backend tím na RTX 3070 automaticky aktivuje bleskový `Latent2RGB` vzorkovač s režií <50 MB VRAM a odesílá binární JPEG snímky přes WebSocket.
+  - **Ping-Pong Buffer & Magic Bytes Parser:** V `rust-bridge/src/comfy.rs` implementována robustní detekce začátku JPEG streamu (`[0xFF, 0xD8]`) i PNG (`[0x89, 0x50, 0x4E, 0x47]`) eliminující závislost na offsetu hlavičky. Náhledy se atomicky zapisují do střídavého ping-pong bufferu (`qis_live_preview_0.jpg` <-> `qis_live_preview_1.jpg`) v `$XDG_RUNTIME_DIR/qwenimage/` (0700).
+  - **Přirozená QtQuick Invalidace:** V `StudioView.qml` je vlastnost `source` navázána přímo na střídající se cestu. Díky změně URL na každém kroku difúze QtQuick okamžitě a spolehlivě obnovuje texturu bez uvíznutí v mezipaměti a bez nutnosti hacků s `?v=`.
+- **Image-to-Image Aspect Ratio Overdrive (`assets/qwen_edit_workflow_api.json`):**
+  - **Sjednocení rozměrů kondicionování:** Uzel 4 (`TextEncodeQwenImageEditPlus`) přepojen na vstup `image1` z uzlu 5 (`ImageScale` s center crop) namísto syrového uzlu 9.
+  - Tím je zaručeno, že `reference_latents` přesně lícují s rozměry a poměrem stran cílového latentu z uzlu 5b a nevznikají geometrické deformace ani nechtěný návrat k původnímu poměru předlohy.
+- **Tiled VAE Decoder Stabilizace (`rust-bridge/src/comfy.rs`):**
+  - Doplněna povinná pole `temporal_size: 64` a `temporal_overlap: 8` do uzlu `VAEDecodeTiled`, čímž byla odstraněna chyba validace parametrů v ComfyUI při dekódování velkých pláten s úsporou VRAM.
+- **UI Ergonomie & Text Labels (`Panel.qml` & `views/StudioView.qml`):**
+  - Odstraněn přetékající statický text `CTRL+ENTER RUN` z prompt karty, který kolidoval a překrýval tlačítko `OPTIMISE`.
+  - Tlačítko automatického rozšiřování promptu upraveno na přehledný štítek `Expand: ON` / `Expand: OFF`.
+- **Refaktor Anatomical Guardu (`rust-bridge`, `Panel.qml` & `views/StudioView.qml`):**
+  - **Čistá negativní ochrana:** Anatomical guard byl zjednodušen výhradně na automatické doplnění negativního promptu s anatomickou ochranou (`bad anatomy`, `extra limbs`, `extra fingers`, `fused fingers`, `deformed hands...`).
+  - **Odstranění restriktivních overridů:** Zrušeno veškeré nucené přenastavování uživatelských parametrů — žádné vnucování kroků (28 st), CFG (4.0), rozlišení (přepisování Draft na Standard) ani vynucený pád Turba do Standardu.
+  - **Žlutá vizuální varování (#screens standard):** U problematických kombinací parametrů při detekci lidského subjektu (nízký počet kroků bez Turba, nízké rozlišení Draft) se v UI zobrazuje čisté informační varování ve žluté barvě (`#f59e0b`), bez blokování či přepisování voleb uživatele.
+- **XDG Persistence & Eliminace Nechtěného Hot-Reloadu (`rust-bridge/src/main.rs`):**
+  - Ukládání uživatelských nastavení (`settings.json`) bylo přesunuto ze složky pluginu do standardní XDG cesty `~/.config/qwenimage/settings.json` (0600) s automatickou bezešvou migrací a vyčištěním starého souboru.
+  - Tím bylo zcela eliminováno nežádoucí zachytávání změn systémovým `inotifywait` hlídačem v Omarchy shellu a plugin se již nerestartuje při přepínání voleb (Turbo, Expand, Anime LoRA apod.).
+
+---
+
 ## [1.1.8] — 2026-10-12
 
 ### Added & Enhanced
