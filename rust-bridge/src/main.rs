@@ -842,20 +842,34 @@ fn sniff_image_magic(b: &[u8]) -> Option<&'static str> {
     }
 }
 
+fn get_is_cs() -> bool {
+    let s = load_settings();
+    s.get("language").and_then(|v| v.as_str()).unwrap_or("cs") == "cs"
+}
+
 fn validate_image_file(p: &Path) -> Result<PathBuf, String> {
-    let canonical = p.canonicalize().map_err(|e| format!("Neplatná cesta: {}", e))?;
-    let meta = fs::symlink_metadata(&canonical).map_err(|e| format!("Nelze přečíst metadata: {}", e))?;
+    let is_cs = get_is_cs();
+    let canonical = p.canonicalize().map_err(|e| {
+        if is_cs { format!("Neplatná cesta: {}", e) } else { format!("Invalid path: {}", e) }
+    })?;
+    let meta = fs::symlink_metadata(&canonical).map_err(|e| {
+        if is_cs { format!("Nelze přečíst metadata: {}", e) } else { format!("Cannot read metadata: {}", e) }
+    })?;
     if !meta.is_file() {
-        return Err("Cesta neodkazuje na běžný soubor".to_string());
+        return Err(if is_cs { "Cesta neodkazuje na běžný soubor".to_string() } else { "Path does not point to a regular file".to_string() });
     }
     if meta.len() > MAX_IMG_BYTES {
-        return Err("Soubor překračuje limit 32 MB".to_string());
+        return Err(if is_cs { "Soubor překračuje limit 32 MB".to_string() } else { "File exceeds 32 MB limit".to_string() });
     }
-    let mut file = File::open(&canonical).map_err(|e| format!("Nelze otevřít soubor: {}", e))?;
+    let mut file = File::open(&canonical).map_err(|e| {
+        if is_cs { format!("Nelze otevřít soubor: {}", e) } else { format!("Cannot open file: {}", e) }
+    })?;
     let mut header = [0u8; 16];
-    let n = file.read(&mut header).map_err(|e| format!("Nelze načíst hlavičku: {}", e))?;
+    let n = file.read(&mut header).map_err(|e| {
+        if is_cs { format!("Nelze načíst hlavičku: {}", e) } else { format!("Cannot read header: {}", e) }
+    })?;
     if sniff_image_magic(&header[..n]).is_none() {
-        return Err("Nepodporovaný formát obrázku (neplatné Magic bytes)".to_string());
+        return Err(if is_cs { "Nepodporovaný formát obrázku (neplatné Magic bytes)".to_string() } else { "Unsupported image format (invalid magic bytes)".to_string() });
     }
     Ok(canonical)
 }
@@ -969,11 +983,16 @@ fn cmd_paste_clipboard() {
         }
     }
 
+    let is_cs = get_is_cs();
     println!(
         "{}",
         serde_json::json!({
             "status": "error",
-            "message": "Ve schránce nebyl nalezen žádný platný lokální obrázek"
+            "message": if is_cs {
+                "Ve schránce nebyl nalezen žádný platný lokální obrázek"
+            } else {
+                "Clipboard does not contain a valid local image"
+            }
         })
     );
 }
@@ -996,11 +1015,16 @@ fn cmd_paste_text() {
             })
         );
     } else {
+        let is_cs = get_is_cs();
         println!(
             "{}",
             serde_json::json!({
                 "status": "error",
-                "message": "Schránka je prázdná, nedostupná nebo překračuje limit 16 KiB"
+                "message": if is_cs {
+                    "Schránka je prázdná, nedostupná nebo překračuje limit 16 KiB"
+                } else {
+                    "Clipboard is empty, unavailable, or exceeds 16 KiB limit"
+                }
             })
         );
     }
@@ -1064,7 +1088,15 @@ fn cmd_snip() {
                     return;
                 }
             }
-            println!("{}", serde_json::json!({ "status": "error", "message": "Nástroj slurp/screenshot není dostupný" }));
+            let is_cs = get_is_cs();
+            println!("{}", serde_json::json!({
+                "status": "error",
+                "message": if is_cs {
+                    "Nástroj slurp/screenshot není dostupný"
+                } else {
+                    "Tool slurp/screenshot is unavailable"
+                }
+            }));
             return;
         }
     };
@@ -1093,7 +1125,15 @@ fn cmd_snip() {
         }
     }
 
-    println!("{}", serde_json::json!({ "status": "error", "message": "Snímání výřezu selhalo" }));
+    let is_cs = get_is_cs();
+    println!("{}", serde_json::json!({
+        "status": "error",
+        "message": if is_cs {
+            "Snímání výřezu selhalo"
+        } else {
+            "Screen snip capture failed"
+        }
+    }));
 }
 
 fn cmd_copy_text(text_arg: Option<&str>) {
@@ -1331,8 +1371,17 @@ fn cmd_scale(input_path: &str, factor: f32) {
             let _ = embed_png_metadata(&out_path, &meta_vec);
 
             play_chime();
-            let notif_title = format!("Upscale {} Dokončen", factor_str.to_uppercase());
-            let notif_body = format!("Uloženo do Qwen-Image: {}\nRozlišení: {}x{} (Lanczos3)", final_filename, final_w, final_h);
+            let is_cs = get_is_cs();
+            let notif_title = if is_cs {
+                format!("Upscale {} Dokončen", factor_str.to_uppercase())
+            } else {
+                format!("Upscale {} Complete", factor_str.to_uppercase())
+            };
+            let notif_body = if is_cs {
+                format!("Uloženo do Qwen-Image: {}\nRozlišení: {}x{} (Lanczos3)", final_filename, final_w, final_h)
+            } else {
+                format!("Saved to Qwen-Image: {}\nResolution: {}x{} (Lanczos3)", final_filename, final_w, final_h)
+            };
             send_notification(&notif_title, &notif_body, out_path.to_str());
 
             println!(
@@ -1382,8 +1431,17 @@ fn cmd_upscale_ai(input_path: &str, model_choice: &str, is_anime: bool) {
                 "anime" | "animesharp" => "AnimeSharp 4X",
                 _ => "4X",
             };
-            let notif_title = format!("AI {} Upscale Dokončen", model_title);
-            let notif_body = format!("Uloženo do Qwen-Image: {}\nModel: {} ({}x{})", fn_str, model_str, w_val, h_val);
+            let is_cs = get_is_cs();
+            let notif_title = if is_cs {
+                format!("AI {} Upscale Dokončen", model_title)
+            } else {
+                format!("AI {} Upscale Complete", model_title)
+            };
+            let notif_body = if is_cs {
+                format!("Uloženo do Qwen-Image: {}\nModel: {} ({}x{})", fn_str, model_str, w_val, h_val)
+            } else {
+                format!("Saved to Qwen-Image: {}\nModel: {} ({}x{})", fn_str, model_str, w_val, h_val)
+            };
             send_notification(&notif_title, &notif_body, Some(out_path));
             println!("{}", val);
         }
@@ -2489,11 +2547,16 @@ fn cmd_generate(
     let lock_file = match File::options().read(true).write(true).create(true).truncate(false).open(&lock_path) {
         Ok(f) => f,
         Err(e) => {
+            let is_cs = get_is_cs();
             println!(
                 "{}",
                 serde_json::json!({
                     "status": "error",
-                    "message": format!("Nepodařilo se inicializovat VRAM Guard zámek: {}", e)
+                    "message": if is_cs {
+                        format!("Nepodařilo se inicializovat VRAM Guard zámek: {}", e)
+                    } else {
+                        format!("Failed to initialize VRAM Guard lock: {}", e)
+                    }
                 })
             );
             return;
@@ -2501,11 +2564,16 @@ fn cmd_generate(
     };
 
     if lock_file.try_lock_exclusive().is_err() {
+        let is_cs = get_is_cs();
         println!(
             "{}",
             serde_json::json!({
                 "status": "busy",
-                "message": "GENERÁTOR JE ZANEPRAZDNĚN // ÚLOHA BĚŽÍ"
+                "message": if is_cs {
+                    "GENERÁTOR JE ZANEPRAZDNĚN // ÚLOHA BĚŽÍ"
+                } else {
+                    "GENERATOR IS BUSY // TASK RUNNING"
+                }
             })
         );
         return;

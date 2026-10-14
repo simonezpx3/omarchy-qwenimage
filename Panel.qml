@@ -975,11 +975,11 @@ Panel {
       root.isUpdating = false;
       var totalTime = root.updateElapsedSeconds;
       if (exitCode === 0) {
-        root.updateStatusText = (root.currentLang === "cs" ? "HOTOVO" : "Done") + " (" + totalTime + "s)";
+        root.updateStatusText = (root.currentLang === "cs" ? "HOTOVO" : "DONE") + " (" + totalTime + "s)";
         root.refreshTelemetry();
         root.fetchHistory();
       } else {
-        root.updateStatusText = (root.currentLang === "cs" ? "CHYBA" : "Error") + " (" + totalTime + "s)";
+        root.updateStatusText = (root.currentLang === "cs" ? "CHYBA" : "ERROR") + " (" + totalTime + "s)";
       }
       updateDoneTimer.restart();
     }

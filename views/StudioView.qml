@@ -92,8 +92,9 @@ Item {
         "en": "REFERENCE & BUFFER (CLIPBOARD PASTE / SCREEN SNIP)"
       },
       "no_buffer": { "cs": "Bez bufferu", "en": "No Buffer" },
+      "buffer_empty": { "cs": "BUFFER // PRÁZDNÝ", "en": "BUFFER // EMPTY" },
       "drop_hint": { "cs": "Vlož obrázek ze schránky (Super+V) nebo pořiď výřez", "en": "Paste image from clipboard (Super+V) or snip area" },
-      "buffer_ref": { "cs": "󰅌 Reference z bufferu", "en": "󰅌 Buffer Reference" },
+      "buffer_ref": { "cs": "BUFFER // REFERENCE", "en": "BUFFER // REFERENCE" },
       "paste": { "cs": "VLOŽIT", "en": "PASTE" },
       "snip": { "cs": "VÝŘEZ", "en": "SNIP" },
       "clear": { "cs": "SMAZAT", "en": "CLEAR" },
@@ -184,6 +185,22 @@ Item {
       "help_steps": {
         "cs": "KROKY (STEPS): Počet difuzních vzorkovacích kroků (výchozí: 25). Vyšší hodnoty zjemňují detaily, nižší urychlují generování.",
         "en": "STEPS: Number of diffusion sampling steps (default: 25). Higher values refine detail, lower values speed up generation."
+      },
+      "help_steps_15": {
+        "cs": "15 KROKŮ // Bleskový draft (~6s)",
+        "en": "15 STEPS // Fast draft (~6s)"
+      },
+      "help_steps_25": {
+        "cs": "25 KROKŮ // Standardní vyvážená kvalita (~18s)",
+        "en": "25 STEPS // Standard balanced quality (~18s)"
+      },
+      "help_steps_35": {
+        "cs": "35 KROKŮ // Maximální detaily a čisté kontury",
+        "en": "35 STEPS // Maximum detail and crisp contours"
+      },
+      "help_ratio_auto_ref": {
+        "cs": "AUTO // REF · Automaticky zachovat přesný poměr stran načteného referenčního obrázku bez ořezu.",
+        "en": "AUTO // REF · Automatically preserve exact aspect ratio of loaded reference image without cropping."
       },
       "help_paste": {
         "cs": "PASTE: Vloží referenční obrázek ze systémové schránky (Wayland clipboard).",
@@ -649,7 +666,7 @@ Item {
             visible: panelRoot && panelRoot.referencePath !== ""
             selected: panelRoot && panelRoot.aspectRatio === "auto"
             Layout.fillWidth: true
-            onHotChanged: root.setHelp("Automaticky zachovat přesný poměr stran načteného referenčního obrázku bez ořezu", hot)
+            onHotChanged: root.setHelp(root.tr("help_ratio_auto_ref"), hot)
             onClicked: if (panelRoot) panelRoot.aspectRatio = "auto"
           }
 
@@ -816,7 +833,7 @@ Item {
                 horizontalPadding: Style.space(3)
                 verticalPadding: Style.space(2)
                 onClicked: if (panelRoot) panelRoot.steps = modelData
-                onHotChanged: root.setHelp(modelData + " kroků: " + (modelData === 15 ? "Bleskový draft (~6s)" : (modelData === 25 ? "Standardní vyvážená kvalita (~18s)" : "Maximální detaily a čisté kontury")), hot)
+                onHotChanged: root.setHelp(root.tr("help_steps_" + modelData), hot)
               }
             }
           }
@@ -931,7 +948,7 @@ Item {
                 visible: !panelRoot || panelRoot.referencePath === ""
 
                 Text {
-                  text: "BUFFER // PRÁZDNÝ"
+                  text: root.tr("buffer_empty")
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
                   font.bold: true
