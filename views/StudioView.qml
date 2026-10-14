@@ -1242,10 +1242,10 @@ Item {
                 fillMode: Image.PreserveAspectFit
                 sourceSize: Qt.size(1280, 0)
                 source: (panelRoot && panelRoot.isGenerating && panelRoot.livePreviewPath !== "")
-                  ? ("file://" + panelRoot.livePreviewPath)
+                  ? ("file://" + panelRoot.livePreviewPath + "?t=" + (panelRoot.livePreviewTick || 0))
                   : ""
                 cache: false
-                asynchronous: false
+                asynchronous: true
                 visible: panelRoot && panelRoot.isGenerating && panelRoot.livePreviewPath !== ""
               }
 

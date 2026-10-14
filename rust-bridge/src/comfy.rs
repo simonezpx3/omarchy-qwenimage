@@ -211,7 +211,11 @@ pub fn ensure_comfyui_running() -> bool {
             } else if tier == "C" {
                 py_args.push("--cpu");
             } else {
-                py_args.extend_from_slice(&["--reserve-vram", "1.2", "--async-offload", "1", "--enable-dynamic-vram", "--fp8_e4m3fn-text-enc"]);
+                py_args.extend_from_slice(&["--reserve-vram", "1.2", "--enable-dynamic-vram", "--fp8_e4m3fn-text-enc"]);
+            }
+
+            if tier != "C" {
+                py_args.push("--use-sage-attention");
             }
 
             for py in &py_candidates {
@@ -219,9 +223,32 @@ pub fn ensure_comfyui_running() -> bool {
                     let mut cmd = Command::new(py);
                     cmd.arg(&main_py)
                         .args(&py_args)
+                        .env("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True,garbage_collection_threshold:0.8")
+                        .env("CUDA_MODULE_LOADING", "LAZY")
+                        .env("OMP_NUM_THREADS", "8")
+                        .env("MKL_NUM_THREADS", "8")
+                        .env("OPENBLAS_NUM_THREADS", "8")
                         .stdin(std::process::Stdio::null())
                         .stdout(std::process::Stdio::null())
                         .stderr(std::process::Stdio::null());
+
+                    #[cfg(target_os = "linux")]
+                    {
+                        use std::os::unix::process::CommandExt;
+                        let parent_pid = unsafe { libc::getpid() };
+                        unsafe {
+                            cmd.pre_exec(move || {
+                                if libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL) != 0 {
+                                    return Err(std::io::Error::last_os_error());
+                                }
+                                if libc::getppid() != parent_pid {
+                                    libc::raise(libc::SIGKILL);
+                                }
+                                Ok(())
+                            });
+                        }
+                    }
+
                     if let Ok(child) = cmd.spawn() {
                         let _ = fs::write(comfy_dir.join("comfyui.pid"), child.id().to_string());
                         launched = true;
@@ -300,20 +327,33 @@ pub fn free_comfyui_vram(force_unload: bool) -> bool {
 }
 
 fn get_preview_file_path(tick: u64) -> PathBuf {
-    let base = std::env::var("XDG_RUNTIME_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from(format!("/run/user/{}", unsafe { libc::getuid() })));
-    let dir = if base.exists() && base.is_dir() {
-        base.join("qwenimage")
+    let uid = unsafe { libc::getuid() };
+    let shm_dir = PathBuf::from(format!("/dev/shm/qis_preview_{}", uid));
+    let dir = if Path::new("/dev/shm").is_dir() {
+        let _ = fs::create_dir_all(&shm_dir);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(&shm_dir, fs::Permissions::from_mode(0o700));
+        }
+        shm_dir
     } else {
-        get_home().join(".cache").join("qwenimage")
+        let base = std::env::var("XDG_RUNTIME_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from(format!("/run/user/{}", uid)));
+        let d = if base.exists() && base.is_dir() {
+            base.join("qwenimage")
+        } else {
+            get_home().join(".cache").join("qwenimage")
+        };
+        let _ = fs::create_dir_all(&d);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(&d, fs::Permissions::from_mode(0o700));
+        }
+        d
     };
-    let _ = fs::create_dir_all(&dir);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = fs::set_permissions(&dir, fs::Permissions::from_mode(0o700));
-    }
     dir.join(format!("qis_live_preview_{}.jpg", tick % 2))
 }
 

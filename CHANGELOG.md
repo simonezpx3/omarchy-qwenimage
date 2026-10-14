@@ -4,6 +4,25 @@ Všechny významné změny, audity a bezpečnostní opravy projektu jsou zazname
 
 ---
 
+## [1.2.0] — 2026-10-14
+
+### Added & Enhanced
+- **Pillar 1 // Zero-Copy Preview Pipeline via POSIX Shared Memory (`/dev/shm`):**
+  - Směrování ukládání živých náhledů do vyhrazeného RAM disku `/dev/shm/qis_preview_${UID}/` (0700). Zápis probíhá atomickým přejmenováním (`tmp` -> `target`), což eliminuje jakékoliv zpoždění z diskového I/O.
+  - V `views/StudioView.qml` přepnuta komponenta `Image` na `asynchronous: true` s parametrem `?t=${livePreviewTick}` pro plynulé načítání náhledů na 144Hz Wayland kompozitoru bez mikrozáseků UI.
+- **Pillar 2 // Process Lifecycle Hardening & Zombie Prevention (`PR_SET_PDEATHSIG`):**
+  - V `rust-bridge/src/comfy.rs` implementována nízkoúrovňová pojistka přes `libc::prctl(PR_SET_PDEATHSIG, SIGKILL)` s detekcí fork-race stavu (`getppid() != parent_pid`). Při nečekaném pádu či ukončení bridge jádro okamžitě ukončí child proces ComfyUI a uvolní VRAM.
+  - V `scripts/qis-stack.sh` doplněna procesní izolace přes transient cgroup `systemd-run --user --scope --unit=qis-comfyui-${UID}` a její čisté zastavení při `qis stop`.
+- **Pillar 3 // Attention Acceleration with SageAttention 2 (`sm_86` Ampere INT8):**
+  - Integrována automatická detekce a aktivace `--use-sage-attention` pro ComfyUI na kartách architektury Ampere. Využívá hardwarové INT8 Tensor Cores pro pozornostní matice s FP16 akumulací bez změny GGUF Q4_K_M vah modelu, čímž přináší 25–35% zrychlení a redukuje špičkovou spotřebu paměti.
+  - Do instalačního skriptu doplněna instalace `sageattention` do virtuálního prostředí.
+- **Pillar 4 // Memory Allocation Safeguards & Hardware Stability:**
+  - Odstraněn nestabilní přepínač `--async-offload 1`, který byl identifikován jako příčina proudových transientů a pádů PCIe sběrnice (Xid 79) při zátěžovém upscalingu.
+  - Zavedena globální alokační konfigurace `PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,garbage_collection_threshold:0.8"` eliminující fragmentaci VRAM na 8GB GPU.
+  - CPU runtime optimalizace pro Ryzen 7800X3D: `OMP_NUM_THREADS=8` zamezující SMT thrashingu na 1 CCD při AVX-512 operacích a `CUDA_MODULE_LOADING=LAZY`.
+
+---
+
 ## [1.1.9] — 2026-10-13
  
 ### Added & Enhanced

@@ -348,6 +348,16 @@ install_comfyui() {
             return 1
         fi
         log_ok "Všechny Python závislosti byly úspěšně ověřeny a nainstalovány z immutable hash lockfile."
+
+        # SageAttention 2 pro hardwarovou INT8 akceleraci na Ampere a novějších GPU
+        if [[ "$GPU_VENDOR" == "nvidia" ]]; then
+            log_info "Instaluji SageAttention 2 pro hardwarovou INT8 akceleraci na Ampere..."
+            if command -v uv >/dev/null 2>&1; then
+                uv pip install --python "${COMFY_VENV}/bin/python" sageattention >/dev/null 2>&1 || true
+            else
+                "${COMFY_VENV}/bin/pip" install sageattention >/dev/null 2>&1 || true
+            fi
+        fi
     fi
 
     # Clone required custom nodes (pinned to verified immutable commit hashes)
@@ -1062,8 +1072,20 @@ start_comfyui() {
                 reserve_val="1.5"
             fi
         fi
-        args+=("--reserve-vram" "${reserve_val}" "--async-offload" "1" "--enable-dynamic-vram" "--fp8_e4m3fn-text-enc")
+        args+=("--reserve-vram" "${reserve_val}" "--enable-dynamic-vram" "--fp8_e4m3fn-text-enc")
     fi
+
+    # Akcelerace Attention vrstev přes SageAttention 2 na Ampere sm_86
+    if [[ "$HW_TIER" != "C" ]] && "$py_bin" -c "import sageattention" >/dev/null 2>&1; then
+        args+=("--use-sage-attention")
+    fi
+
+    # Alokační a runtime pojistky (expandable_segments, lazy loading, single-CCD threading)
+    export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,garbage_collection_threshold:0.8"
+    export CUDA_MODULE_LOADING="LAZY"
+    export OMP_NUM_THREADS="8"
+    export MKL_NUM_THREADS="8"
+    export OPENBLAS_NUM_THREADS="8"
 
     local log_file="${COMFY_DIR}/comfyui.log"
     local pid_file="${COMFY_DIR}/comfyui.pid"
@@ -1082,7 +1104,11 @@ start_comfyui() {
     fi
 
     if (( bg == 1 )); then
-        nohup "$py_bin" "${COMFY_DIR}/main.py" "${args[@]}" > "$log_file" 2>&1 &
+        local scope_cmd=()
+        if command -v systemd-run >/dev/null 2>&1 && systemctl --user is-system-running >/dev/null 2>&1; then
+            scope_cmd=("systemd-run" "--user" "--scope" "--unit=qis-comfyui-${UID}")
+        fi
+        nohup "${scope_cmd[@]}" "$py_bin" "${COMFY_DIR}/main.py" "${args[@]}" > "$log_file" 2>&1 &
         local pid=$!
         echo "$pid" > "$pid_file"
         log_info "Čekám na spuštění ComfyUI na pozadí (PID ${pid})..."
@@ -1125,6 +1151,10 @@ stop_comfyui() {
             rm -f "$pid_file"
             stopped=1
         fi
+    fi
+
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl --user stop "qis-comfyui-${UID}.scope" 2>/dev/null || true
     fi
 
     if command -v fuser >/dev/null 2>&1; then
