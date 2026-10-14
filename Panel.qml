@@ -18,7 +18,7 @@ Panel {
   property var hostWidget: null
   readonly property var barIdentity: hostWidget || root
   readonly property string bridgeBin: Qt.resolvedUrl("bin/qwen-bridge").toString().replace(/^file:\/\//, "")
-  readonly property string pluginVersion: "v1.1.9"
+  readonly property string pluginVersion: "v1.2.0"
   readonly property string userHome: Quickshell.env("HOME") || "/home/" + (Quickshell.env("USER") || "user")
   readonly property string picturesDir: userHome + "/Pictures/Qwen-Image"
 
