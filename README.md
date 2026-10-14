@@ -56,6 +56,10 @@ graph LR
 ## Features
 
 - **Text-to-Image (DiT Diffusion):** Native high-resolution generation via local ComfyUI backend.
+- **SageAttention 2 Acceleration:** Hardware-accelerated INT8 Tensor Core matrix operations (`sm_86` Ampere and newer) cutting attention memory footprint and delivering 25–35% faster sampling without altering GGUF model weights.
+- **Zero-Copy POSIX Shared Memory Previews (`/dev/shm`):** Live step previews written directly to dedicated RAM disk (`/dev/shm/qis_preview_${UID}/`) with atomic renaming, eliminating disk I/O latency and micro-stutter on 144Hz Wayland compositors.
+- **Process Lifecycle Hardening & Zombie Protection:** Kernel-level process tracking via `libc::prctl(PR_SET_PDEATHSIG, SIGKILL)` and transient systemd scopes (`systemd-run --user --scope`), ensuring instant GPU VRAM eviction and zero orphan processes if the parent bridge aborts.
+- **Complete Bilingual Parity (EN / CS):** Dynamic language switcher with zero English leaks across UI labels, tooltips, bridge error messages, and desktop notifications.
 - **Turbo Mode (Viggle Turbo DMD):** 6-step distillation yielding ~5s generation on consumer GPUs (8GB+ VRAM) at 0 token cost, seamlessly toggleable from the bottom action bar.
 - **Neural Super-Resolution (4X Upscalers):** Integrated zero-token super-resolution suite directly in ComfyUI:
   - `4X ESRGAN` (RealESRGAN_x4plus) — General photo & cinematic restoration with grain denoising.
