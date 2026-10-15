@@ -286,6 +286,14 @@ Item {
         "cs": "RESET: Vyčistí všechna pole a vrátí studio do výchozího stavu.",
         "en": "RESET: Clears all text fields and resets studio to default values."
       },
+      "help_reference_pick": {
+        "cs": "REFERENČNÍ PŘEDLOHA: Kliknutím levým tlačítkem myši vyberete obrázek z ~/Pictures (pravým tlačítkem vložíte ze schránky).",
+        "en": "REFERENCE IMAGE: Left-click to select image from ~/Pictures (right-click to paste from clipboard)."
+      },
+      "help_canvas_fullscreen": {
+        "cs": "CANVAS BUFFER: Kliknutím levým tlačítkem myši otevřete vygenerovaný obrázek na celou obrazovku.",
+        "en": "CANVAS BUFFER: Left-click to view generated image in fullscreen."
+      },
       "help_lang": {
         "cs": "PŘEPÍNAČ JAZYKA: Přepíná rozhraní a nápovědu mezi češtinou (CZ) a angličtinou (EN).",
         "en": "LANGUAGE SWITCHER: Toggles interface and help text between English (EN) and Czech (CZ)."
@@ -922,9 +930,18 @@ Item {
               MouseArea {
                 id: refBoxMouse
                 anchors.fill: parent
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: if (panelRoot) panelRoot.pasteFromClipboard()
+                onEntered: root.setHelp(root.tr("help_reference_pick"), true)
+                onExited: root.setHelp(root.tr("help_reference_pick"), false)
+                onClicked: function(mouse) {
+                  if (mouse.button === Qt.LeftButton) {
+                    if (panelRoot) panelRoot.pickReferenceImage();
+                  } else if (mouse.button === Qt.RightButton) {
+                    if (panelRoot) panelRoot.pasteFromClipboard();
+                  }
+                }
               }
 
               // Loaded buffer image
@@ -1266,6 +1283,28 @@ Item {
                 visible: panelRoot && panelRoot.isGenerating && panelRoot.livePreviewPath !== ""
               }
 
+              // Left-click on canvas buffer: open generated image fullscreen
+              MouseArea {
+                id: canvasClickArea
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton
+                hoverEnabled: true
+                readonly property bool canOpenFullscreen: Boolean(panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating)
+                cursorShape: canOpenFullscreen ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onEntered: if (canOpenFullscreen) root.setHelp(root.tr("help_canvas_fullscreen"), true)
+                onExited: root.setHelp(root.tr("help_canvas_fullscreen"), false)
+                onCanOpenFullscreenChanged: {
+                  if (containsMouse) {
+                    root.setHelp(root.tr("help_canvas_fullscreen"), canOpenFullscreen);
+                  }
+                }
+                onClicked: function(mouse) {
+                  if (mouse.button === Qt.LeftButton && canOpenFullscreen) {
+                    panelRoot.openFullscreenViewer(panelRoot.generatedPath);
+                  }
+                }
+              }
+
               // Live Diffusion Step Badge (Omarchy UI Style)
               Rectangle {
                 anchors.top: parent.top
@@ -1334,7 +1373,7 @@ Item {
             active: isBusy
             selected: isBusy
             foreground: isBusy ? Color.accent : Color.foreground
-            enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
+            enabled: panelRoot && ((panelRoot.referencePath !== "") || (panelRoot.generatedPath !== "")) && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_esrgan"), hot)
             onClicked: if (panelRoot) panelRoot.aiUpscale("esrgan")
           }
@@ -1348,7 +1387,7 @@ Item {
             active: isBusy
             selected: isBusy
             foreground: isBusy ? Color.accent : Color.foreground
-            enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
+            enabled: panelRoot && ((panelRoot.referencePath !== "") || (panelRoot.generatedPath !== "")) && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_ultra"), hot)
             onClicked: if (panelRoot) panelRoot.aiUpscale("ultra")
           }
@@ -1362,7 +1401,7 @@ Item {
             active: isBusy
             selected: isBusy
             foreground: isBusy ? Color.accent : Color.foreground
-            enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
+            enabled: panelRoot && ((panelRoot.referencePath !== "") || (panelRoot.generatedPath !== "")) && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_anime"), hot)
             onClicked: if (panelRoot) panelRoot.aiUpscale("anime")
           }
@@ -1376,7 +1415,7 @@ Item {
             active: isBusy
             selected: isBusy
             foreground: isBusy ? Color.accent : Color.foreground
-            enabled: panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating
+            enabled: panelRoot && ((panelRoot.referencePath !== "") || (panelRoot.generatedPath !== "")) && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_half"), hot)
             onClicked: if (panelRoot) panelRoot.scaleImage(0.5)
           }

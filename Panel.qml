@@ -332,6 +332,12 @@ Panel {
     root.referenceMatchedRatio = "";
     root.referenceRevision = 0;
     root.denoise = 0.65;
+    root.generatedPath = "";
+    root.baseGeneratedPath = "";
+    root.previousGeneratedPath = "";
+    root.livePreviewPath = "";
+    root.livePreviewStep = 0;
+    root.generationTelemetry = "1024x1024 | 25 STEPS | RTX 3070 (0 TOKENS)";
   }
 
   function recallPrompt(delta) {
@@ -482,8 +488,15 @@ Panel {
   function openImageViewer(path) {
     if (!path) return;
     var p = openExternalProc;
-    p.command = ["xdg-open", path];
+    p.command = ["xdg-open", "--", path];
     p.running = true;
+  }
+
+  function openFullscreenViewer(path) {
+    if (!path) return;
+    openFullscreenProc.running = false;
+    openFullscreenProc.command = ["imv", "-f", "--", path];
+    openFullscreenProc.running = true;
   }
 
   function openPicturesFolder() {
@@ -535,6 +548,22 @@ Panel {
     if (ratio) aspectRatio = ratio;
     generatedPath = path;
     baseGeneratedPath = path;
+  }
+
+  function pickReferenceImage() {
+    pickRefImageProc.running = false;
+    var picDir = Quickshell.env("XDG_PICTURES_DIR") || ((Quickshell.env("HOME") || "") + "/Pictures");
+    if (picDir !== "" && !picDir.endsWith("/")) {
+      picDir += "/";
+    }
+    pickRefImageProc.command = [
+      "zenity",
+      "--file-selection",
+      "--filename=" + picDir,
+      "--file-filter=" + (root.currentLang === "cs" ? "Obrázky" : "Images") + " (*.png *.jpg *.jpeg *.webp *.avif) | *.png *.jpg *.jpeg *.webp *.avif *.PNG *.JPG *.JPEG *.WEBP *.AVIF",
+      "--title=" + (root.currentLang === "cs" ? "Vybrat referenční obrázek" : "Select reference image")
+    ];
+    pickRefImageProc.running = true;
   }
 
   function fetchPrompts(source, query) {
@@ -683,6 +712,30 @@ Panel {
   }
   Process { id: clipCopyProc }
   Process { id: openExternalProc }
+  Process {
+    id: openFullscreenProc
+    onExited: function(exitCode, exitStatus) {
+      if (exitCode !== 0 && openFullscreenProc.command.length >= 4) {
+        root.openImageViewer(openFullscreenProc.command[3]);
+      }
+    }
+  }
+  Process {
+    id: pickRefImageProc
+    property string collectedPath: ""
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        pickRefImageProc.collectedPath = (text || "").trim();
+      }
+    }
+    onExited: function(exitCode, exitStatus) {
+      if (exitCode === 0 && pickRefImageProc.collectedPath !== "") {
+        root.setReferenceImage(pickRefImageProc.collectedPath);
+      }
+      pickRefImageProc.collectedPath = "";
+    }
+  }
 
   Process {
     id: panelStatusProc
