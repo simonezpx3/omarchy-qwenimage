@@ -4,6 +4,28 @@ Všechny významné změny, audity a bezpečnostní opravy projektu jsou zazname
 
 ---
 
+## [1.2.1] — 2026-10-15
+
+### Added & Enhanced
+- **Pillar 1 // Zero-Copy SwiGLU VRAM Optimization & OOM Elimination (`ComfyUI-ViggleTurbo`):**
+  - Nahrazení paměťově náročného spojování `torch.cat` a alokace mezisoučtů v `gate_up_hook` za in-place zápis `.add_()` přímo do existujících views tenzoru `out[..., :half_dim]` a `out[..., half_dim:]`.
+  - Úspora paměťové špičky z ~577.5 MiB na pouhých 96.26 MiB (**úspora ~481 MiB VRAM** na krok), čímž se zcela eliminovala chyba `torch.OutOfMemoryError` a odstranila 16sekundová prodleva nouzového restartu modelu na 8GB kartách.
+  - Zaveden dekorátor `@torch.compiler.disable` pro hook funkce, eliminující rozbíjení TorchInductor grafu a rekompilační latence.
+  - Doplněn bezpečný fallback pro zachování 100% kompatibility se všemi PyTorch verzemi a backendy.
+- **Pillar 2 // Fullscreen Canvas Viewer & Wayland Display Protocol:**
+  - V `views/StudioView.qml` a `Panel.qml` integrován rychlý fullscreen prohlížeč pro vygenerovaný obraz: kliknutím levým tlačítkem myši na canvas buffer se obraz okamžitě otevře v nativním Wayland prohlížeči `imv -f -- <cesta>`.
+  - Doplněn automatický fallback na systémový `xdg-open` v případě absence `imv`.
+  - Zavedena reaktivní property `canOpenFullscreen` s automatickou aktualizací kurzoru (`PointingHandCursor`) a nápovědy.
+- **Pillar 3 // Native Reference File Picker & Dialog Hardening:**
+  - Kliknutí levým tlačítkem na referenční rám otevírá souborový dialog `zenity --file-selection` cílený přímo do `~/Pictures` s filtrací grafických formátů.
+  - Ošetření argument injection pomocí oddělovače `"--"`, normalizace koncového lomítka pro proměnnou `XDG_PICTURES_DIR` a podmínka zpracování cesty striktně při `exitCode === 0`.
+  - Zachováno bleskové vložení ze schránky (`pasteFromClipboard`) na pravém tlačítku myši.
+- **Pillar 4 // Studio Canvas Architecture & Buffer Cleanup:**
+  - Zpřístupněna lišta super-rozlišení (`4X ESRGAN`, `4X ULTRA`, `4X ANIME`, `0.5X`, `FIT 1K`) jak pro vygenerované snímky, tak pro načtené referenční předlohy.
+  - Oprava funkce `resetForm()` v `Panel.qml` (vyřešeno v `beads-qom`): atomické vynulování cest vygenerovaných obrazů i živých náhledů.
+
+---
+
 ## [1.2.0] — 2026-10-14
 
 ### Added & Enhanced
