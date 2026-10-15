@@ -18,7 +18,18 @@ Panel {
   property var hostWidget: null
   readonly property var barIdentity: hostWidget || root
   readonly property string bridgeBin: Qt.resolvedUrl("bin/qwen-bridge").toString().replace(/^file:\/\//, "")
-  readonly property string pluginVersion: "v1.2.0"
+  QtObject {
+    id: d
+    property string localVersion: ""
+    property string bridgeVersion: ""
+
+    function cleanVer(v) {
+      return v ? String(v).replace(/^v/i, "").trim() : "";
+    }
+
+    readonly property string effectiveVersion: localVersion !== "" ? localVersion : (bridgeVersion !== "" ? bridgeVersion : "1.2.1")
+  }
+  readonly property string pluginVersion: "v" + d.effectiveVersion
   readonly property string userHome: Quickshell.env("HOME") || "/home/" + (Quickshell.env("USER") || "user")
   readonly property string picturesDir: userHome + "/Pictures/Qwen-Image"
 
@@ -224,6 +235,9 @@ Panel {
       root.svcCivitai = !!data.services.civitai;
     }
     if (data.versions) {
+      if (data.versions.plugin) {
+        d.bridgeVersion = d.cleanVer(data.versions.plugin);
+      }
       root.versionQwen = data.versions.qwen_model || root.versionQwen;
       root.versionComfy = data.versions.comfyui || "";
       root.versionOllama = data.versions.ollama || "";
@@ -1446,7 +1460,26 @@ Panel {
     }
   }
 
+  function loadLocalManifestAsync() {
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", Qt.resolvedUrl("manifest.json"), true);
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === XMLHttpRequest.DONE) {
+        if (xhr.status === 200 || xhr.status === 0) {
+          try {
+            var manifest = JSON.parse(xhr.responseText);
+            if (manifest && manifest.version) {
+              d.localVersion = d.cleanVer(manifest.version);
+            }
+          } catch (e) {}
+        }
+      }
+    };
+    xhr.send();
+  }
+
   Component.onCompleted: {
+    loadLocalManifestAsync();
     loadLangProc.running = true;
     checkBridge();
     refreshTelemetry();
