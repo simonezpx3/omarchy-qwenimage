@@ -508,8 +508,12 @@ Panel {
 
   function openFullscreenViewer(path) {
     if (!path) return;
+    var cleanPath = path;
+    if (cleanPath.startsWith("file://")) {
+      cleanPath = cleanPath.substring(7);
+    }
     openFullscreenProc.running = false;
-    openFullscreenProc.command = ["imv", "-f", "--", path];
+    openFullscreenProc.command = ["imv", "-i", "imv-fullscreen", "-f", "-c", "bind <Escape> quit", "--", cleanPath];
     openFullscreenProc.running = true;
   }
 
@@ -729,8 +733,11 @@ Panel {
   Process {
     id: openFullscreenProc
     onExited: function(exitCode, exitStatus) {
-      if (exitCode !== 0 && openFullscreenProc.command.length >= 4) {
-        root.openImageViewer(openFullscreenProc.command[3]);
+      if (exitCode !== 0 && openFullscreenProc.command.length >= 1) {
+        var target = openFullscreenProc.command[openFullscreenProc.command.length - 1];
+        if (target && target !== "" && target !== "--") {
+          root.openImageViewer(target);
+        }
       }
     }
   }
