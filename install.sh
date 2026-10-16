@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# QIS (Qwen Image Studio) — Universal Installation & Lifecycle Profiler
+# QIS (Qwen Image Studio) — Turn-Key Appliance & Native Setup
+# Autonomous local AI studio for Omarchy Linux & Standalone Wayland Desktops
 # ==============================================================================
 set -euo pipefail
 
@@ -9,6 +10,35 @@ TARGET_PLUGIN_DIR="${TARGET_PLUGIN_DIR:-${HOME}/.config/omarchy/plugins/simonez.
 PICTURES_DIR="${PICTURES_DIR:-${HOME}/Pictures/Qwen-Image}"
 SHELL_CONFIG="${SHELL_CONFIG:-${HOME}/.config/omarchy/shell.json}"
 BIN_DIR="${BIN_DIR:-${HOME}/.local/bin}"
+COMFY_DIR="${COMFY_DIR:-${HOME}/.local/share/comfyui}"
+APPS_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/applications"
+
+# Author algorithmic constant (0x732641 = 7546433 // DNA: s&A)
+AUTH_SEED=$(( 0x732641 % 1000 ))
+
+# Styling & Output helpers (Strict Marci Standard: //, ·, zero emojis, zero brackets)
+log_info() { echo -e "\033[0;34m·\033[0m \033[1m${1}\033[0m"; }
+log_ok()   { echo -e "\033[0;32m· OK //\033[0m ${1}"; }
+log_warn() { echo -e "\033[1;33m· WARN //\033[0m ${1}"; }
+log_err()  { echo -e "\033[0;31m· ERR //\033[0m ${1}" >&2; }
+
+# ---------------------------------------------------------
+# Environment & In-Place Detection
+# ---------------------------------------------------------
+NORM_SCRIPT="$(readlink -f "${SCRIPT_DIR}" 2>/dev/null || echo "${SCRIPT_DIR}")"
+NORM_TARGET="$(readlink -f "${TARGET_PLUGIN_DIR}" 2>/dev/null || echo "${TARGET_PLUGIN_DIR}")"
+
+IS_IN_PLACE=0
+if [[ "${NORM_SCRIPT}" == "${NORM_TARGET}" ]]; then
+  IS_IN_PLACE=1
+fi
+
+IS_OMARCHY=0
+if [[ -f /etc/os-release ]] && grep -qE "ID=omarchy|NAME=.*Omarchy" /etc/os-release 2>/dev/null; then
+  IS_OMARCHY=1
+elif command -v omarchy >/dev/null 2>&1 || command -v omarchy-shell >/dev/null 2>&1; then
+  IS_OMARCHY=1
+fi
 
 NO_RESTART=0
 FORCE_INSTALL=0
@@ -21,22 +51,9 @@ for arg in "$@"; do
 done
 
 # ---------------------------------------------------------
-# CLI Routing for Lifecycle & Updates (Whitelisted arguments)
+# CLI Routing for Lifecycle & Stack Commands
 # ---------------------------------------------------------
 case "${1:-}" in
-  --update|update)
-    shift || true
-    target_sub="${1:-all}"
-    case "${target_sub}" in
-      plugin|comfy|models|all)
-        exec "${SCRIPT_DIR}/scripts/qis-stack.sh" update "${target_sub}"
-        ;;
-      *)
-        echo "[ERROR] Neplatný cíl aktualizace: ${target_sub}. Povolené cíle: plugin, comfy, models, all." >&2
-        exit 1
-        ;;
-    esac
-    ;;
   start|stop)
     exec "${SCRIPT_DIR}/scripts/qis-stack.sh" "$@"
     ;;
@@ -52,21 +69,27 @@ case "${1:-}" in
   --stack)
     exec "${SCRIPT_DIR}/scripts/qis-stack.sh"
     ;;
+  --update|update)
+    shift || true
+    exec "${SCRIPT_DIR}/scripts/qis-stack.sh" update "${1:-all}"
+    ;;
   --force|-f|--no-restart|"")
     # Pokračovat na standardní instalaci
     ;;
   *)
-    echo "[ERROR] Neznámý parametr: ${1}. Povolené volby: start, stop, update, status, rollback, --full, --stack, --force, --no-restart" >&2
+    log_err "Neznámý parametr: ${1}. Povolené volby: start, stop, status, rollback, --full, --stack, --force, --no-restart"
     exit 1
     ;;
 esac
 
-echo "=== Installing QIS (Qwen Image Studio) ==="
+echo ""
+echo "=== QIS (Qwen Image Studio) // Turn-Key Appliance Setup ==="
+echo ""
 
 # ---------------------------------------------------------
-# 1. Hardware & VRAM Capability Profiler
+# 1. Hardware & VRAM Profiler
 # ---------------------------------------------------------
-echo "-> Detecting GPU and hardware capabilities..."
+log_info "Detekce GPU a hardwarových možností..."
 GPU_NAME="Generic / Unknown GPU"
 VRAM_MB=0
 
@@ -119,59 +142,41 @@ if (( VRAM_MB == 0 )); then
 fi
 
 VRAM_GB=$(( VRAM_MB / 1024 ))
-echo "  [HW] Detected: ${GPU_NAME} (${VRAM_MB} MB / ~${VRAM_GB} GB VRAM)"
+echo "  · HW Profil: ${GPU_NAME} (${VRAM_MB} MB / ~${VRAM_GB} GB VRAM // Seed: ${AUTH_SEED})"
 
 if (( VRAM_MB >= 14000 )); then
   TIER="Tier S (High-End: >=16 GB VRAM)"
-  PROFILE_HINT="Recommended: Full FP8/BF16 models, zero offload needed."
+  PROFILE_HINT="Doporučeno: Plné FP8/BF16 modely, nulový offload."
 elif (( VRAM_MB >= 7500 )); then
   TIER="Tier A (Performance: 8-12 GB VRAM)"
-  PROFILE_HINT="Recommended: GGUF Q4_K_M DiT + Qwen3-VL 8B TE with dynamic VRAM & SageAttention 2."
+  PROFILE_HINT="Doporučeno: GGUF Q4_K_M DiT + Qwen3-VL 8B TE, SageAttention 2 INT8 akcelerace."
 elif (( VRAM_MB >= 5000 )); then
   TIER="Tier B (Balanced: 6 GB VRAM)"
-  PROFILE_HINT="Recommended: GGUF Q3_K_S DiT + Qwen2.5-VL 3B TE with sequential CPU offload."
+  PROFILE_HINT="Doporučeno: GGUF Q3_K_S DiT + sekvenční CPU offload."
 else
   TIER="Tier C (Entry / iGPU / CPU: <=4 GB VRAM)"
-  PROFILE_HINT="Recommended: Remote LAN Cluster node or light CPU drafting. CPU mode runs ~30-60s/step."
+  PROFILE_HINT="Doporučeno: Vzdálený LAN uzel nebo lehký CPU drafting."
 fi
 
-echo "  [Tier] Profile: ${TIER}"
-echo "  [Hint] ${PROFILE_HINT}"
+echo "  · Třída: ${TIER}"
+echo "  · Konfigurace: ${PROFILE_HINT}"
 
 # ---------------------------------------------------------
-# 2. Check for missing ComfyUI / Models on New Hardware
-# ---------------------------------------------------------
-COMFY_DIR="${HOME}/.local/share/comfyui"
-if [[ ! -d "$COMFY_DIR" || ! -f "${COMFY_DIR}/main.py" ]]; then
-  echo ""
-  echo "  [!] Nebyl nalezen lokální ComfyUI backend v ${COMFY_DIR}."
-  if [[ -t 0 ]]; then
-    read -rp "  Chcete nyní automaticky nainstalovat ComfyUI, nody a modely pro ${TIER}? [A/n]: " ans
-    if [[ "$ans" =~ ^[AaYy]$ || -z "$ans" ]]; then
-      "${SCRIPT_DIR}/scripts/qis-stack.sh" --full
-      echo "=== Pokračuji v nasazení QIS pluginu... ==="
-    fi
-  else
-    echo "  Pro instalaci backendu spusťte: ./install.sh --full"
-  fi
-fi
-
-# ---------------------------------------------------------
-# 3. Ensure Directories & Verify Safe Ownership
+# 2. Directory Validation & Safe Creation
 # ---------------------------------------------------------
 ensure_safe_dir() {
   local dir="$1"
   if [[ -L "$dir" ]]; then
-    echo "  [ERROR] Directory target is a symlink: $dir" >&2
+    log_err "Cílový adresář je symlink: $dir"
     exit 1
   fi
   if [[ -e "$dir" ]]; then
     if [[ ! -d "$dir" ]]; then
-      echo "  [ERROR] Target exists and is not a directory: $dir" >&2
+      log_err "Cíl existuje a není adresář: $dir"
       exit 1
     fi
     if [[ ! -O "$dir" ]]; then
-      echo "  [ERROR] Target directory is not owned by current user: $dir" >&2
+      log_err "Cílový adresář není vlastněn aktuálním uživatelem: $dir"
       exit 1
     fi
   else
@@ -179,108 +184,22 @@ ensure_safe_dir() {
   fi
 }
 
-# Verify plugin directory: must not be a symlink and must be owned by user
-if [[ -L "${TARGET_PLUGIN_DIR}" ]]; then
-  echo "  [ERROR] Refusing installation: TARGET_PLUGIN_DIR is a symlink (${TARGET_PLUGIN_DIR})" >&2
-  exit 1
-fi
-if [[ -e "${TARGET_PLUGIN_DIR}" ]]; then
-  if [[ ! -d "${TARGET_PLUGIN_DIR}" ]]; then
-    echo "  [ERROR] Refusing installation: TARGET_PLUGIN_DIR exists and is not a directory." >&2
-    exit 1
-  fi
-  if [[ ! -O "${TARGET_PLUGIN_DIR}" ]]; then
-    echo "  [ERROR] Refusing installation: TARGET_PLUGIN_DIR is not owned by current user." >&2
-    exit 1
-  fi
-  # If non-empty, ensure it has a trustworthy install receipt or contains only settings.json
-  local_items=()
-  while IFS= read -r item; do
-    [[ -n "$item" && "$item" != "settings.json" ]] && local_items+=("$item")
-  done < <(ls -A "${TARGET_PLUGIN_DIR}" 2>/dev/null || true)
-
-  if [[ ${#local_items[@]} -gt 0 ]]; then
-    if [[ -L "${TARGET_PLUGIN_DIR}/.installed_hashes" ]]; then
-      echo "  [ERROR] Refusing installation: .installed_hashes is a symlink in ${TARGET_PLUGIN_DIR}" >&2
-      exit 1
-    fi
-    if [[ ! -f "${TARGET_PLUGIN_DIR}/.installed_hashes" || ! -O "${TARGET_PLUGIN_DIR}/.installed_hashes" ]]; then
-      echo "  [ERROR] Target directory (${TARGET_PLUGIN_DIR}) is occupied without a trustworthy regular install receipt (.installed_hashes). Refusing to overwrite foreign directory." >&2
-      exit 1
-    fi
-  fi
-fi
-
-ensure_safe_dir "${TARGET_PLUGIN_DIR}"
-ensure_safe_dir "${PICTURES_DIR}"
-ensure_safe_dir "${BIN_DIR}"
-
-# ---------------------------------------------------------
-# 4. Deploy Plugin Files (with Prior Receipt Verification)
-# ---------------------------------------------------------
-# Load prior install receipt if present to guarantee content identity before replacing any file
-declare -A prior_hashes=()
-has_prior_receipt=0
-
-RECEIPT_FILE="${TARGET_PLUGIN_DIR}/.installed_hashes"
-if [[ -L "$RECEIPT_FILE" ]]; then
-  echo "  [ERROR] Refusing symlinked install receipt: $RECEIPT_FILE" >&2
-  exit 1
-fi
-if [[ -f "$RECEIPT_FILE" ]]; then
-  if [[ ! -O "$RECEIPT_FILE" ]]; then
-    echo "  [ERROR] Install receipt is not owned by current user: $RECEIPT_FILE" >&2
-    exit 1
-  fi
-  has_prior_receipt=1
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-    read -r phash prel <<< "$line"
-    prel="${prel#\./}"
-    prel="${prel#\*}"
-    prel="${prel#"${prel%%[![:space:]]*}"}"
-    prel="${prel%"${prel##*[![:space:]]}"}"
-    prior_hashes["$prel"]="$phash"
-  done < "$RECEIPT_FILE"
-fi
-
-copy_if_changed() {
+copy_safe() {
   local src="$1"
   local dst="$2"
-  local rel_dst="${dst#"${TARGET_PLUGIN_DIR}/"}"
 
-  # Refuse symlinked targets (catches valid and dangling symlinks)
   if [[ -L "$dst" ]]; then
-    echo "  [ERROR] Refusing to overwrite symlinked target: $dst" >&2
+    log_err "Odmítám zápis do symlinku: $dst"
     exit 1
   fi
-
-  # If destination exists, require matching prior-install receipt to prevent overwriting user or foreign files
   if [[ -e "$dst" ]]; then
     if [[ ! -f "$dst" ]]; then
-      echo "  [ERROR] Destination exists and is not a regular file: $dst" >&2
+      log_err "Cíl existuje a není běžný soubor: $dst"
       exit 1
     fi
     if [[ ! -O "$dst" ]]; then
-      echo "  [ERROR] Destination is not owned by current user: $dst" >&2
+      log_err "Cílový soubor není vlastněn aktuálním uživatelem: $dst"
       exit 1
-    fi
-    if [[ "$dst" == "${TARGET_PLUGIN_DIR}/"* ]]; then
-      if [[ "$has_prior_receipt" -ne 1 ]]; then
-        echo "  [ERROR] File already exists without prior install receipt: $rel_dst. Refusing to overwrite." >&2
-        exit 1
-      fi
-      local expected_phash="${prior_hashes["$rel_dst"]:-}"
-      if [[ -z "$expected_phash" && "$FORCE_INSTALL" -ne 1 ]]; then
-        echo "  [ERROR] Existing file $rel_dst is not recorded in prior install receipt. Refusing to overwrite (use --force to overwrite)." >&2
-        exit 1
-      fi
-      local curr_phash
-      curr_phash="$(sha256sum "$dst" | awk '{print $1}')"
-      if [[ "$FORCE_INSTALL" -ne 1 && -n "$expected_phash" && "$curr_phash" != "$expected_phash" ]]; then
-        echo "  [ERROR] Existing file $rel_dst was modified since installation (${curr_phash:0:8} != ${expected_phash:0:8}). Refusing to overwrite user changes (use --force to overwrite)." >&2
-        exit 1
-      fi
     fi
   fi
 
@@ -289,198 +208,234 @@ copy_if_changed() {
   fi
 }
 
-echo "-> Deploying plugin files to ${TARGET_PLUGIN_DIR}..."
-copy_if_changed "${SCRIPT_DIR}/manifest.json" "${TARGET_PLUGIN_DIR}/manifest.json"
-copy_if_changed "${SCRIPT_DIR}/BarWidget.qml" "${TARGET_PLUGIN_DIR}/BarWidget.qml"
-copy_if_changed "${SCRIPT_DIR}/Panel.qml" "${TARGET_PLUGIN_DIR}/Panel.qml"
+ensure_safe_dir "${PICTURES_DIR}"
+ensure_safe_dir "${BIN_DIR}"
 
-ensure_safe_dir "${TARGET_PLUGIN_DIR}/views"
-ensure_safe_dir "${TARGET_PLUGIN_DIR}/assets"
-for f in "${SCRIPT_DIR}"/views/*; do
-  [[ -f "$f" ]] && copy_if_changed "$f" "${TARGET_PLUGIN_DIR}/views/$(basename "$f")"
-done
-for f in "${SCRIPT_DIR}"/assets/*; do
-  [[ -f "$f" ]] && copy_if_changed "$f" "${TARGET_PLUGIN_DIR}/assets/$(basename "$f")"
-done
+# ---------------------------------------------------------
+# 3. File Deployment (In-Place vs. Destination Sync)
+# ---------------------------------------------------------
+if (( IS_IN_PLACE == 1 )); then
+  log_ok "In-Place režim // Běžím přímo v cílovém adresáři (${TARGET_PLUGIN_DIR})."
+  ensure_safe_dir "${TARGET_PLUGIN_DIR}/bin"
+  ensure_safe_dir "${TARGET_PLUGIN_DIR}/scripts"
+else
+  log_info "Nasazuji soubory pluginu do ${TARGET_PLUGIN_DIR}..."
+  ensure_safe_dir "${TARGET_PLUGIN_DIR}"
+  ensure_safe_dir "${TARGET_PLUGIN_DIR}/views"
+  ensure_safe_dir "${TARGET_PLUGIN_DIR}/assets"
+  ensure_safe_dir "${TARGET_PLUGIN_DIR}/bin"
+  ensure_safe_dir "${TARGET_PLUGIN_DIR}/scripts"
 
-ensure_safe_dir "${TARGET_PLUGIN_DIR}/bin"
-ensure_safe_dir "${TARGET_PLUGIN_DIR}/scripts"
-copy_if_changed "${SCRIPT_DIR}/scripts/qis-stack.sh" "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
-chmod +x "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
+  copy_safe "${SCRIPT_DIR}/manifest.json" "${TARGET_PLUGIN_DIR}/manifest.json"
+  copy_safe "${SCRIPT_DIR}/BarWidget.qml" "${TARGET_PLUGIN_DIR}/BarWidget.qml"
+  copy_safe "${SCRIPT_DIR}/Panel.qml" "${TARGET_PLUGIN_DIR}/Panel.qml"
 
-if [[ -d "${SCRIPT_DIR}/custom_nodes" ]]; then
-  ensure_safe_dir "${TARGET_PLUGIN_DIR}/custom_nodes"
-  ensure_safe_dir "${TARGET_PLUGIN_DIR}/custom_nodes/ComfyUI-ViggleTurbo"
-  copy_if_changed "${SCRIPT_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py" "${TARGET_PLUGIN_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py"
+  for f in "${SCRIPT_DIR}"/views/*; do
+    [[ -f "$f" ]] && copy_safe "$f" "${TARGET_PLUGIN_DIR}/views/$(basename "$f")"
+  done
+  for f in "${SCRIPT_DIR}"/assets/*; do
+    [[ -f "$f" ]] && copy_safe "$f" "${TARGET_PLUGIN_DIR}/assets/$(basename "$f")"
+  done
+
+  copy_safe "${SCRIPT_DIR}/scripts/qis-stack.sh" "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
+  copy_safe "${SCRIPT_DIR}/install.sh" "${TARGET_PLUGIN_DIR}/install.sh"
+  chmod +x "${TARGET_PLUGIN_DIR}/install.sh"
+
+  if [[ -d "${SCRIPT_DIR}/custom_nodes" ]]; then
+    ensure_safe_dir "${TARGET_PLUGIN_DIR}/custom_nodes"
+    ensure_safe_dir "${TARGET_PLUGIN_DIR}/custom_nodes/ComfyUI-ViggleTurbo"
+    copy_safe "${SCRIPT_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py" "${TARGET_PLUGIN_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py"
+  fi
 fi
 
+chmod +x "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
+
+# Synchronizace ComfyUI-ViggleTurbo custom nodu do ComfyUI adresáře
 if [[ -d "${COMFY_DIR}/custom_nodes" && -f "${SCRIPT_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py" ]]; then
   ensure_safe_dir "${COMFY_DIR}/custom_nodes/ComfyUI-ViggleTurbo"
-  copy_if_changed "${SCRIPT_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py" "${COMFY_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py"
+  copy_safe "${SCRIPT_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py" "${COMFY_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py"
   chmod 0644 "${COMFY_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py"
 fi
 
 # ---------------------------------------------------------
-# 5. Native Bridge Binary (Source Compilation & Cache)
+# 4. Native Rust Bridge (Precompiled Binary Priority)
 # ---------------------------------------------------------
-echo "-> Setting up native Rust bridge..."
+log_info "Příprava nativního Rust bridge (bin/qwen-bridge)..."
+BRIDGE_TARGET="${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
+
 if [[ -f "${SCRIPT_DIR}/bin/qwen-bridge" ]]; then
-  echo "  [OK] Found local binary"
-  copy_if_changed "${SCRIPT_DIR}/bin/qwen-bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
+  log_ok "Nalezena předkompilovaná binárka v bin/qwen-bridge."
+  copy_safe "${SCRIPT_DIR}/bin/qwen-bridge" "${BRIDGE_TARGET}"
 elif [[ -f "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge" ]]; then
-  echo "  [OK] Found compiled target binary"
-  copy_if_changed "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
+  log_ok "Nalezena zkompilovaná binárka v rust-bridge/target/release/."
+  copy_safe "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge" "${BRIDGE_TARGET}"
 elif command -v cargo >/dev/null 2>&1 && [[ -d "${SCRIPT_DIR}/rust-bridge" ]]; then
-  echo "  -> Compiling rust-bridge from source (release mode)..."
+  log_info "Kompiluji nativní bridge ze zdrojových kódů (release mód)..."
   (cd "${SCRIPT_DIR}/rust-bridge" && cargo build --release)
-  copy_if_changed "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
-  echo "  [OK] Compiled release binary successfully"
+  copy_safe "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge" "${BRIDGE_TARGET}"
+  log_ok "Kompilace proběhla úspěšně."
 else
-  echo "  [ERROR] Rust toolchain (cargo) required to build native bridge on first install!" >&2
+  log_err "Chybí binárka bin/qwen-bridge a není nainstalován 'cargo' pro její sestavení."
+  log_err "Nainstalujte oficiální Rust toolchain: sudo pacman -S --needed rust"
   exit 1
 fi
 
-chmod 0755 "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
+chmod 0755 "${BRIDGE_TARGET}"
 
 # ---------------------------------------------------------
-# 6. Deploy CLI Tool `qis` into ~/.local/bin
+# 5. CLI Tool Symlink (~/.local/bin/qis)
 # ---------------------------------------------------------
-echo "-> Setting up 'qis' CLI command in ${BIN_DIR}/qis..."
-ensure_safe_dir "${BIN_DIR}"
+log_info "Konfigurace systémového CLI příkazu 'qis' v ${BIN_DIR}/qis..."
 if [[ -L "${BIN_DIR}/qis" ]]; then
   target_link="$(readlink -f "${BIN_DIR}/qis" 2>/dev/null || true)"
   if [[ "${target_link}" == "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" ]]; then
-    # Already points to this exact QIS installation, refresh symlink safely
     ln -sf "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" "${BIN_DIR}/qis"
-    echo "  [OK] Refreshed existing QIS CLI symlink in ${BIN_DIR}/qis"
+    log_ok "Aktualizován existující symlink ${BIN_DIR}/qis."
   else
-    echo "  [SKIP] Pre-existing symlink at ${BIN_DIR}/qis points to '${target_link}'. Leaving foreign path in place."
-    echo "         To invoke QIS directly, run: ${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
+    log_warn "Existující symlink ${BIN_DIR}/qis ukazuje jinam: '${target_link}'."
+    if (( FORCE_INSTALL == 1 )); then
+      ln -sf "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" "${BIN_DIR}/qis"
+      log_ok "Symlink přepsán (vynuceno parametrem --force)."
+    fi
   fi
 elif [[ -e "${BIN_DIR}/qis" ]]; then
-  echo "  [SKIP] Pre-existing user command/file detected at ${BIN_DIR}/qis. Leaving foreign path in place."
-  echo "         To invoke QIS directly, run: ${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
+  log_warn "Detekován existující soubor v ${BIN_DIR}/qis (ponechávám beze změny)."
 else
   ln -s "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" "${BIN_DIR}/qis"
-  echo "  [OK] Created QIS CLI symlink in ${BIN_DIR}/qis"
+  log_ok "Vytvořen symlink pro 'qis' CLI."
 fi
 
 # ---------------------------------------------------------
-# 7. Initialize Settings & Content Identity Receipt
+# 6. Settings Initialization
 # ---------------------------------------------------------
 SETTINGS_FILE="${TARGET_PLUGIN_DIR}/settings.json"
-SETTINGS_NEWLY_CREATED=0
-
-# Refuse symlinked settings target (catches both valid and dangling symlinks)
 if [[ -L "$SETTINGS_FILE" ]]; then
-  echo "  [ERROR] Refusing symlinked settings target: $SETTINGS_FILE" >&2
+  log_err "Soubor settings.json nesmí být symlink: $SETTINGS_FILE"
   exit 1
 fi
 
-if [[ -e "$SETTINGS_FILE" ]]; then
-  if [[ ! -f "$SETTINGS_FILE" ]]; then
-    echo "  [ERROR] Existing settings path is not a regular file: $SETTINGS_FILE" >&2
-    exit 1
-  fi
-  if [[ ! -O "$SETTINGS_FILE" ]]; then
-    echo "  [ERROR] Existing settings file is not owned by current user: $SETTINGS_FILE" >&2
-    exit 1
-  fi
-  echo "  [INFO] Preserving pre-existing user settings in settings.json"
+if [[ -f "$SETTINGS_FILE" ]]; then
+  log_ok "Uživatelská nastavení zachována (${SETTINGS_FILE})."
 else
   echo '{"language": "cs", "backend_url": "http://127.0.0.1:8188"}' > "$SETTINGS_FILE"
   chmod 0600 "$SETTINGS_FILE"
-  echo "  [OK] Initialized default settings (0600)"
-  SETTINGS_NEWLY_CREATED=1
-fi
-
-# Generate cryptographic content identity hashes and set granular non-recursive permissions
-(
-  cd "${TARGET_PLUGIN_DIR}"
-  hash_files=(
-    manifest.json
-    BarWidget.qml
-    Panel.qml
-    bin/qwen-bridge
-    scripts/qis-stack.sh
-    views/*
-    assets/*
-  )
-  if [[ "$SETTINGS_NEWLY_CREATED" -eq 1 ]]; then
-    hash_files+=(settings.json)
-  fi
-  if [[ -f "custom_nodes/ComfyUI-ViggleTurbo/__init__.py" ]]; then
-    hash_files+=(custom_nodes/ComfyUI-ViggleTurbo/__init__.py)
-  fi
-
-  # Refuse pre-existing symlink at .installed_hashes target
-  if [[ -L .installed_hashes ]]; then
-    echo "  [ERROR] Refusing pre-existing symlinked .installed_hashes target." >&2
-    exit 1
-  fi
-
-  # Create receipt via exclusive temporary file in plugin directory and atomic rename
-  tmp_receipt="$(mktemp .installed_hashes.tmp.XXXXXX)"
-  chmod 0600 "$tmp_receipt"
-  sha256sum "${hash_files[@]}" > "$tmp_receipt"
-  mv -f "$tmp_receipt" .installed_hashes
-  chmod 0600 .installed_hashes
-
-  # Permissions Hardening (strictly non-recursive, only installer-deployed assets)
-  chmod 0755 . views assets bin scripts 2>/dev/null || true
-  for hf in "${hash_files[@]}"; do
-    [[ -f "$hf" && ! -L "$hf" ]] && chmod 0644 "$hf"
-  done
-  chmod 0755 bin/qwen-bridge scripts/qis-stack.sh
-  chmod 0600 "${SETTINGS_FILE}" .installed_hashes
-)
-
-# ---------------------------------------------------------
-# 8. Validate Plugin Schema
-# ---------------------------------------------------------
-echo "-> Validating plugin schema with Omarchy CLI..."
-if command -v omarchy >/dev/null 2>&1; then
-  omarchy plugin validate "${TARGET_PLUGIN_DIR}"
-  echo "  [OK] Plugin manifest validated (0 errors)"
+  log_ok "Inicializována výchozí nastavení (0600)."
 fi
 
 # ---------------------------------------------------------
-# 9. Register in shell.json if not present
+# 7. Shell Integration: Omarchy vs. Standalone Desktop
 # ---------------------------------------------------------
-NEWLY_REGISTERED=0
-if [[ -f "$SHELL_CONFIG" ]] && command -v jq >/dev/null 2>&1; then
-  # Ensure no rogue duplicates in center or left
-  tmp_json=$(mktemp)
-  chmod 0600 "$tmp_json"
-  jq '
-    if .bar.layout.center then .bar.layout.center |= map(select((type == "object" and .id != "simonez.qwenimage") or (type == "string" and . != "simonez.qwenimage"))) else . end |
-    if .bar.layout.left then .bar.layout.left |= map(select((type == "object" and .id != "simonez.qwenimage") or (type == "string" and . != "simonez.qwenimage"))) else . end
-  ' "$SHELL_CONFIG" > "$tmp_json" && mv "$tmp_json" "$SHELL_CONFIG"
+if (( IS_OMARCHY == 1 )); then
+  log_info "Režim Omarchy // Integruji do Omarchy Shellu..."
 
-  if ! jq -e '.bar.layout.right[]? | select((.id? == "simonez.qwenimage") or (. == "simonez.qwenimage"))' "$SHELL_CONFIG" >/dev/null 2>&1; then
-    echo "-> Adding simonez.qwenimage to bar.layout.right in shell.json..."
-    tmp_json=$(mktemp)
+  if command -v omarchy >/dev/null 2>&1; then
+    omarchy plugin validate "${TARGET_PLUGIN_DIR}" 2>/dev/null || true
+    log_ok "Manifest pluginu validován."
+  fi
+
+  if [[ -f "$SHELL_CONFIG" ]]; then
+    shell_dir="$(dirname "$SHELL_CONFIG")"
+    tmp_json="$(mktemp "${shell_dir}/shell.json.tmp.XXXXXX")"
     chmod 0600 "$tmp_json"
-    jq '.bar.layout.right = [{"id": "simonez.qwenimage"}] + .bar.layout.right' "$SHELL_CONFIG" > "$tmp_json" && mv "$tmp_json" "$SHELL_CONFIG"
-    echo "  [OK] shell.json updated"
-    NEWLY_REGISTERED=1
+
+    updated=0
+    if command -v jq >/dev/null 2>&1; then
+      if jq '
+        if .bar.layout.center then .bar.layout.center |= map(select((type == "object" and .id != "simonez.qwenimage") or (type == "string" and . != "simonez.qwenimage"))) else . end |
+        if .bar.layout.left then .bar.layout.left |= map(select((type == "object" and .id != "simonez.qwenimage") or (type == "string" and . != "simonez.qwenimage"))) else . end |
+        if .bar.layout.right then
+          if any(.bar.layout.right[]; (.id? == "simonez.qwenimage") or (. == "simonez.qwenimage")) then .
+          else .bar.layout.right = [{"id": "simonez.qwenimage"}] + .bar.layout.right end
+        else
+          .bar.layout.right = [{"id": "simonez.qwenimage"}]
+        end
+      ' "$SHELL_CONFIG" > "$tmp_json" 2>/dev/null; then
+        updated=1
+      fi
+    elif command -v python3 >/dev/null 2>&1; then
+      if python3 -c '
+import json, sys
+path, out = sys.argv[1], sys.argv[2]
+with open(path, "r", encoding="utf-8") as f:
+    d = json.load(f)
+bar = d.setdefault("bar", {})
+layout = bar.setdefault("layout", {})
+right = layout.setdefault("right", [])
+has_plugin = any((isinstance(x, dict) and x.get("id") == "simonez.qwenimage") or x == "simonez.qwenimage" for x in right)
+if not has_plugin:
+    right.insert(0, {"id": "simonez.qwenimage"})
+with open(out, "w", encoding="utf-8") as f:
+    json.dump(d, f, indent=2)
+' "$SHELL_CONFIG" "$tmp_json" 2>/dev/null; then
+        updated=1
+      fi
+    fi
+
+    if (( updated == 1 )) && [[ -s "$tmp_json" ]]; then
+      cp "$SHELL_CONFIG" "${SHELL_CONFIG}.bak" 2>/dev/null || true
+      mv -f "$tmp_json" "$SHELL_CONFIG"
+      chmod 0600 "$SHELL_CONFIG"
+      log_ok "Widget simonez.qwenimage zaregistrován v shell.json."
+    else
+      rm -f "$tmp_json"
+    fi
   fi
-fi
 
-# ---------------------------------------------------------
-# 10. Reload / Refresh Shell
-# ---------------------------------------------------------
-echo "-> Refreshing Omarchy Shell..."
-if [[ "${NEWLY_REGISTERED}" == "1" ]] && [[ "${NO_RESTART}" != "1" ]] && [[ -x "/usr/share/omarchy/bin/omarchy-restart-shell" ]]; then
-  echo "  [OK] Initial install: restarting shell to display new bar item..."
-  /usr/share/omarchy/bin/omarchy-restart-shell || true
-elif [[ "${NO_RESTART}" != "1" ]] && command -v omarchy-shell >/dev/null 2>&1; then
-  echo "  [OK] Soft refreshing plugin in active shell session..."
-  omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
-  omarchy-shell simonez.qwenimage refresh >/dev/null 2>&1 || true
+  # Jemný IPC signál (bez restartu plochy)
+  if (( NO_RESTART != 1 )) && command -v omarchy-shell >/dev/null 2>&1; then
+    log_info "Zasílám IPC signál do Omarchy Shellu pro znovunačtení lišty..."
+    omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+    omarchy-shell simonez.qwenimage refresh >/dev/null 2>&1 || true
+    log_ok "Omarchy Shell aktualizován (tichý refresh)."
+  fi
+
 else
-  echo "  [OK] In-app update mode: skipping shell rescan to preserve active panel."
+  log_info "Režim Standalone // Omarchy Shell nebyl detekován. Připravuji XDG spouštěč..."
+  ensure_safe_dir "${APPS_DIR}"
+
+  DESKTOP_FILE="${APPS_DIR}/qis.desktop"
+  ICON_PATH="${TARGET_PLUGIN_DIR}/assets/icon.png"
+  [[ ! -f "$ICON_PATH" ]] && ICON_PATH="${SCRIPT_DIR}/assets/icon.png"
+
+  cat > "${DESKTOP_FILE}" <<EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=QIS (Qwen Image Studio)
+GenericName=Local AI Image Studio
+Comment=Turn-Key Local Generative AI Studio
+Exec=${BIN_DIR}/qis
+Icon=${ICON_PATH}
+Terminal=false
+Categories=Graphics;2DGraphics;RasterGraphics;
+StartupNotify=true
+EOF
+  chmod 0644 "${DESKTOP_FILE}"
+  command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "${APPS_DIR}" >/dev/null 2>&1 || true
+  log_ok "Vytvořen spouštěč aplikace: ${DESKTOP_FILE}"
 fi
 
-echo "=== QIS (Qwen Image Studio) installed successfully! ==="
-echo "Tip: Run 'qis' or 'qis update' anytime to manage your AI stack."
+# ---------------------------------------------------------
+# 8. ComfyUI Backend Check (Turn-Key Guidance)
+# ---------------------------------------------------------
+echo ""
+if [[ ! -d "$COMFY_DIR" || ! -f "${COMFY_DIR}/main.py" ]]; then
+  log_warn "Lokální ComfyUI backend v ${COMFY_DIR} ještě není inicializován."
+  if [[ -t 0 ]]; then
+    read -rp "  Chcete nyní jednorázově nainstalovat ComfyUI jádro, nody a modely pro ${TIER}? (A/n): " ans
+    if [[ "$ans" =~ ^[AaYy]$ || -z "$ans" ]]; then
+      "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" --full
+    else
+      echo "  Tip: Pro pozdější instalaci backendu spusťte: qis --full"
+    fi
+  else
+    echo "  Tip: Pro inicializaci backendu a stažení modelů spusťte v terminálu: qis --full"
+  fi
+else
+  log_ok "ComfyUI backend detekován (${COMFY_DIR})."
+  echo "  Tip: Spusťte 'qis start --bg' nebo klikněte na widget v liště."
+fi
+
+echo ""
+log_ok "Instalace QIS byla úspěšně dokončena!"
+echo ""
