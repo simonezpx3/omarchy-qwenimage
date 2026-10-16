@@ -61,7 +61,7 @@ graph LR
 - **Zero-Copy POSIX Shared Memory Previews (`/dev/shm`):** Live step previews written directly to dedicated RAM disk (`/dev/shm/qis_preview_${UID}/`) with atomic renaming, eliminating disk I/O latency and micro-stutter on 144Hz Wayland compositors.
 - **Process Lifecycle Hardening & Zombie Protection:** Kernel-level process tracking via `libc::prctl(PR_SET_PDEATHSIG, SIGKILL)` and transient systemd scopes (`systemd-run --user --scope`), ensuring instant GPU VRAM eviction and zero orphan processes if the parent bridge aborts.
 - **Complete Bilingual Parity (EN / CS):** Dynamic language switcher with zero English leaks across UI labels, tooltips, bridge error messages, and desktop notifications.
-- **Turbo Mode (Viggle Turbo DMD):** 6-step distillation yielding ~5s generation on consumer GPUs (8GB+ VRAM) at 0 token cost, seamlessly toggleable from the bottom action bar.
+- **Turbo Mode (Viggle Turbo DMD):** 6-step distillation with zero-redundancy MLP hooks yielding ~5s generation on consumer GPUs (8GB+ VRAM, enforcing a strict 1.8 GB VRAM system reserve) at 0 token cost, seamlessly toggleable from the bottom action bar.
 - **Neural Super-Resolution (4X Upscalers):** Integrated zero-token super-resolution suite directly in ComfyUI:
   - `4X ESRGAN` (RealESRGAN_x4plus) — General photo & cinematic restoration with grain denoising.
   - `4X ULTRA` (4x-UltraSharp) — Micro-contrast and high-frequency tactile texture preservation.
@@ -70,7 +70,8 @@ graph LR
 - **SIMD Lanczos Resizer:** Hardware-accelerated image resampling (AVX2, NEON, and portable fallback in Rust) via `bin/qwen-bridge scale-lanczos`, delivering instant high-fidelity scaling without Python or GPU runtime overhead.
 - **Low-Memory UI Texture Pipeline:** Adaptive `sourceSize` viewport constraint in QML decoupling physical canvas dimensions from render textures, slashing UI RAM/VRAM consumption from ~92 MB to ~4 MB while strictly preserving original aspect ratios.
 - **Automated Tmpfs Housekeeping:** Native Rust garbage collection sweeping runtime preview artifacts older than 24 hours, paired with a 10 MB circular log rotator on ComfyUI execution streams.
-- **Screen Area Snip Tool:** Direct geometry screen capture (`grim` + `slurp`) into runtime tmpfs buffers, enabling instant ingestion of reference images without polluting the system clipboard.
+- **Screen Area Snip & Reference Buffer Controls:** Direct geometry screen capture (`grim` + `slurp`) into runtime tmpfs buffers via `SNIP`, paired with instant one-click buffer eviction (`CLEAR`) without polluting the system clipboard.
+- **Interactive History & Wayland Fullscreen Viewer:** Direct ingestion of past generations back into the Studio reference buffer (`COPY TO BUFFER` / `DO BUFFERU`) and instant zero-latency fullscreen inspection (`VIEW` / `ZOBRAZIT`) powered by `imv` (`imv -i imv-fullscreen -f -c "bind <Escape> quit"`).
 - **A/B Compare Interactive Splitter:** Dedicated dual-buffer inspection view (`views/CompareView.qml`) with real-time slider split to optically evaluate generation quality, prompts, and aspect scaling variations side-by-side.
 - **Hardened Wayland Sandbox & Input Isolation:** Fully bounded Wayland clipboard intake (16 KiB ceiling, 1.2s timeout with SIGKILL fallback) and pure `FocusScope` event interception completely neutralizing foreign MIME starvation, DoS freezes, and primary selection leaks.
 - **Heretic LoRA (Abliterated Uncensored Latent):** Dedicated uncensored diffusion adapter for uninhibited artistic freedom, with dynamic LoRA weight governor preventing tensor saturation.
@@ -88,7 +89,7 @@ graph LR
 - **Dynamic Output Node Resolution:** Resilient backend listener that dynamically detects SaveImage nodes across custom workflows instead of relying on fixed node indices.
 - **Omarchy UI Architecture:** Pixel-perfect geometric harmony with `Style.cornerRadius`, concentric surface depth, cybernetic reticle corners, and zero box-clutter.
 - **Tabular Numerals & Optical Stability:** OpenType `tnum` tabular numerals across diffusion step badges, timers, and VRAM telemetry eliminating horizontal layout jitter.
-- **Live System Telemetry:** Header badges showing connected Qwen model, ComfyUI, Ollama, CUDA, Quickshell, and VRAM utilization.
+- **Clean Live System Telemetry:** Button-free header telemetry badges showing connected Qwen model, ComfyUI (v0.41.2), Ollama, CUDA, Quickshell, and real-time VRAM utilization indicator (with 1.8 GB safety reserve).
 - **In-Button Live Timers:** Dynamic, non-intrusive second counters inside active buttons (`GENERATE`, `OPTIMIZE`, `TAGS`, `SCALE`).
 - **Wallpaper Integration:** One-click wallpaper deployment to Omarchy and Hyprland.
 
@@ -105,13 +106,16 @@ graph LR
 | **Anime LoRA Toggle** | Click on `ANIME: ON // OFF` in bottom bar | Toggles SD_Tutorial anime and illustration stylization adapter |
 | **Paste Reference Image** | Click on reference preview box, `Ctrl + V`, or `Super + V` | Decodes image or local file path from Wayland clipboard |
 | **Screen Area Snip** | Click on `SNIP` in Studio reference box | Interactively snips screen geometry (`slurp` + `grim`) directly into reference buffer |
+| **Clear Reference Buffer** | Click on `CLEAR` (`SMAZAT`) next to `SNIP` | Immediately clears the active reference image from the Studio buffer |
+| **History to Reference Buffer** | Click on `DO BUFFERU` (`COPY TO BUFFER`) in History view | Loads a previously generated image directly into the Studio reference buffer |
+| **Fullscreen Image View** | Click on `ZOBRAZIT` (`VIEW`) in History view | Opens the generated image in a native Wayland fullscreen viewer (`imv`, press `Esc` to quit) |
 | **A/B Compare View** | Click on `COMPARE` in Studio bottom bar | Opens dual-buffer interactive slider compare view |
 | **CivitAI Quick Apply** | Single click on any prompt card | Loads prompt and parameters into Studio |
 | **CivitAI Direct Synthesize** | Double click on any prompt card | Loads prompt and triggers immediate generation |
 | **Return to Studio** | `Esc` from A/B Compare or History views | Navigates back to main Studio view |
 | **Close Studio** | `Esc` or click outside | Smoothly closes the window and frees viewport |
-| **CLI & Stack Update** | `qis update` or `qis --stack` | Updates plugin & Rust bridge or full ComfyUI core and models via CLI |
-| **Live Telemetry** | Auto-updates or `omarchy-shell simonez.qwenimage refresh` | Real-time hardware and VRAM telemetry without manual clutter |
+| **CLI & Stack Update** | `qis update [all|plugin|comfy|models]` | Updates plugin, Rust bridge, ComfyUI core, or models via CLI |
+| **Live Telemetry** | Automatic background polling (default: 3s) | Real-time hardware and VRAM header telemetry without manual header buttons |
 
 ---
 
@@ -134,6 +138,7 @@ QIS automatically profiles your hardware on installation and suggests the optima
 ```bash
 omarchy plugin add https://github.com/simonezpx3/omarchy-qwenimage.git
 ```
+*Note: `omarchy plugin add` automatically triggers an in-place execution of `install.sh`.*
 
 ### Option B: Standalone / Manual Setup
 ```bash
@@ -143,7 +148,7 @@ chmod +x install.sh
 ./install.sh
 ```
 
-The installer will:
+During installation (both automatic in-place and manual), `install.sh` will:
 1. Profile GPU vendor (NVIDIA, AMD, Intel) and detect available VRAM.
 2. Check for ComfyUI and diffusion models; if missing on new hardware, offer one-click automated stack installation.
 3. Deploy the native bridge binary `bin/qwen-bridge`.
@@ -159,11 +164,14 @@ The installer will:
 Once installed, manage the entire ecosystem with the `qis` command:
 
 ```bash
-qis             # Interactive management menu (Setup, Update, Models, Rollback)
-qis status      # Displays dependency health matrix and hardware profile
-qis setup       # Automated installation of ComfyUI, custom nodes, and models
-qis update      # Check and update QIS plugin, ComfyUI core, and nodes
-qis rollback    # Revert ComfyUI to the previous working checkpoint
+qis                                     # Interactive management menu (Setup, Update, Models, Rollback)
+qis start [--bg]                        # Start the QIS backend stack (use --bg to run as background daemon)
+qis stop                                # Gracefully stop running ComfyUI and release GPU VRAM
+qis status                              # Displays dependency health matrix, VRAM reserve, and hardware profile
+qis setup                               # Automated installation of ComfyUI (v0.41.2), custom nodes, and models
+qis update [all|plugin|comfy|models]    # Granular or full update of QIS plugin, ComfyUI core, or models
+qis models                              # List and manage installed diffusion checkpoints, GGUF weights, and LoRAs
+qis rollback                            # Revert ComfyUI to previous working checkpoint
 ```
 
 ---
@@ -171,7 +179,7 @@ qis rollback    # Revert ComfyUI to the previous working checkpoint
 ## Security & Supply-Chain Baseline
 
 This plugin strictly complies with the Omarchy Marketplace Security Baseline:
-- **Pinned Git Commits:** ComfyUI core and all custom nodes are pinned to immutable commit SHAs.
+- **Pinned Git Commits:** ComfyUI core (v0.41.2) and all custom nodes are pinned to immutable commit SHAs.
 - **Cryptographic Hash Verification:** All Python packages and sub-dependencies are locked with strict SHA-256 hashes (`pip install --require-hashes`) across CUDA 12.8, ROCm 6.2, and CPU architectures in `locks/`.
 - **Zero Unpinned Execution:** No unhashed or arbitrary code is downloaded during clone, install, or update operations.
 
@@ -184,8 +192,11 @@ This plugin strictly complies with the Omarchy Marketplace Security Baseline:
 omarchy plugin remove simonez.qwenimage
 
 # Or directly via uninstaller script:
-./uninstall.sh
+./uninstall.sh [--purge-settings | --purge-all]
 ```
+- `./uninstall.sh` — Removes plugin registration, CLI symlink, and Bar widget while keeping user configurations and models intact.
+- `./uninstall.sh --purge-settings` — Additionally removes user configuration files and state caches.
+- `./uninstall.sh --purge-all` — Complete teardown: removes plugin, settings, local ComfyUI environment, and all downloaded AI models.
 
 ---
 

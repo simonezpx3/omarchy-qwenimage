@@ -5,7 +5,7 @@
   "version": "1.2.1",
   "author": "simonez & Arci",
   "license": "MIT",
-  "description": "Local-first generative AI studio (Text-to-Image, Image-to-Image, Turbo diffusion, WD14 Danbooru interrogator, Qwen3-VL vision reverse-engineering, Civitai explorer, SIMD Lanczos resizer, ComfyUI backend).",
+  "description": "Local-first generative AI studio (Text-to-Image, Image-to-Image, ViggleTurbo DMD, SageAttention 2, WD14 Danbooru interrogator, Qwen3-VL vision reverse-engineering, Civitai explorer, SIMD Lanczos resizer, ComfyUI v0.41.2 backend).",
   "kinds": [
     "bar-widget"
   ],

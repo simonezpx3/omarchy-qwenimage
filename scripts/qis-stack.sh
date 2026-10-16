@@ -947,17 +947,16 @@ interactive_menu() {
         echo -e "\n${BOLD}========================================================================${RESET}"
         echo -e "         ${CYAN}QIS (Qwen Image Studio) — Setup & Lifecycle Manager${RESET}"
         echo -e "${BOLD}========================================================================${RESET}"
-        echo -e "Hardware: ${GREEN}${GPU_NAME}${RESET} | Profil: ${CYAN}${TIER_DESC}${RESET}\n"
-        echo -e "  ${BOLD}[1]${RESET} 🚀 ${BOLD}Kompletní instalace všeho${RESET} (Balíčky, ComfyUI, nody, modely)"
-        echo -e "  ${BOLD}[2]${RESET} 🔄 ${BOLD}Aktualizovat VŠECHNO${RESET} (QIS plugin, ComfyUI, nody, modely)"
-        echo -e "  ${BOLD}[3]${RESET} 🎨 Aktualizovat pouze QIS Plugin (UI a Rust bridge)"
-        echo -e "  ${BOLD}[4]${RESET} 🧩 Aktualizovat pouze ComfyUI Engine a Custom Nody"
-        echo -e "  ${BOLD}[5]${RESET} 📦 Stáhnout / Zkontrolovat AI Modely (HuggingFace)"
-        echo -e "  ${BOLD}[6]${RESET} 📊 Zobrazit stav a matici závislostí"
-        echo -e "  ${BOLD}[7]${RESET} ⏪ Záchranný Rollback ComfyUI (návrat do funkčního bodu)"
-        echo -e "  ${BOLD}[0]${RESET} 🚪 Ukončit\n"
+        echo -e "  ${BOLD}1 ·${RESET} ${BOLD}Kompletní instalace všeho${RESET} // Balíčky, ComfyUI, nody, modely"
+        echo -e "  ${BOLD}2 ·${RESET} ${BOLD}Aktualizovat VŠECHNO${RESET} // QIS plugin, ComfyUI, nody, modely"
+        echo -e "  ${BOLD}3 ·${RESET} Aktualizovat pouze QIS Plugin // UI a Rust bridge"
+        echo -e "  ${BOLD}4 ·${RESET} Aktualizovat pouze ComfyUI Engine a Custom Nody"
+        echo -e "  ${BOLD}5 ·${RESET} Stáhnout / Zkontrolovat AI Modely // HuggingFace"
+        echo -e "  ${BOLD}6 ·${RESET} Zobrazit stav a matici závislostí"
+        echo -e "  ${BOLD}7 ·${RESET} Záchranný Rollback ComfyUI // Návrat do funkčního bodu"
+        echo -e "  ${BOLD}0 ·${RESET} Ukončit\n"
 
-        read -rp "Zadejte volbu [0-7]: " choice
+        read -rp "Zadejte volbu (0-7): " choice
         case "$choice" in
             1)
                 install_system_deps
