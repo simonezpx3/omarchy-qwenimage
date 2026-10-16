@@ -1009,6 +1009,16 @@ Item {
               }
 
               Button {
+                text: root.tr("clear")
+                fontSize: Style.font.caption
+                bordered: true
+                Layout.fillWidth: true
+                enabled: panelRoot && (panelRoot.referencePath !== "" || panelRoot.referenceMatchedRatio !== "") && !panelRoot.isGenerating && !panelRoot.isInterrogating && !panelRoot.isVisionLoading
+                onHotChanged: root.setHelp(root.tr("help_clear"), hot)
+                onClicked: if (panelRoot) panelRoot.clearReference()
+              }
+
+              Button {
                 text: (panelRoot && panelRoot.isInterrogating) ? (root.tr("tagging") + " (" + root.wd14ElapsedSeconds + "s)") : root.tr("interrogate_wd14")
                 fontSize: Style.font.caption
                 bordered: true

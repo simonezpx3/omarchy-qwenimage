@@ -300,6 +300,14 @@ Panel {
     root.triggerScreenSnip();
   }
 
+  function clear() {
+    root.clearReference();
+  }
+
+  function clearReferenceBuffer() {
+    root.clearReference();
+  }
+
   property var activePasteTarget: null
   function pasteTextInto(targetItem) {
     if (pasteTextProc.running) return;
@@ -552,6 +560,13 @@ Panel {
     // Inspect for metadata
     metaProc.command = [root.bridgeBin, "read-meta", path];
     metaProc.running = true;
+  }
+
+  function clearReference() {
+    if (root.referencePath === "" && root.referenceMatchedRatio === "") return;
+    root.referencePath = "";
+    root.referenceMatchedRatio = "";
+    root.referenceRevision++;
   }
 
   function restoreFromHistory(path, prompt, seed, ratio, negative) {
