@@ -71,7 +71,7 @@ graph LR
 - **Low-Memory UI Texture Pipeline:** Adaptive `sourceSize` viewport constraint in QML decoupling physical canvas dimensions from render textures, slashing UI RAM/VRAM consumption from ~92 MB to ~4 MB while strictly preserving original aspect ratios.
 - **Automated Tmpfs Housekeeping:** Native Rust garbage collection sweeping runtime preview artifacts older than 24 hours, paired with a 10 MB circular log rotator on ComfyUI execution streams.
 - **Screen Area Snip & Reference Buffer Controls:** Direct geometry screen capture (`grim` + `slurp`) into runtime tmpfs buffers via `SNIP`, paired with instant one-click buffer eviction (`CLEAR`) without polluting the system clipboard.
-- **Interactive History & Wayland Fullscreen Viewer:** Direct ingestion of past generations back into the Studio reference buffer (`COPY TO BUFFER` / `DO BUFFERU`) and instant zero-latency fullscreen inspection (`VIEW` / `ZOBRAZIT`) powered by `imv` (`imv -i imv-fullscreen -f -c "bind <Escape> quit"`).
+- **Interactive History & Wayland Fullscreen Viewer:** Direct ingestion of past generations back into the Studio reference buffer (`COPY TO BUFFER`) and instant zero-latency fullscreen inspection (`VIEW`) powered by `imv` (`imv -i imv-fullscreen -f -c "bind <Escape> quit"`).
 - **A/B Compare Interactive Splitter:** Dedicated dual-buffer inspection view (`views/CompareView.qml`) with real-time slider split to optically evaluate generation quality, prompts, and aspect scaling variations side-by-side.
 - **Hardened Wayland Sandbox & Input Isolation:** Fully bounded Wayland clipboard intake (16 KiB ceiling, 1.2s timeout with SIGKILL fallback) and pure `FocusScope` event interception completely neutralizing foreign MIME starvation, DoS freezes, and primary selection leaks.
 - **Heretic LoRA (Abliterated Uncensored Latent):** Dedicated uncensored diffusion adapter for uninhibited artistic freedom, with dynamic LoRA weight governor preventing tensor saturation.
@@ -79,7 +79,7 @@ graph LR
 - **Live TAEQI 2.1 Previews:** Real-time intermediate diffusion preview streaming over WebSocket directly from ComfyUI (0 VRAM overhead, decoded via ultra-fast TAEQI into RAM-disk tmpfs).
 - **Quick Step Presets:** Instant step selection (`15`, `25`, `35`) with active state highlight and live elapsed timer.
 - **Universal Wayland Clipboard Engine:** Deep Rust integration decoding raw image formats (PNG, JPEG, WebP, BMP, TIFF), file manager URIs (`file://` from Nemo, Thunar, Nautilus), and web image URLs directly into the reference buffer.
-- **Instant Generation Interrupt & Cancel:** Dynamic `CANCEL // Xs` (`PŘERUŠIT // Xs`) button during active diffusion paired with a dedicated `interrupt_comfyui()` engine and `isCancelling` state machine in Rust bridge, instantly stopping the diffusion loop in ComfyUI and releasing GPU memory.
+- **Instant Generation Interrupt & Cancel:** Dynamic `CANCEL // Xs` button during active diffusion paired with a dedicated `interrupt_comfyui()` engine and `isCancelling` state machine in Rust bridge, instantly stopping the diffusion loop in ComfyUI and releasing GPU memory.
 - **Image-to-Image & Aspect Ratio Overrides:** Automatic aspect ratio extraction when set to `auto`, and explicit user aspect ratio enforcement (`21:9`, `16:9`, `16:10`, `4:3`, `1:1`, `3:4`, `9:16`) with center-crop scaling when specific proportions are desired.
 - **Anime LoRA & Adaptive Resolution Profiling:** Instant anime style injection and VRAM-aware resolution presets (`standard`, `performance`, `high`).
 - **WD14 Tag Interrogator:** Fast Danbooru tag extraction via ONNX / ViT models.
@@ -106,9 +106,9 @@ graph LR
 | **Anime LoRA Toggle** | Click on `ANIME: ON // OFF` in bottom bar | Toggles SD_Tutorial anime and illustration stylization adapter |
 | **Paste Reference Image** | Click on reference preview box, `Ctrl + V`, or `Super + V` | Decodes image or local file path from Wayland clipboard |
 | **Screen Area Snip** | Click on `SNIP` in Studio reference box | Interactively snips screen geometry (`slurp` + `grim`) directly into reference buffer |
-| **Clear Reference Buffer** | Click on `CLEAR` (`SMAZAT`) next to `SNIP` | Immediately clears the active reference image from the Studio buffer |
-| **History to Reference Buffer** | Click on `DO BUFFERU` (`COPY TO BUFFER`) in History view | Loads a previously generated image directly into the Studio reference buffer |
-| **Fullscreen Image View** | Click on `ZOBRAZIT` (`VIEW`) in History view | Opens the generated image in a native Wayland fullscreen viewer (`imv`, press `Esc` to quit) |
+| **Clear Reference Buffer** | Click on `CLEAR` next to `SNIP` | Immediately clears the active reference image from the Studio buffer |
+| **History to Reference Buffer** | Click on `COPY TO BUFFER` in History view | Loads a previously generated image directly into the Studio reference buffer |
+| **Fullscreen Image View** | Click on `VIEW` in History view | Opens the generated image in a native Wayland fullscreen viewer (`imv`, press `Esc` to quit) |
 | **A/B Compare View** | Click on `COMPARE` in Studio bottom bar | Opens dual-buffer interactive slider compare view |
 | **CivitAI Quick Apply** | Single click on any prompt card | Loads prompt and parameters into Studio |
 | **CivitAI Direct Synthesize** | Double click on any prompt card | Loads prompt and triggers immediate generation |
