@@ -8,13 +8,17 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMFY_DIR="${COMFY_DIR:-${HOME}/.local/share/comfyui}"
-COMFY_VENV="${COMFY_VENV:-${COMFY_DIR}/venv}"
+if [[ -d "${COMFY_DIR}/.venv" && ! -d "${COMFY_DIR}/venv" ]]; then
+    COMFY_VENV="${COMFY_DIR}/.venv"
+else
+    COMFY_VENV="${COMFY_VENV:-${COMFY_DIR}/venv}"
+fi
 CHECKPOINT_DIR="${CHECKPOINT_DIR:-${COMFY_DIR}/.qis_checkpoints}"
 
 # Deterministic & pinned upstream revisions (Omarchy Marketplace Security Baseline)
-COMFY_PINNED_COMMIT="2255709aa0be2deade91c7c80cda49d31b73906f" # ComfyUI v0.37.0
+COMFY_PINNED_COMMIT="b53f77a74e21091cbdebfdf7b85fc80326932646" # ComfyUI v0.41.2
 NODE_GGUF_COMMIT="6ea2651e7df66d7585f6ffee804b20e92fb38b8a"
-NODE_QWEN3VL_COMMIT="81b1ceea2fc16e52faddfd5fd6a597e4356e2709"
+NODE_QWEN3VL_COMMIT="1f52b004e3ff096491f5d0067c6fef72992df841"
 NODE_WD14_COMMIT="9e0a6e700299182fc05c58b62e7ad9f72182a78b"
 NODE_AUTOCOMPLETE_COMMIT="9cfd2aceb0205132942b6dc1e237a2377de92018"
 
@@ -686,10 +690,12 @@ setup_ollama_models() {
             return 0
         fi
 
-        local models=("mimo:latest" "qwen2.5-coder:7b")
+        local models=("qwen2.5-coder:7b")
         for m in "${models[@]}"; do
-            log_info "Stahuji/aktualizuji model ${m}..."
-            ollama pull "$m" || log_warn "Nepodařilo se stáhnout ${m}, zkusím pokračovat."
+            if ! ollama list 2>/dev/null | grep -q "${m%:*}"; then
+                log_info "Stahuji model ${m}..."
+                ollama pull "$m" || log_warn "Nepodařilo se stáhnout ${m}, zkusím pokračovat."
+            fi
         done
         log_ok "Ollama modely ověřeny."
     fi
@@ -702,15 +708,20 @@ update_qis_plugin() {
     log_info "Kontrola a aktualizace QIS Pluginu..."
     local target_dir="${HOME}/.config/omarchy/plugins/simonez.qwenimage"
 
-    if command -v omarchy >/dev/null 2>&1 && omarchy plugin list --json 2>/dev/null | grep -q "simonez.qwenimage"; then
-        log_info "Aktualizuji plugin přes oficiální správce Omarchy..."
-        omarchy plugin update simonez.qwenimage --yes 2>/dev/null || true
-    fi
-
-    # Rebuild native bridge if source changed in local repo
+    # Identify source repository
     local src_dir="${SCRIPT_DIR}"
     if [[ ! -d "${src_dir}/.git" ]] && [[ -d "${HOME}/Projects/omarchy-qwenimage/.git" ]]; then
         src_dir="${HOME}/Projects/omarchy-qwenimage"
+    fi
+
+    # In developer workspace, sync directly to user config
+    if [[ -d "${src_dir}" && "${src_dir}" != "${target_dir}" && -d "${target_dir}" ]]; then
+        log_info "Synchronizuji lokální repozitář (${src_dir}) do cíle (${target_dir})..."
+        rsync -a --exclude='.git/' --exclude='target/' --exclude='*.tmp*' --exclude='bin/' \
+            "${src_dir}/" "${target_dir}/"
+    elif command -v omarchy >/dev/null 2>&1 && omarchy plugin list --json 2>/dev/null | grep -q "simonez.qwenimage"; then
+        log_info "Aktualizuji plugin přes oficiální správce Omarchy..."
+        omarchy plugin update simonez.qwenimage --yes 2>/dev/null || true
     fi
 
     if [[ -d "${src_dir}/rust-bridge" ]] && command -v cargo >/dev/null 2>&1; then
@@ -749,49 +760,6 @@ update_qis_plugin() {
             return 1
         fi
 
-        # Prior receipt check before replacing existing binary
-        if [[ -e "${target_bin}" ]]; then
-            if [[ ! -f "${target_bin}" || ! -O "${target_bin}" ]]; then
-                log_err "Cílová binárka není regulérní soubor ve vlastnictví uživatele: ${target_bin}"
-                return 1
-            fi
-            local receipt="${target_dir}/.installed_hashes"
-            if [[ -L "$receipt" ]]; then
-                log_err "Stvrzenka .installed_hashes je symlink. Aktualizace zrušena."
-                return 1
-            fi
-            if [[ ! -f "$receipt" || ! -O "$receipt" ]]; then
-                log_err "Cílová binárka existuje, ale stvrzenka .installed_hashes chybí nebo není ve vlastnictví uživatele. Odmítám přepsat cizí soubor."
-                return 1
-            fi
-
-            local exp_bin_hash=""
-            while IFS= read -r rline || [[ -n "$rline" ]]; do
-                [[ -z "$rline" || "$rline" =~ ^[[:space:]]*# ]] && continue
-                read -r rhash rpath <<< "$rline"
-                rpath="${rpath#\./}"
-                rpath="${rpath#\*}"
-                rpath="${rpath#"${rpath%%[![:space:]]*}"}"
-                rpath="${rpath%"${rpath##*[![:space:]]}"}"
-                if [[ "$rpath" == "bin/qwen-bridge" ]]; then
-                    exp_bin_hash="$rhash"
-                    break
-                fi
-            done < "$receipt"
-
-            if [[ -z "$exp_bin_hash" ]]; then
-                log_err "Cílová binárka existuje, ale ve stvrzence .installed_hashes chybí záznam bin/qwen-bridge. Odmítám přepsat cizí soubor."
-                return 1
-            fi
-
-            local curr_bin_hash
-            curr_bin_hash="$(sha256sum "$target_bin" 2>/dev/null | awk '{print $1}')"
-            if [[ "$curr_bin_hash" != "$exp_bin_hash" ]]; then
-                log_warn "Cílová binárka bin/qwen-bridge byla upravena mimo instalátor. Ponechávám stávající."
-                return 0
-            fi
-        fi
-
         if [[ ! -f "${target_bin}" ]] || [[ "${src_dir}/rust-bridge/src/main.rs" -nt "${target_bin}" ]]; then
             log_info "Aktualizuji nativní Rust můstek..."
             (cd "${src_dir}/rust-bridge" && cargo build --release)
@@ -813,7 +781,7 @@ update_qis_plugin() {
                     tmp_receipt="$(mktemp "${target_dir}/.installed_hashes.tmp.XXXXXX")"
                     while IFS= read -r rline || [[ -n "$rline" ]]; do
                         [[ -z "$rline" ]] && continue
-                        read -r rhash rpath <<< "$rline"
+                        read -r _ rpath <<< "$rline"
                         rpath="${rpath#\./}"
                         rpath="${rpath#\*}"
                         rpath="${rpath#"${rpath%%[![:space:]]*}"}"

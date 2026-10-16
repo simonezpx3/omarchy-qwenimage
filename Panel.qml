@@ -107,13 +107,6 @@ Panel {
   property int promptHistoryIndex: -1
   property bool isOptimizingPrompt: false
 
-  // Update state & timers
-  property bool isUpdating: false
-  property string updateMode: "plugin" // "plugin" or "all"
-  property int updateElapsedSeconds: 0
-  property string updateStatusText: ""
-  property bool showStackConfirm: false
-  readonly property string qisScriptBin: Qt.resolvedUrl("scripts/qis-stack.sh").toString().replace(/^file:\/\//, "")
 
   // Language state (cs = Čeština, en = English)
   property string currentLang: "cs"
@@ -1027,52 +1020,6 @@ Panel {
     }
   }
 
-  Timer {
-    id: updateTimer
-    interval: 1000
-    repeat: true
-    running: root.isUpdating
-    onTriggered: {
-      root.updateElapsedSeconds += 1;
-    }
-  }
-
-  Timer {
-    id: updateDoneTimer
-    interval: 3000
-    repeat: false
-    running: false
-    onTriggered: {
-      root.updateStatusText = "";
-    }
-  }
-
-  function triggerUpdate(mode) {
-    if (isUpdating) return;
-    updateMode = mode || "plugin";
-    updateElapsedSeconds = 0;
-    updateStatusText = "";
-    showStackConfirm = false;
-    isUpdating = true;
-    updateProc.command = ["bash", root.qisScriptBin, "update", updateMode];
-    updateProc.running = true;
-  }
-
-  Process {
-    id: updateProc
-    onExited: function(exitCode, exitStatus) {
-      root.isUpdating = false;
-      var totalTime = root.updateElapsedSeconds;
-      if (exitCode === 0) {
-        root.updateStatusText = (root.currentLang === "cs" ? "HOTOVO" : "DONE") + " (" + totalTime + "s)";
-        root.refreshTelemetry();
-        root.fetchHistory();
-      } else {
-        root.updateStatusText = (root.currentLang === "cs" ? "CHYBA" : "ERROR") + " (" + totalTime + "s)";
-      }
-      updateDoneTimer.restart();
-    }
-  }
 
   KeyboardPanel {
     id: panel
@@ -1264,81 +1211,12 @@ Panel {
 
           Item { Layout.fillWidth: true }
 
-          // Confirm Box for Full Stack Update (Režim 2: Kompletní stack)
-          RowLayout {
-            visible: root.showStackConfirm && !root.isUpdating
-            spacing: Style.spacing.xs
-
-            Text {
-              text: root.currentLang === "cs" ? "Aktualizovat stack (ComfyUI & nody)?" : "Update stack (ComfyUI & nodes)?"
-              font.family: Style.font.family
-              font.pixelSize: Style.font.caption
-              font.bold: true
-              color: Color.accent
-            }
-
-            Button {
-              text: root.currentLang === "cs" ? "PROVÉST" : "CONFIRM"
-              fontSize: Style.font.caption
-              bordered: true
-              foreground: Color.accent
-              onClicked: root.triggerUpdate("all")
-            }
-
-            Button {
-              text: root.currentLang === "cs" ? "ZRUŠIT" : "CANCEL"
-              fontSize: Style.font.caption
-              bordered: true
-              onClicked: root.showStackConfirm = false
-            }
-          }
-
           Text {
             text: "VRAM: " + (root.vramUsed / 1024).toFixed(1) + " / " + (root.vramTotal / 1024).toFixed(1) + " GB (" + root.vramPct + "%)"
             font.family: Style.font.family
             font.features: { "tnum": 1 }
             font.pixelSize: Style.font.caption
             color: Color.foreground
-          }
-
-          Button {
-            id: updateBtn
-            Layout.preferredWidth: Style.space(110)
-            text: {
-              if (root.isUpdating) {
-                return (root.updateMode === "all" ? "STACK" : "UPDATE") + " (" + root.updateElapsedSeconds + "s)";
-              }
-              if (root.updateStatusText !== "") {
-                return root.updateStatusText;
-              }
-              return "UPDATE";
-            }
-            fontSize: Style.font.caption
-            bordered: true
-            active: root.isUpdating
-            selected: root.isUpdating
-            foreground: root.updateStatusText !== ""
-              ? (root.updateStatusText.indexOf("CHYBA") !== -1 || root.updateStatusText.indexOf("ERROR") !== -1 ? Color.urgent : "#4ade80")
-              : (root.isUpdating ? Color.accent : Color.foreground)
-            enabled: !root.isUpdating
-            onClicked: {
-              root.triggerUpdate("plugin");
-            }
-            onRightClicked: {
-              if (!root.isUpdating) {
-                root.showStackConfirm = !root.showStackConfirm;
-              }
-            }
-            onHovered: function(isHovered) {
-              if (viewLoader.item && typeof viewLoader.item.setHelp === "function") {
-                viewLoader.item.setHelp(
-                  root.currentLang === "cs"
-                    ? "UPDATE: Levý klik = Rychlý update pluginu | Pravý klik = Kompletní stack (ComfyUI & nody)"
-                    : "UPDATE: Left click = Quick plugin update | Right click = Full stack update (ComfyUI & nodes)",
-                  isHovered
-                );
-              }
-            }
           }
 
           Button {
