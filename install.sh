@@ -549,8 +549,8 @@ else
     exit 1
   fi
 
-  ICON_PATH="${TARGET_PLUGIN_DIR}/assets/icon.png"
-  [[ ! -f "$ICON_PATH" ]] && ICON_PATH="${SCRIPT_DIR}/assets/icon.png"
+  ICON_PATH="${TARGET_PLUGIN_DIR}/assets/qwen-color.svg"
+  [[ ! -f "$ICON_PATH" ]] && ICON_PATH="${SCRIPT_DIR}/assets/qwen-color.svg"
 
   cat > "${DESKTOP_FILE}" <<EOF
 [Desktop Entry]

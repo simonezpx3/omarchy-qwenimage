@@ -130,6 +130,12 @@ QIS automatically profiles your hardware on installation and suggests the optima
 
 ## Installation & Setup
 
+### Option A: Omarchy Plugin Manager (Recommended)
+```bash
+omarchy plugin add https://github.com/simonezpx3/omarchy-qwenimage.git
+```
+
+### Option B: Standalone / Manual Setup
 ```bash
 git clone https://github.com/simonezpx3/omarchy-qwenimage.git
 cd omarchy-qwenimage
@@ -174,8 +180,10 @@ This plugin strictly complies with the Omarchy Marketplace Security Baseline:
 ## Uninstallation
 
 ```bash
-cd omarchy-qwenimage
-chmod +x uninstall.sh
+# Via Omarchy plugin manager:
+omarchy plugin remove simonez.qwenimage
+
+# Or directly via uninstaller script:
 ./uninstall.sh
 ```
 
