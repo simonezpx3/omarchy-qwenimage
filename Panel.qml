@@ -509,9 +509,7 @@ Panel {
 
   function openImageViewer(path) {
     if (!path) return;
-    var p = openExternalProc;
-    p.command = ["xdg-open", "--", path];
-    p.running = true;
+    root.openFullscreenViewer(path);
   }
 
   function openFullscreenViewer(path) {
@@ -751,7 +749,9 @@ Panel {
       if (exitCode !== 0 && openFullscreenProc.command.length >= 1) {
         var target = openFullscreenProc.command[openFullscreenProc.command.length - 1];
         if (target && target !== "" && target !== "--") {
-          root.openImageViewer(target);
+          openExternalProc.running = false;
+          openExternalProc.command = ["xdg-open", "--", target];
+          openExternalProc.running = true;
         }
       }
     }

@@ -132,21 +132,40 @@ Item {
 
             // Action Buttons for this item
             ColumnLayout {
-              Layout.preferredWidth: Style.space(165)
+              Layout.preferredWidth: Style.space(240)
               Layout.alignment: Qt.AlignVCenter
               spacing: Style.spacing.xxs
 
-              Button {
-                text: panelRoot && panelRoot.currentLang === "cs" ? "OBNOVIT PARAMETRY" : "RESTORE PARAMS"
-                fontSize: Style.font.caption
-                bordered: true
-                selected: true
-                Layout.preferredWidth: 0
+              RowLayout {
                 Layout.fillWidth: true
-                onClicked: {
-                  if (panelRoot) {
-                    panelRoot.restoreFromHistory(modelData.path, modelData.prompt, modelData.seed, modelData.ratio, modelData.negative_prompt);
-                    panelRoot.currentView = "studio";
+                spacing: Style.spacing.xxs
+
+                Button {
+                  text: panelRoot && panelRoot.currentLang === "cs" ? "OBNOVIT PARAMETRY" : "RESTORE PARAMS"
+                  fontSize: Style.font.caption
+                  bordered: true
+                  selected: true
+                  Layout.preferredWidth: 0
+                  Layout.fillWidth: true
+                  onClicked: {
+                    if (panelRoot) {
+                      panelRoot.restoreFromHistory(modelData.path, modelData.prompt, modelData.seed, modelData.ratio, modelData.negative_prompt);
+                      panelRoot.currentView = "studio";
+                    }
+                  }
+                }
+
+                Button {
+                  text: panelRoot && panelRoot.currentLang === "cs" ? "DO BUFFERU" : "COPY TO BUFFER"
+                  fontSize: Style.font.caption
+                  bordered: true
+                  Layout.preferredWidth: 0
+                  Layout.fillWidth: true
+                  onClicked: {
+                    if (panelRoot) {
+                      panelRoot.setReferenceImage(modelData.path);
+                      panelRoot.currentView = "studio";
+                    }
                   }
                 }
               }
@@ -170,7 +189,7 @@ Item {
                   bordered: true
                   Layout.preferredWidth: 0
                   Layout.fillWidth: true
-                  onClicked: if (panelRoot) panelRoot.openImageViewer(modelData.path)
+                  onClicked: if (panelRoot) panelRoot.openFullscreenViewer(modelData.path)
                 }
               }
             }
