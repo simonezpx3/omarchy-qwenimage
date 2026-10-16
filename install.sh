@@ -566,7 +566,9 @@ Categories=Graphics;2DGraphics;RasterGraphics;
 StartupNotify=true
 EOF
   chmod 0644 "${DESKTOP_FILE}"
-  command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "${APPS_DIR}" >/dev/null 2>&1 || true
+  if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database "${APPS_DIR}" >/dev/null 2>&1 || true
+  fi
   log_ok "Vytvořen spouštěč aplikace: ${DESKTOP_FILE}"
 fi
 

@@ -90,7 +90,9 @@ fi
 DESKTOP_FILE="${APPS_DIR}/qis.desktop"
 if [[ -f "$DESKTOP_FILE" && ! -L "$DESKTOP_FILE" ]]; then
   rm -f "$DESKTOP_FILE"
-  command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "${APPS_DIR}" >/dev/null 2>&1 || true
+  if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database "${APPS_DIR}" >/dev/null 2>&1 || true
+  fi
   log_ok "Odstraněn XDG spouštěč: ${DESKTOP_FILE}"
 fi
 
