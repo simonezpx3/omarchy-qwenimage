@@ -205,13 +205,18 @@ pub fn ensure_comfyui_running() -> bool {
                 .unwrap_or_else(|| "A".to_string())
                 .to_uppercase();
 
+            let reserve_str = std::env::var("QIS_VRAM_RESERVE_GB")
+                .ok()
+                .or_else(|| conf.get("QIS_VRAM_RESERVE_GB").cloned())
+                .unwrap_or_else(|| "1.8".to_string());
+
             let mut py_args = vec!["--listen", "127.0.0.1", "--port", "8188", "--preview-method", "auto"];
             if tier == "B" {
                 py_args.extend_from_slice(&["--lowvram", "--enable-dynamic-vram"]);
             } else if tier == "C" {
                 py_args.push("--cpu");
             } else {
-                py_args.extend_from_slice(&["--reserve-vram", "1.8", "--enable-dynamic-vram", "--fp8_e4m3fn-text-enc"]);
+                py_args.extend_from_slice(&["--reserve-vram", &reserve_str, "--enable-dynamic-vram", "--fp8_e4m3fn-text-enc"]);
             }
 
             if tier != "C" {

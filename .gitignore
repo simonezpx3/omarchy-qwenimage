@@ -5,3 +5,5 @@ settings.json
 bin/qwen-bridge
 .beads/
 .installed_hashes
+__pycache__/
+*.pyc

@@ -346,6 +346,11 @@ is_valid_elf_binary() {
   local magic=""
   magic="$(head -c 4 "$bin_path" 2>/dev/null | tr -d '\0' || true)"
   [[ "$magic" == $'\x7fELF' ]] || return 1
+
+  local sha_file="${bin_path}.sha256"
+  if [[ -f "$sha_file" ]]; then
+    (cd "$(dirname "$bin_path")" && sha256sum --status -c "$(basename "$sha_file")" 2>/dev/null) || return 1
+  fi
   return 0
 }
 
@@ -357,6 +362,7 @@ if (( IS_IN_PLACE == 1 )) && is_valid_elf_binary "${BRIDGE_TARGET}"; then
 elif is_valid_elf_binary "${SCRIPT_DIR}/bin/qwen-bridge"; then
   log_ok "Nalezena validní předkompilovaná binárka v bin/qwen-bridge."
   copy_safe "${SCRIPT_DIR}/bin/qwen-bridge" "${BRIDGE_TARGET}" 0755
+  [[ -f "${SCRIPT_DIR}/bin/qwen-bridge.sha256" ]] && copy_safe "${SCRIPT_DIR}/bin/qwen-bridge.sha256" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge.sha256" 0644
   BRIDGE_INSTALLED=1
 elif is_valid_elf_binary "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge"; then
   log_ok "Nalezena zkompilovaná binárka v rust-bridge/target/release/."
@@ -367,6 +373,7 @@ elif command -v cargo >/dev/null 2>&1 && [[ -d "${SCRIPT_DIR}/rust-bridge" ]]; t
   if (cd "${SCRIPT_DIR}/rust-bridge" && cargo build --release); then
     if is_valid_elf_binary "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge"; then
       copy_safe "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge" "${BRIDGE_TARGET}" 0755
+      (cd "${TARGET_PLUGIN_DIR}/bin" && sha256sum qwen-bridge > qwen-bridge.sha256 2>/dev/null || true)
       log_ok "Kompilace proběhla úspěšně."
       BRIDGE_INSTALLED=1
     fi

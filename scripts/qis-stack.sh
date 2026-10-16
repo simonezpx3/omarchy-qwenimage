@@ -6,6 +6,11 @@
 # ==============================================================================
 set -euo pipefail
 
+if (( EUID == 0 )); then
+    echo -e "\033[0;31m· ERR //\033[0m Spuštění pod účtem root (EUID 0) je zakázáno. Spusťte skript jako běžný uživatel." >&2
+    exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMFY_DIR="${COMFY_DIR:-${HOME}/.local/share/comfyui}"
 if [[ -d "${COMFY_DIR}/.venv" && ! -d "${COMFY_DIR}/venv" ]]; then
@@ -1032,7 +1037,9 @@ start_comfyui() {
         args+=("--cpu")
     else
         local reserve_val="1.8"
-        if command -v nvidia-smi >/dev/null 2>&1; then
+        if [[ -n "${QIS_VRAM_RESERVE_GB:-}" ]]; then
+            reserve_val="${QIS_VRAM_RESERVE_GB}"
+        elif command -v nvidia-smi >/dev/null 2>&1; then
             local free_vram
             free_vram=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits 2>/dev/null | head -n1 | tr -d ' ' || echo 4000)
             if [[ "$free_vram" =~ ^[0-9]+$ ]] && (( free_vram < 2000 )); then
@@ -1125,6 +1132,13 @@ stop_comfyui() {
         if fuser -k 8188/tcp >/dev/null 2>&1; then
             stopped=1
         fi
+    fi
+
+    # Úklid dočasných náhledů z /dev/shm
+    local shm_dir="/dev/shm/qis_preview_${UID}"
+    if [[ -d "$shm_dir" && ! -L "$shm_dir" && -O "$shm_dir" ]]; then
+        rm -rf "$shm_dir"
+        log_ok "Dočasné náhledy v ${shm_dir} vyčištěny."
     fi
 
     if (( stopped == 1 )) || ! curl -sf "http://127.0.0.1:8188/system_stats" >/dev/null 2>&1; then

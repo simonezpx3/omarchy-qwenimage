@@ -71,6 +71,10 @@ def add_mlp_hooks(mlp, gate, up, down):
         except (RuntimeError, Exception):
             # Fallback if in-place view is immutable
             h["gu"] = out + torch.cat([g_lora, u_lora], -1)
+        if g_lora.is_cuda:
+            g_lora.record_stream(torch.cuda.current_stream(g_lora.device))
+        if u_lora.is_cuda:
+            u_lora.record_stream(torch.cuda.current_stream(u_lora.device))
         del g_lora, u_lora
         return h["gu"]
 
@@ -80,8 +84,12 @@ def add_mlp_hooks(mlp, gate, up, down):
         half_dim = gu.shape[-1] // 2
         # Zero-redundancy activation: calculate SiLU and in-place multiply, then immediately release gu
         act = F.silu(gu[..., :half_dim]).mul_(gu[..., half_dim:])
+        if gu.is_cuda:
+            gu.record_stream(torch.cuda.current_stream(gu.device))
         del gu
         res = lora_fwd(act, down)
+        if act.is_cuda:
+            act.record_stream(torch.cuda.current_stream(act.device))
         del act
         try:
             return out.add_(res)

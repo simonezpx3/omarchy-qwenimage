@@ -186,7 +186,7 @@ if [[ -e "$TARGET_PLUGIN_DIR" ]]; then
   if [[ -d "${TARGET_PLUGIN_DIR}/.git" ]]; then
     log_warn "Detekován Git repozitář v ${TARGET_PLUGIN_DIR} (In-Place vývojový režim)."
     log_info "Mažu pouze generované artefakty (bin/qwen-bridge), zdrojový kód ponechávám..."
-    rm -f "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
+    rm -f "${TARGET_PLUGIN_DIR}/bin/qwen-bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge.sha256"
     if (( PURGE_SETTINGS == 1 )); then
       rm -f "${TARGET_PLUGIN_DIR}/settings.json"
       log_ok "Smazán soubor settings.json."

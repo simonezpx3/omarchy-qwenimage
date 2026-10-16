@@ -180,8 +180,10 @@ qis rollback                            # Revert ComfyUI to previous working che
 
 This plugin strictly complies with the Omarchy Marketplace Security Baseline:
 - **Pinned Git Commits:** ComfyUI core (v0.41.2) and all custom nodes are pinned to immutable commit SHAs.
-- **Cryptographic Hash Verification:** All Python packages and sub-dependencies are locked with strict SHA-256 hashes (`pip install --require-hashes`) across CUDA 12.8, ROCm 6.2, and CPU architectures in `locks/`.
+- **Cryptographic Hash Verification:** All Python packages and sub-dependencies are locked with strict SHA-256 hashes (`pip install --require-hashes`) across CUDA 12.8, ROCm 6.2, and CPU architectures in `locks/`. Precompiled native binaries are verified via `bin/qwen-bridge.sha256`.
 - **Zero Unpinned Execution:** No unhashed or arbitrary code is downloaded during clone, install, or update operations.
+- **Hardware VRAM Reserve:** System reserve defaults to 1.8 GB on 8GB GPUs (protecting Wayland desktop compositors and applications), dynamically configurable via `QIS_VRAM_RESERVE_GB`.
+- **Bounded Clipboard & POSIX Shared Memory:** Wayland clipboard intake is hard-capped at 16 KiB with a 1.2s timeout; previews use user-isolated RAM disks (`/dev/shm/qis_preview_${UID}`) with automatic eviction on service stop.
 
 ---
 
