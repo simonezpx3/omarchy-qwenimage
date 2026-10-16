@@ -1218,16 +1218,6 @@ Panel {
             font.pixelSize: Style.font.caption
             color: Color.foreground
           }
-
-          Button {
-            text: "REFRESH"
-            fontSize: Style.font.caption
-            bordered: true
-            onClicked: {
-              root.refreshTelemetry();
-              root.fetchHistory();
-            }
-          }
         }
 
         PanelSeparator { Layout.fillWidth: true }
