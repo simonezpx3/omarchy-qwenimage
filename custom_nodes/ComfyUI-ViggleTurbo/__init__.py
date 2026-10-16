@@ -71,12 +71,22 @@ def add_mlp_hooks(mlp, gate, up, down):
         except (RuntimeError, Exception):
             # Fallback if in-place view is immutable
             h["gu"] = out + torch.cat([g_lora, u_lora], -1)
+        del g_lora, u_lora
         return h["gu"]
 
     @torch.compiler.disable
     def mlp_hook(m, inp, out):
-        g, u = h.pop("gu").chunk(2, -1)
-        return out + lora_fwd(F.silu(g) * u, down)
+        gu = h.pop("gu")
+        half_dim = gu.shape[-1] // 2
+        # Zero-redundancy activation: calculate SiLU and in-place multiply, then immediately release gu
+        act = F.silu(gu[..., :half_dim]).mul_(gu[..., half_dim:])
+        del gu
+        res = lora_fwd(act, down)
+        del act
+        try:
+            return out.add_(res)
+        except (RuntimeError, Exception):
+            return out + res
 
     return [mlp.gate_up.register_forward_hook(gate_up_hook), mlp.register_forward_hook(mlp_hook)]
 

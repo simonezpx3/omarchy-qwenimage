@@ -211,7 +211,7 @@ pub fn ensure_comfyui_running() -> bool {
             } else if tier == "C" {
                 py_args.push("--cpu");
             } else {
-                py_args.extend_from_slice(&["--reserve-vram", "1.2", "--enable-dynamic-vram", "--fp8_e4m3fn-text-enc"]);
+                py_args.extend_from_slice(&["--reserve-vram", "1.8", "--enable-dynamic-vram", "--fp8_e4m3fn-text-enc"]);
             }
 
             if tier != "C" {

@@ -1064,12 +1064,12 @@ start_comfyui() {
     elif [[ "$HW_TIER" == "C" ]]; then
         args+=("--cpu")
     else
-        local reserve_val="1.2"
+        local reserve_val="1.8"
         if command -v nvidia-smi >/dev/null 2>&1; then
             local free_vram
             free_vram=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits 2>/dev/null | head -n1 | tr -d ' ' || echo 4000)
             if [[ "$free_vram" =~ ^[0-9]+$ ]] && (( free_vram < 2000 )); then
-                reserve_val="1.5"
+                reserve_val="2.0"
             fi
         fi
         args+=("--reserve-vram" "${reserve_val}" "--enable-dynamic-vram" "--fp8_e4m3fn-text-enc")
@@ -1104,24 +1104,21 @@ start_comfyui() {
     fi
 
     if (( bg == 1 )); then
-        local scope_cmd=()
         if command -v systemd-run >/dev/null 2>&1 && systemctl --user is-system-running >/dev/null 2>&1; then
-            scope_cmd=("systemd-run" "--user" "--scope" "--unit=qis-comfyui-${UID}")
+            systemctl --user stop "comfyui.service" 2>/dev/null || true
+            systemd-run --user --unit=comfyui "$py_bin" "${COMFY_DIR}/main.py" "${args[@]}" >/dev/null 2>&1 || true
+        else
+            nohup "$py_bin" "${COMFY_DIR}/main.py" "${args[@]}" > "$log_file" 2>&1 &
+            local pid=$!
+            echo "$pid" > "$pid_file"
         fi
-        nohup "${scope_cmd[@]}" "$py_bin" "${COMFY_DIR}/main.py" "${args[@]}" > "$log_file" 2>&1 &
-        local pid=$!
-        echo "$pid" > "$pid_file"
-        log_info "Čekám na spuštění ComfyUI na pozadí (PID ${pid})..."
+        log_info "Čekám na spuštění ComfyUI na pozadí..."
         local started=0
         for (( i=1; i<=45; i++ )); do
             sleep 1
             if curl -sf "http://127.0.0.1:8188/system_stats" >/dev/null 2>&1; then
                 started=1
                 break
-            fi
-            if ! kill -0 "$pid" 2>/dev/null; then
-                log_err "ComfyUI proces předčasně skončil. Zkontrolujte log: ${log_file}"
-                return 1
             fi
         done
         if (( started == 1 )); then
@@ -1154,7 +1151,7 @@ stop_comfyui() {
     fi
 
     if command -v systemctl >/dev/null 2>&1; then
-        systemctl --user stop "qis-comfyui-${UID}.scope" 2>/dev/null || true
+        systemctl --user stop "comfyui.service" "qis-comfyui-${UID}.scope" 2>/dev/null || true
     fi
 
     if command -v fuser >/dev/null 2>&1; then
