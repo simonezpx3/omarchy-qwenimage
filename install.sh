@@ -373,7 +373,11 @@ elif command -v cargo >/dev/null 2>&1 && [[ -d "${SCRIPT_DIR}/rust-bridge" ]]; t
   if (cd "${SCRIPT_DIR}/rust-bridge" && cargo build --release); then
     if is_valid_elf_binary "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge"; then
       copy_safe "${SCRIPT_DIR}/rust-bridge/target/release/qwen_bridge" "${BRIDGE_TARGET}" 0755
-      (cd "${TARGET_PLUGIN_DIR}/bin" && sha256sum qwen-bridge > qwen-bridge.sha256 2>/dev/null || true)
+      (
+        if cd "${TARGET_PLUGIN_DIR}/bin"; then
+          sha256sum qwen-bridge > qwen-bridge.sha256 2>/dev/null || true
+        fi
+      )
       log_ok "Kompilace proběhla úspěšně."
       BRIDGE_INSTALLED=1
     fi
