@@ -2,6 +2,26 @@
 
 Všechny významné změny, audity a bezpečnostní opravy projektu jsou zaznamenávány v tomto souboru. Formát vychází z [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) a dodržuje [Semantic Versioning](https://semver.org/).
 
+## [1.2.2] — 2026-10-16
+
+### Security & Hardening
+- **Tmpfs Preview Cleanup on Service Stop (`scripts/qis-stack.sh`):**
+  - Implementováno automatické a bezpečné odstranění dočasného adresáře náhledů `/dev/shm/qis_preview_${UID}/` při volání `qis stop`, eliminující riziko úniku dat v paměti na víceuživatelských systémech.
+- **Root Execution Guard (`scripts/qis-stack.sh`):**
+  - Přidána ochrana proti spuštění pod účtem root (`(( EUID == 0 ))`), sjednocující bezpečnostní pravidla napříč `install.sh`, `uninstall.sh` a CLI stack manažerem.
+- **Configurable VRAM Reserve (`rust-bridge`, `scripts/qis-stack.sh`):**
+  - Podpora dynamického nastavení rezervy VRAM přes proměnnou prostředí `QIS_VRAM_RESERVE_GB` (výchozí 1.8 GB na 8 GB kartách), chránící Wayland compository a desktopové aplikace před OOM pády.
+- **CUDA Stream Deallocation Safety (`ComfyUI-ViggleTurbo`):**
+  - Doplněna registrace tenzorů do aktivního CUDA streamu (`tensor.record_stream(torch.cuda.current_stream(tensor.device))`) před jejich uvolněním v `gate_up_hook` a `c_proj_hook`, eliminující riziko use-after-free a asynchronních GPU závodů (race conditions).
+- **Precompiled Binary SHA-256 Validation (`install.sh`):**
+  - Doplněna kryptografická verifikace kontrolního součtu SHA-256 před instalací prekompilované binárky `bin/qwen-bridge` s automatickým fallbackem na lokální kompilaci přes Cargo.
+
+### Documentation & Standards
+- **Arci Council High (`cch`) Audit:**
+  - 100% technická angličtina, odstranění veškerých interních žargonů a marketingového balastu.
+  - Sjednocení verze na `1.2.2` napříč `manifest.json`, `README.md`, `rust-bridge/Cargo.toml` a `Panel.qml`.
+  - Zpřesnění limitů Wayland schránky (16 KiB pro text/URI metadata, ohraničený 32 MiB stream pro obrazové buffery).
+
 ---
 
 ## [1.2.1] — 2026-10-15

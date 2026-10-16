@@ -3,6 +3,7 @@ settings.json
 *.log
 .DS_Store
 bin/qwen-bridge
+bin/*.sha256
 .beads/
 .installed_hashes
 __pycache__/
