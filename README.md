@@ -89,7 +89,7 @@ graph LR
 - **Omarchy UI Architecture:** Pixel-perfect geometric harmony with `Style.cornerRadius`, concentric surface depth, cybernetic reticle corners, and zero box-clutter.
 - **Tabular Numerals & Optical Stability:** OpenType `tnum` tabular numerals across diffusion step badges, timers, and VRAM telemetry eliminating horizontal layout jitter.
 - **Live System Telemetry:** Header badges showing connected Qwen model, ComfyUI, Ollama, CUDA, Quickshell, and VRAM utilization.
-- **In-Button Live Timers:** Dynamic, non-intrusive second counters inside active buttons (`GENERATE`, `UPDATE`, `OPTIMIZE`, `TAGS`, `SCALE`).
+- **In-Button Live Timers:** Dynamic, non-intrusive second counters inside active buttons (`GENERATE`, `OPTIMIZE`, `TAGS`, `SCALE`).
 - **Wallpaper Integration:** One-click wallpaper deployment to Omarchy and Hyprland.
 
 ---
@@ -109,10 +109,9 @@ graph LR
 | **CivitAI Quick Apply** | Single click on any prompt card | Loads prompt and parameters into Studio |
 | **CivitAI Direct Synthesize** | Double click on any prompt card | Loads prompt and triggers immediate generation |
 | **Return to Studio** | `Esc` from A/B Compare or History views | Navigates back to main Studio view |
-| **Quick Plugin Update** | Left Click on `󰑐 UPDATE` in header | Updates plugin & Rust bridge without restarting the shell (`< 1s`) |
-| **Full Stack Update** | Right Click on `󰑐 UPDATE` in header | Opens confirmation banner to update ComfyUI core, custom nodes, and models |
 | **Close Studio** | `Esc` or click outside | Smoothly closes the window and frees viewport |
-| **Live Telemetry Refresh** | Click on `󰑐 REFRESH` | Forces immediate hardware and VRAM telemetry update |
+| **CLI & Stack Update** | `qis update` or `qis --stack` | Updates plugin & Rust bridge or full ComfyUI core and models via CLI |
+| **Live Telemetry** | Auto-updates or `omarchy-shell simonez.qwenimage refresh` | Real-time hardware and VRAM telemetry without manual clutter |
 
 ---
 

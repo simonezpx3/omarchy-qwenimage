@@ -1,163 +1,227 @@
 #!/usr/bin/env bash
-# QIS (Qwen Image Studio) — Uninstallation Script for Omarchy Linux
+# ==============================================================================
+# QIS (Qwen Image Studio) — Safe Uninstaller & Cleanup
+# ==============================================================================
 set -euo pipefail
+umask 0022
 
+this_script=${BASH_SOURCE[0]}
+SCRIPT_DIR="$(cd "$(dirname "$this_script")" && pwd)"
 TARGET_PLUGIN_DIR="${TARGET_PLUGIN_DIR:-${HOME}/.config/omarchy/plugins/simonez.qwenimage}"
 SHELL_CONFIG="${SHELL_CONFIG:-${HOME}/.config/omarchy/shell.json}"
 BIN_DIR="${BIN_DIR:-${HOME}/.local/bin}"
+COMFY_DIR="${COMFY_DIR:-${HOME}/.local/share/comfyui}"
+APPS_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/applications"
 
-echo "=== Uninstalling QIS (Qwen Image Studio) ==="
+log_info() { echo -e "\033[0;34m·\033[0m \033[1m${1}\033[0m"; }
+log_ok()   { echo -e "\033[0;32m· OK //\033[0m ${1}"; }
+log_warn() { echo -e "\033[1;33m· WARN //\033[0m ${1}"; }
+log_err()  { echo -e "\033[0;31m· ERR //\033[0m ${1}" >&2; }
 
-# 1. Remove from shell.json
-if [[ -f "$SHELL_CONFIG" ]] && command -v jq >/dev/null 2>&1; then
-  echo "-> Removing simonez.qwenimage from shell.json..."
-  tmp_json=$(mktemp)
+if (( EUID == 0 )); then
+  log_err "Odinstalace nesmí být spuštěna pod účtem root (EUID 0)."
+  exit 1
+fi
+
+if [[ -z "${HOME:-}" || "${HOME}" == "/" ]]; then
+  log_err "Proměnná HOME není validně nastavena."
+  exit 1
+fi
+
+PURGE_SETTINGS=0
+PURGE_COMFY=0
+NO_RESTART=0
+
+for arg in "$@"; do
+  case "$arg" in
+    --purge-settings)
+      PURGE_SETTINGS=1
+      ;;
+    --purge-all)
+      PURGE_SETTINGS=1
+      PURGE_COMFY=1
+      ;;
+    --no-restart)
+      NO_RESTART=1
+      ;;
+    *)
+      log_err "Neznámý parametr: ${arg}. Povolené volby: --purge-settings, --purge-all, --no-restart"
+      exit 1
+      ;;
+  esac
+done
+
+echo ""
+echo "=== QIS (Qwen Image Studio) // Odinstalace systému ==="
+echo ""
+
+# ---------------------------------------------------------
+# 1. Stop Running Backend Stack
+# ---------------------------------------------------------
+STACK_SCRIPT="${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
+[[ ! -x "$STACK_SCRIPT" && -x "${SCRIPT_DIR}/scripts/qis-stack.sh" ]] && STACK_SCRIPT="${SCRIPT_DIR}/scripts/qis-stack.sh"
+
+if [[ -x "$STACK_SCRIPT" ]]; then
+  log_info "Zastavuji běžící procesy QIS backendu..."
+  "$STACK_SCRIPT" stop >/dev/null 2>&1 || true
+  log_ok "Procesy backendu zastaveny."
+fi
+
+# ---------------------------------------------------------
+# 2. Remove CLI Symlink (~/.local/bin/qis)
+# ---------------------------------------------------------
+CLI_LINK="${BIN_DIR}/qis"
+if [[ -L "$CLI_LINK" ]]; then
+  link_target="$(readlink -f "$CLI_LINK" 2>/dev/null || true)"
+  expected_target="$(readlink -f "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" 2>/dev/null || echo "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh")"
+  alt_target="$(readlink -f "${SCRIPT_DIR}/scripts/qis-stack.sh" 2>/dev/null || echo "${SCRIPT_DIR}/scripts/qis-stack.sh")"
+
+  if [[ "$link_target" == "$expected_target" || "$link_target" == "$alt_target" || "$link_target" == *"simonez.qwenimage"* ]]; then
+    rm -f "$CLI_LINK"
+    log_ok "Odstraněn CLI symlink: ${CLI_LINK}"
+  else
+    log_warn "Symlink ${CLI_LINK} ukazuje na jiný cíl (${link_target}) // Ponechán beze změny."
+  fi
+fi
+
+# ---------------------------------------------------------
+# 3. Remove Standalone Desktop Entry
+# ---------------------------------------------------------
+DESKTOP_FILE="${APPS_DIR}/qis.desktop"
+if [[ -f "$DESKTOP_FILE" && ! -L "$DESKTOP_FILE" ]]; then
+  rm -f "$DESKTOP_FILE"
+  command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "${APPS_DIR}" >/dev/null 2>&1 || true
+  log_ok "Odstraněn XDG spouštěč: ${DESKTOP_FILE}"
+fi
+
+# ---------------------------------------------------------
+# 4. Deregister Widget from Omarchy shell.json
+# ---------------------------------------------------------
+remove_from_shell_json() {
+  local cfg="$1"
+  [[ -f "$cfg" && ! -L "$cfg" && -O "$cfg" ]] || return 0
+
+  local shell_dir
+  shell_dir="$(dirname "$cfg")"
+  local tmp_json
+  tmp_json="$(mktemp "${shell_dir}/shell.json.tmp.XXXXXX")"
   chmod 0600 "$tmp_json"
-  jq '
-    if .bar.layout.right then .bar.layout.right |= map(select((type == "object" and .id != "simonez.qwenimage") or (type == "string" and . != "simonez.qwenimage"))) else . end |
-    if .bar.layout.center then .bar.layout.center |= map(select((type == "object" and .id != "simonez.qwenimage") or (type == "string" and . != "simonez.qwenimage"))) else . end |
-    if .bar.layout.left then .bar.layout.left |= map(select((type == "object" and .id != "simonez.qwenimage") or (type == "string" and . != "simonez.qwenimage"))) else . end
-  ' "$SHELL_CONFIG" > "$tmp_json" && mv "$tmp_json" "$SHELL_CONFIG"
-  echo "  [OK] shell.json updated"
-fi
 
-# 2. Verify and remove CLI shortcut (strict ownership check)
-QIS_BIN="${BIN_DIR}/qis"
-if [[ -L "${QIS_BIN}" ]]; then
-  target_link="$(readlink -f "${QIS_BIN}" 2>/dev/null || true)"
-  if [[ "${target_link}" == "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh" ]]; then
-    rm -f "${QIS_BIN}"
-    echo "  [OK] Verified QIS CLI symlink removed from ${QIS_BIN}"
-  else
-    echo "  [SKIP] ${QIS_BIN} points to '${target_link}' (not this QIS installation), leaving in place."
+  local updated=0
+  if command -v jq >/dev/null 2>&1; then
+    if jq '
+      if .bar.layout.center then .bar.layout.center |= map(select((type == "object" and .id != "simonez.qwenimage") or (type == "string" and . != "simonez.qwenimage"))) else . end |
+      if .bar.layout.left then .bar.layout.left |= map(select((type == "object" and .id != "simonez.qwenimage") or (type == "string" and . != "simonez.qwenimage"))) else . end |
+      if .bar.layout.right then .bar.layout.right |= map(select((type == "object" and .id != "simonez.qwenimage") or (type == "string" and . != "simonez.qwenimage"))) else . end
+    ' "$cfg" > "$tmp_json" 2>/dev/null; then
+      if jq empty "$tmp_json" 2>/dev/null && [[ -s "$tmp_json" ]]; then
+        updated=1
+      fi
+    fi
+  elif command -v python3 >/dev/null 2>&1; then
+    if python3 -c '
+import json, sys
+path, out = sys.argv[1], sys.argv[2]
+with open(path, "r", encoding="utf-8") as f:
+    d = json.load(f)
+layout = d.get("bar", {}).get("layout", {})
+for section in ("left", "center", "right"):
+    if isinstance(layout.get(section), list):
+        layout[section] = [
+            x for x in layout[section]
+            if not ((isinstance(x, dict) and x.get("id") == "simonez.qwenimage") or x == "simonez.qwenimage")
+        ]
+with open(out, "w", encoding="utf-8") as f:
+    json.dump(d, f, indent=2)
+    f.write("\n")
+' "$cfg" "$tmp_json" 2>/dev/null; then
+      if [[ -s "$tmp_json" ]]; then
+        updated=1
+      fi
+    fi
   fi
-elif [[ -e "${QIS_BIN}" ]]; then
-  echo "  [SKIP] ${QIS_BIN} is a regular user command/file, leaving in place."
-fi
 
-# 3. Verify and remove only installer-owned, unmodified plugin files
-if [[ -d "${TARGET_PLUGIN_DIR}" && ! -L "${TARGET_PLUGIN_DIR}" ]]; then
-  TARGET_REAL="$(realpath -q "${TARGET_PLUGIN_DIR}" 2>/dev/null || true)"
-  MANIFEST_FILE="${TARGET_PLUGIN_DIR}/manifest.json"
-
-  if [[ -n "${TARGET_REAL}" && -f "${MANIFEST_FILE}" && ! -L "${MANIFEST_FILE}" ]]; then
-    is_qis=0
-    if command -v jq >/dev/null 2>&1; then
-      if [[ "$(jq -r '.id // empty' "${MANIFEST_FILE}" 2>/dev/null)" == "simonez.qwenimage" ]]; then
-        is_qis=1
-      fi
-    elif grep -q '"id"[[:space:]]*:[[:space:]]*"simonez\.qwenimage"' "${MANIFEST_FILE}" 2>/dev/null; then
-      is_qis=1
-    fi
-
-    if [[ "$is_qis" -eq 1 ]]; then
-      echo "-> Verifying content identity and removing unmodified installer-owned files..."
-      HASHES_FILE="${TARGET_PLUGIN_DIR}/.installed_hashes"
-
-      # Fixed whitelist of allowed relative paths deployed by installer
-      known_files=(
-        "manifest.json"
-        "BarWidget.qml"
-        "Panel.qml"
-        "settings.json"
-        "bin/qwen-bridge"
-        "scripts/qis-stack.sh"
-        "views/CivitaiView.qml"
-        "views/CompareView.qml"
-        "views/HistoryView.qml"
-        "views/qmldir"
-        "views/StudioView.qml"
-        "assets/qwen-color.svg"
-        "assets/qwen-heretic.svg"
-        "assets/qwen-mono.svg"
-      )
-
-      # Build expected hash map if .installed_hashes is present and safe
-      declare -A expected_hashes=()
-      if [[ -f "${HASHES_FILE}" && ! -L "${HASHES_FILE}" && -O "${HASHES_FILE}" ]]; then
-        while read -r hash rel || [[ -n "$hash" ]]; do
-          [[ -z "$hash" || -z "$rel" ]] && continue
-          # Strip leading ./, *, and whitespace
-          rel="${rel#\./}"
-          rel="${rel#\*}"
-          rel="${rel#"${rel%%[![:space:]]*}"}"
-          rel="${rel%"${rel##*[![:space:]]}"}"
-          expected_hashes["$rel"]="$hash"
-        done < "${HASHES_FILE}"
-      fi
-
-      for rel_path in "${known_files[@]}"; do
-        # Enforce path traversal protection: reject '..' or leading '/'
-        if [[ "$rel_path" == /* || "$rel_path" == *..* ]]; then
-          continue
-        fi
-
-        candidate="${TARGET_PLUGIN_DIR}/${rel_path}"
-
-        # Must exist as a regular file and NOT a symlink
-        if [[ ! -f "$candidate" || -L "$candidate" ]]; then
-          continue
-        fi
-
-        # Canonical path must strictly reside inside TARGET_REAL
-        candidate_real="$(realpath -q "$candidate" 2>/dev/null || true)"
-        if [[ -z "$candidate_real" || "$candidate_real" != "${TARGET_REAL}/"* ]]; then
-          continue
-        fi
-
-        # Parent directory must not be a symlink
-        parent_real="$(dirname "$candidate_real")"
-        if [[ -L "$parent_real" ]]; then
-          continue
-        fi
-
-        # Fail-Closed Content Identity verification:
-        # Require a trusted recorded hash from installation. If absent, modified, or pre-existing,
-        # fail closed and leave the file completely untouched.
-        exp_hash="${expected_hashes["$rel_path"]:-}"
-        if [[ -z "$exp_hash" ]]; then
-          echo "  [SKIP] No trusted hash recorded for ${rel_path}, leaving intact."
-          continue
-        fi
-
-        curr_hash="$(sha256sum "$candidate_real" 2>/dev/null | awk '{print $1}')"
-        if [[ "$curr_hash" != "$exp_hash" ]]; then
-          echo "  [SKIP] Modified content detected in ${rel_path} (${curr_hash:0:8} != ${exp_hash:0:8}), leaving intact."
-          continue
-        fi
-
-        rm -f "$candidate_real"
-        echo "  [OK] Removed verified unmodified installer file: ${rel_path}"
-      done
-
-      # Remove hashes file after processing
-      rm -f "${HASHES_FILE}" 2>/dev/null || true
-
-      # Clean empty directories only (leaves foreign or user-created files intact)
-      rmdir "${TARGET_PLUGIN_DIR}/bin" 2>/dev/null || true
-      rmdir "${TARGET_PLUGIN_DIR}/scripts" 2>/dev/null || true
-      rmdir "${TARGET_PLUGIN_DIR}/views" 2>/dev/null || true
-      rmdir "${TARGET_PLUGIN_DIR}/assets" 2>/dev/null || true
-
-      if rmdir "${TARGET_PLUGIN_DIR}" 2>/dev/null; then
-        echo "  [OK] Plugin directory cleanly removed"
-      else
-        echo "  [INFO] User-created or modified files remain in ${TARGET_PLUGIN_DIR}, preserving intact."
-      fi
-    else
-      echo "  [SKIP] ${MANIFEST_FILE} is not a verified QIS manifest, leaving directory intact."
-    fi
+  if (( updated == 1 )); then
+    cp --no-dereference "$cfg" "${cfg}.bak" 2>/dev/null || true
+    mv -f "$tmp_json" "$cfg"
+    chmod 0600 "$cfg"
+    log_ok "Widget simonez.qwenimage odebrán z ${cfg}."
   else
-    echo "  [SKIP] ${TARGET_PLUGIN_DIR} does not contain a regular manifest.json, leaving directory intact."
+    rm -f "$tmp_json"
+  fi
+}
+
+if [[ -f "$SHELL_CONFIG" ]]; then
+  if command -v flock >/dev/null 2>&1; then
+    (
+      flock -w 5 200 || exit 0
+      remove_from_shell_json "$SHELL_CONFIG"
+    ) 200>"${SHELL_CONFIG}.lock"
+    rm -f "${SHELL_CONFIG}.lock" 2>/dev/null || true
+  else
+    remove_from_shell_json "$SHELL_CONFIG"
   fi
 fi
 
-# 3. Reload / Restart Shell
-echo "-> Restarting Omarchy Shell..."
-if [[ -x "/usr/share/omarchy/bin/omarchy-restart-shell" ]]; then
-  /usr/share/omarchy/bin/omarchy-restart-shell || true
-elif command -v omarchy-shell >/dev/null 2>&1; then
-  omarchy-shell shell rescanPlugins || true
+# ---------------------------------------------------------
+# 5. Clean ComfyUI Custom Node
+# ---------------------------------------------------------
+VIGGLE_NODE_DIR="${COMFY_DIR}/custom_nodes/ComfyUI-ViggleTurbo"
+if [[ -d "$VIGGLE_NODE_DIR" && ! -L "$VIGGLE_NODE_DIR" && -O "$VIGGLE_NODE_DIR" ]]; then
+  rm -rf "$VIGGLE_NODE_DIR"
+  log_ok "Odstraněn custom node: ${VIGGLE_NODE_DIR}"
 fi
 
-echo "=== QIS uninstalled successfully! ==="
+# ---------------------------------------------------------
+# 6. Safe Plugin Directory Cleanup (Git & In-Place Protection)
+# ---------------------------------------------------------
+if [[ -e "$TARGET_PLUGIN_DIR" ]]; then
+  if [[ -L "$TARGET_PLUGIN_DIR" || ! -d "$TARGET_PLUGIN_DIR" || ! -O "$TARGET_PLUGIN_DIR" ]]; then
+    log_err "Odmítám smazat ${TARGET_PLUGIN_DIR} (je to symlink nebo není vlastněn aktuálním uživatelem)."
+    exit 1
+  fi
+
+  if [[ -d "${TARGET_PLUGIN_DIR}/.git" ]]; then
+    log_warn "Detekován Git repozitář v ${TARGET_PLUGIN_DIR} (In-Place vývojový režim)."
+    log_info "Mažu pouze generované artefakty (bin/qwen-bridge), zdrojový kód ponechávám..."
+    rm -f "${TARGET_PLUGIN_DIR}/bin/qwen-bridge"
+    if (( PURGE_SETTINGS == 1 )); then
+      rm -f "${TARGET_PLUGIN_DIR}/settings.json"
+      log_ok "Smazán soubor settings.json."
+    fi
+  elif [[ -f "${TARGET_PLUGIN_DIR}/manifest.json" || -f "${TARGET_PLUGIN_DIR}/Panel.qml" ]]; then
+    if (( PURGE_SETTINGS == 0 )) && [[ -f "${TARGET_PLUGIN_DIR}/settings.json" ]]; then
+      BACKUP_SETTINGS="${HOME}/.config/omarchy/qis-settings.json.bak"
+      cp --no-dereference "${TARGET_PLUGIN_DIR}/settings.json" "$BACKUP_SETTINGS" 2>/dev/null || true
+      chmod 0600 "$BACKUP_SETTINGS" 2>/dev/null || true
+      log_info "Zálohována uživatelská nastavení do: ${BACKUP_SETTINGS}"
+    fi
+    rm -rf "$TARGET_PLUGIN_DIR"
+    log_ok "Odstraněn adresář pluginu: ${TARGET_PLUGIN_DIR}"
+  else
+    log_err "Adresář ${TARGET_PLUGIN_DIR} neobsahuje manifest.json // Odmítám provést rm -rf z bezpečnostních důvodů."
+    exit 1
+  fi
+fi
+
+# ---------------------------------------------------------
+# 7. Optional Full ComfyUI Purge
+# ---------------------------------------------------------
+if (( PURGE_COMFY == 1 )) && [[ -d "$COMFY_DIR" && ! -L "$COMFY_DIR" && -O "$COMFY_DIR" ]]; then
+  if [[ -f "${COMFY_DIR}/main.py" ]]; then
+    rm -rf "$COMFY_DIR"
+    log_ok "Kompletně odstraněn ComfyUI backend: ${COMFY_DIR}"
+  fi
+fi
+
+# ---------------------------------------------------------
+# 8. Notify Omarchy Shell
+# ---------------------------------------------------------
+if (( NO_RESTART != 1 )) && command -v omarchy-shell >/dev/null 2>&1; then
+  omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+  log_ok "Omarchy Shell aktualizován."
+fi
+
+echo ""
+log_ok "Odinstalace QIS byla úspěšně dokončena."
+echo ""
