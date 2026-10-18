@@ -186,8 +186,6 @@ BarWidget {
   IpcHandler {
     target: "simonez.qwenimage"
 
-    readonly property var validSources: ["civitai", "lexica", "prompthero", "openart", "huggingface", "midlibrary", "diffusiondb", "arthub", "seaart", "shakker", "playground", "krea", "tensorart", "all"]
-
     function refresh(): void { root.refresh(); }
     function open(): void {
       if (panelLoader.item) {
@@ -202,6 +200,7 @@ BarWidget {
     function prompts(source: string): void {
       var s = String(source || "").trim().toLowerCase();
       if (s.length > 32) s = s.substring(0, 32);
+      var validSources = ["civitai", "lexica", "prompthero", "openart", "huggingface", "midlibrary", "diffusiondb", "arthub", "seaart", "shakker", "playground", "krea", "tensorart", "all"];
       if (validSources.indexOf(s) === -1) s = "civitai";
       if (panelLoader.item) {
         panelLoader.item.activePromptSource = s;
