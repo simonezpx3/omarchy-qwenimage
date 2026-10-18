@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Wayland
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 Item {
@@ -425,8 +425,8 @@ Item {
           id: promptCard
           Layout.fillWidth: true
           Layout.preferredHeight: Style.space(138)
-          color: Util.alpha(Color.background, 0.85)
-          border.color: promptInput.activeFocus ? Color.accent : (promptCardHover.hovered || promptInput.hovered ? Qt.lighter(Color.menu.border, 1.4) : Color.menu.border)
+          color: Commons.Util.alpha(Commons.Color.background, 0.85)
+          border.color: promptInput.activeFocus ? Commons.Color.accent : (promptCardHover.hovered || promptInput.hovered ? Qt.lighter(Commons.Color.menu.border, 1.4) : Commons.Color.menu.border)
           border.width: 1
           radius: Style.cornerRadius
           clip: true
@@ -451,7 +451,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 font.bold: true
-                color: promptInput.activeFocus ? Color.accent : Color.foreground
+                color: promptInput.activeFocus ? Commons.Color.accent : Commons.Color.foreground
                 Layout.fillWidth: true
                 elide: Text.ElideRight
               }
@@ -482,14 +482,14 @@ Item {
                 text: promptInput.text.trim().split(/\s+/).length + " " + root.tr("words")
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
-                color: Color.accent
+                color: Commons.Color.accent
               }
             }
 
             Rectangle {
               Layout.fillWidth: true
               height: 1
-              color: Qt.rgba(Color.menu.border.r, Color.menu.border.g, Color.menu.border.b, 0.25)
+              color: Qt.rgba(Commons.Color.menu.border.r, Commons.Color.menu.border.g, Commons.Color.menu.border.b, 0.25)
             }
 
             ScrollView {
@@ -504,10 +504,10 @@ Item {
                 wrapMode: TextEdit.Wrap
                 font.family: Style.font.family
                 font.pixelSize: Style.font.body
-                color: Color.foreground
-                selectionColor: Style.selectionFillFor(Color.foreground, Color.accent)
-                selectedTextColor: Color.foreground
-                placeholderTextColor: Util.alpha(Color.foreground, 0.45)
+                color: Commons.Color.foreground
+                selectionColor: Style.selectionFillFor(Commons.Color.foreground, Commons.Color.accent)
+                selectedTextColor: Commons.Color.foreground
+                placeholderTextColor: Commons.Util.alpha(Commons.Color.foreground, 0.45)
                 placeholderText: root.tr("prompt_placeholder")
                 text: panelRoot ? panelRoot.promptText : ""
                 background: null
@@ -570,8 +570,8 @@ Item {
           id: negativeCard
           Layout.fillWidth: true
           Layout.preferredHeight: Style.space(80)
-          color: Util.alpha(Color.background, 0.85)
-          border.color: negativeInput.activeFocus ? Color.accent : (negativeCardHover.hovered || negativeInput.hovered ? Qt.lighter(Color.menu.border, 1.4) : Color.menu.border)
+          color: Commons.Util.alpha(Commons.Color.background, 0.85)
+          border.color: negativeInput.activeFocus ? Commons.Color.accent : (negativeCardHover.hovered || negativeInput.hovered ? Qt.lighter(Commons.Color.menu.border, 1.4) : Commons.Color.menu.border)
           border.width: 1
           radius: Style.cornerRadius
           clip: true
@@ -592,14 +592,14 @@ Item {
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               font.bold: true
-              color: negativeInput.activeFocus ? Color.accent : Color.foreground
+              color: negativeInput.activeFocus ? Commons.Color.accent : Commons.Color.foreground
               Layout.fillWidth: true
             }
 
             Rectangle {
               Layout.fillWidth: true
               height: 1
-              color: Qt.rgba(Color.menu.border.r, Color.menu.border.g, Color.menu.border.b, 0.25)
+              color: Qt.rgba(Commons.Color.menu.border.r, Commons.Color.menu.border.g, Commons.Color.menu.border.b, 0.25)
             }
 
             ScrollView {
@@ -614,10 +614,10 @@ Item {
                 wrapMode: TextEdit.Wrap
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
-                color: Color.foreground
-                selectionColor: Style.selectionFillFor(Color.foreground, Color.accent)
-                selectedTextColor: Color.foreground
-                placeholderTextColor: Util.alpha(Color.foreground, 0.45)
+                color: Commons.Color.foreground
+                selectionColor: Style.selectionFillFor(Commons.Color.foreground, Commons.Color.accent)
+                selectedTextColor: Commons.Color.foreground
+                placeholderTextColor: Commons.Util.alpha(Commons.Color.foreground, 0.45)
                 placeholderText: root.tr("negative_placeholder")
                 text: panelRoot ? panelRoot.negativePromptText : ""
                 background: null
@@ -797,7 +797,7 @@ Item {
             text: root.tr("steps") + (panelRoot ? panelRoot.steps : 25)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
-            color: Color.foreground
+            color: Commons.Color.foreground
             Layout.preferredWidth: Style.space(68)
 
             HoverHandler {
@@ -860,7 +860,7 @@ Item {
           text: root.tr("warn_low_steps")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
-          color: Color.urgent
+          color: Commons.Color.urgent
           Layout.fillWidth: true
           wrapMode: Text.WordWrap
         }
@@ -870,7 +870,7 @@ Item {
           text: root.tr("warn_human_draft")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
-          color: Color.urgent
+          color: Commons.Color.urgent
           Layout.fillWidth: true
           wrapMode: Text.WordWrap
         }
@@ -882,8 +882,8 @@ Item {
           Layout.fillHeight: true
           Layout.preferredHeight: Style.space(260)
           Layout.minimumHeight: Style.space(200)
-          color: Util.alpha(Color.background, 0.85)
-          border.color: Color.menu.border
+          color: Commons.Util.alpha(Commons.Color.background, 0.85)
+          border.color: Commons.Color.menu.border
           border.width: 1
           radius: Style.cornerRadius
           clip: true
@@ -903,7 +903,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 font.bold: true
-                color: panelRoot && panelRoot.referencePath !== "" ? Color.accent : Color.foreground
+                color: panelRoot && panelRoot.referencePath !== "" ? Commons.Color.accent : Commons.Color.foreground
                 Layout.fillWidth: true
               }
 
@@ -913,7 +913,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 font.bold: true
-                color: Color.accent
+                color: Commons.Color.accent
                 elide: Text.ElideMiddle
                 Layout.maximumWidth: Style.space(180)
               }
@@ -922,7 +922,7 @@ Item {
             Rectangle {
               Layout.fillWidth: true
               height: 1
-              color: Qt.rgba(Color.menu.border.r, Color.menu.border.g, Color.menu.border.b, 0.25)
+              color: Qt.rgba(Commons.Color.menu.border.r, Commons.Color.menu.border.g, Commons.Color.menu.border.b, 0.25)
             }
 
             // 1. Large Preview Frame (takes all remaining width and height above buttons)
@@ -931,8 +931,8 @@ Item {
               Layout.fillWidth: true
               Layout.fillHeight: true
               Layout.minimumHeight: Style.space(130)
-              color: refBoxMouse.containsMouse ? Util.alpha(Color.accent, 0.08) : Util.alpha(Color.background, 0.65)
-              border.color: refBoxMouse.containsMouse ? Color.accent : (panelRoot && panelRoot.referencePath !== "" ? Color.accent : Color.menu.border)
+              color: refBoxMouse.containsMouse ? Commons.Util.alpha(Commons.Color.accent, 0.08) : Commons.Util.alpha(Commons.Color.background, 0.65)
+              border.color: refBoxMouse.containsMouse ? Commons.Color.accent : (panelRoot && panelRoot.referencePath !== "" ? Commons.Color.accent : Commons.Color.menu.border)
               border.width: 1
               radius: Style.cornerRadius
               clip: true
@@ -980,7 +980,7 @@ Item {
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
                   font.bold: true
-                  color: Util.alpha(Color.foreground, 0.45)
+                  color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
                   horizontalAlignment: Text.AlignHCenter
                   Layout.alignment: Qt.AlignHCenter
                 }
@@ -990,7 +990,7 @@ Item {
                   text: root.tr("drop_hint")
                   font.family: Style.font.family
                   font.pixelSize: Math.max(10, Style.font.caption)
-                  color: Util.alpha(Color.foreground, 0.35)
+                  color: Commons.Util.alpha(Commons.Color.foreground, 0.35)
                   horizontalAlignment: Text.AlignHCenter
                   Layout.alignment: Qt.AlignHCenter
                 }
@@ -1037,7 +1037,7 @@ Item {
                 Layout.fillWidth: true
                 active: panelRoot && panelRoot.isInterrogating
                 selected: panelRoot && panelRoot.isInterrogating
-                foreground: (panelRoot && panelRoot.isInterrogating) ? Color.accent : Color.foreground
+                foreground: (panelRoot && panelRoot.isInterrogating) ? Commons.Color.accent : Commons.Color.foreground
                 enabled: panelRoot && panelRoot.referencePath !== "" && !panelRoot.isInterrogating
                 onHotChanged: root.setHelp(root.tr("help_interrogate"), hot)
                 onClicked: if (panelRoot) panelRoot.interrogateWd14()
@@ -1050,7 +1050,7 @@ Item {
                 Layout.fillWidth: true
                 active: panelRoot && panelRoot.isVisionLoading
                 selected: panelRoot && panelRoot.isVisionLoading
-                foreground: (panelRoot && panelRoot.isVisionLoading) ? Color.accent : Color.foreground
+                foreground: (panelRoot && panelRoot.isVisionLoading) ? Commons.Color.accent : Commons.Color.foreground
                 enabled: panelRoot && panelRoot.referencePath !== "" && !panelRoot.isVisionLoading
                 onHotChanged: root.setHelp(root.tr("help_vision"), hot)
                 onClicked: if (panelRoot) panelRoot.extractVisionPrompt()
@@ -1068,7 +1068,7 @@ Item {
                 text: root.tr("denoise") + (panelRoot ? panelRoot.denoise.toFixed(2) : "0.65")
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
-                color: panelRoot && panelRoot.referencePath !== "" ? Color.foreground : Util.alpha(Color.foreground, 0.45)
+                color: panelRoot && panelRoot.referencePath !== "" ? Commons.Color.foreground : Commons.Util.alpha(Commons.Color.foreground, 0.45)
                 Layout.preferredWidth: Style.space(85)
 
                 HoverHandler {
@@ -1111,8 +1111,8 @@ Item {
           id: canvasFrame
           Layout.fillWidth: true
           Layout.fillHeight: true
-          color: Util.alpha(Color.background, 0.85)
-          border.color: Color.menu.border
+          color: Commons.Util.alpha(Commons.Color.background, 0.85)
+          border.color: Commons.Color.menu.border
           border.width: 1
           radius: Style.cornerRadius
           clip: true
@@ -1132,7 +1132,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 font.bold: true
-                color: Color.foreground
+                color: Commons.Color.foreground
                 elide: Text.ElideRight
               }
 
@@ -1143,7 +1143,7 @@ Item {
                 text: panelRoot && panelRoot.generationTelemetry !== "" ? panelRoot.generationTelemetry : "1024x1024 | 25 STEPS | LOCAL GPU (0 TOKENS)"
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
-                color: Util.alpha(Color.foreground, 0.55)
+                color: Commons.Util.alpha(Commons.Color.foreground, 0.55)
                 elide: Text.ElideRight
               }
             }
@@ -1151,7 +1151,7 @@ Item {
             Rectangle {
               Layout.fillWidth: true
               height: 1
-              color: Qt.rgba(Color.menu.border.r, Color.menu.border.g, Color.menu.border.b, 0.25)
+              color: Qt.rgba(Commons.Color.menu.border.r, Commons.Color.menu.border.g, Commons.Color.menu.border.b, 0.25)
             }
 
             // Canvas Display Area
@@ -1172,7 +1172,7 @@ Item {
                   anchors.margins: Style.spacing.md
                   width: Style.space(14)
                   height: 1
-                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                  color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.35)
                   visible: !panelRoot || !panelRoot.isGenerating
                 }
                 Rectangle {
@@ -1181,7 +1181,7 @@ Item {
                   anchors.margins: Style.spacing.md
                   width: 1
                   height: Style.space(14)
-                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                  color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.35)
                   visible: !panelRoot || !panelRoot.isGenerating
                 }
                 Rectangle {
@@ -1190,7 +1190,7 @@ Item {
                   anchors.margins: Style.spacing.md
                   width: Style.space(14)
                   height: 1
-                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                  color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.35)
                   visible: !panelRoot || !panelRoot.isGenerating
                 }
                 Rectangle {
@@ -1199,7 +1199,7 @@ Item {
                   anchors.margins: Style.spacing.md
                   width: 1
                   height: Style.space(14)
-                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                  color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.35)
                   visible: !panelRoot || !panelRoot.isGenerating
                 }
                 Rectangle {
@@ -1208,7 +1208,7 @@ Item {
                   anchors.margins: Style.spacing.md
                   width: Style.space(14)
                   height: 1
-                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                  color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.35)
                   visible: !panelRoot || !panelRoot.isGenerating
                 }
                 Rectangle {
@@ -1217,7 +1217,7 @@ Item {
                   anchors.margins: Style.spacing.md
                   width: 1
                   height: Style.space(14)
-                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                  color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.35)
                   visible: !panelRoot || !panelRoot.isGenerating
                 }
                 Rectangle {
@@ -1226,7 +1226,7 @@ Item {
                   anchors.margins: Style.spacing.md
                   width: Style.space(14)
                   height: 1
-                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                  color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.35)
                   visible: !panelRoot || !panelRoot.isGenerating
                 }
                 Rectangle {
@@ -1235,7 +1235,7 @@ Item {
                   anchors.margins: Style.spacing.md
                   width: 1
                   height: Style.space(14)
-                  color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.35)
+                  color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.35)
                   visible: !panelRoot || !panelRoot.isGenerating
                 }
 
@@ -1250,7 +1250,7 @@ Item {
                     font.family: Style.font.family
                     font.pixelSize: Style.font.body
                     font.bold: true
-                    color: panelRoot && panelRoot.isGenerating ? Color.accent : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.45)
+                    color: panelRoot && panelRoot.isGenerating ? Commons.Color.accent : Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.45)
                     SequentialAnimation on opacity {
                       loops: Animation.Infinite
                       running: panelRoot && panelRoot.isGenerating
@@ -1269,7 +1269,7 @@ Item {
                     font.features: { "tnum": 1 }
                     font.pixelSize: Style.font.body
                     font.bold: true
-                    color: panelRoot && panelRoot.isGenerating ? Color.accent : Util.alpha(Color.foreground, 0.55)
+                    color: panelRoot && panelRoot.isGenerating ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.foreground, 0.55)
                   }
 
                   Text {
@@ -1280,7 +1280,7 @@ Item {
                       : (panelRoot && panelRoot.currentLang === "cs" ? "Zadejte prompt a stiskněte Ctrl+Enter" : "Enter prompt and press Ctrl+Enter")
                     font.family: Style.font.family
                     font.pixelSize: Style.font.caption
-                    color: Util.alpha(Color.foreground, 0.35)
+                    color: Commons.Util.alpha(Commons.Color.foreground, 0.35)
                   }
                 }
               }
@@ -1343,8 +1343,8 @@ Item {
                 height: Style.space(24)
                 width: liveStepRow.implicitWidth + Style.space(16)
                 radius: Style.cornerRadius
-                color: Qt.rgba(Color.background.r, Color.background.g, Color.background.b, 0.90)
-                border.color: Color.accent
+                color: Qt.rgba(Commons.Color.background.r, Commons.Color.background.g, Commons.Color.background.b, 0.90)
+                border.color: Commons.Color.accent
                 border.width: 1
                 z: 10
 
@@ -1357,7 +1357,7 @@ Item {
                     width: Style.space(6)
                     height: Style.space(6)
                     radius: width / 2
-                    color: Color.accent
+                    color: Commons.Color.accent
                     SequentialAnimation on opacity {
                       loops: Animation.Infinite
                       running: panelRoot && panelRoot.isGenerating
@@ -1373,7 +1373,7 @@ Item {
                     font.features: { "tnum": 1 }
                     font.pixelSize: Style.font.caption
                     font.bold: true
-                    color: Color.accent
+                    color: Commons.Color.accent
                   }
                 }
               }
@@ -1391,7 +1391,7 @@ Item {
             text: root.tr("scale")
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
-            color: Color.foreground
+            color: Commons.Color.foreground
             Layout.preferredWidth: Style.space(46)
           }
 
@@ -1403,7 +1403,7 @@ Item {
             Layout.fillWidth: true
             active: isBusy
             selected: isBusy
-            foreground: isBusy ? Color.accent : Color.foreground
+            foreground: isBusy ? Commons.Color.accent : Commons.Color.foreground
             enabled: panelRoot && ((panelRoot.referencePath !== "") || (panelRoot.generatedPath !== "")) && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_esrgan"), hot)
             onClicked: if (panelRoot) panelRoot.aiUpscale("esrgan")
@@ -1417,7 +1417,7 @@ Item {
             Layout.fillWidth: true
             active: isBusy
             selected: isBusy
-            foreground: isBusy ? Color.accent : Color.foreground
+            foreground: isBusy ? Commons.Color.accent : Commons.Color.foreground
             enabled: panelRoot && ((panelRoot.referencePath !== "") || (panelRoot.generatedPath !== "")) && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_ultra"), hot)
             onClicked: if (panelRoot) panelRoot.aiUpscale("ultra")
@@ -1431,7 +1431,7 @@ Item {
             Layout.fillWidth: true
             active: isBusy
             selected: isBusy
-            foreground: isBusy ? Color.accent : Color.foreground
+            foreground: isBusy ? Commons.Color.accent : Commons.Color.foreground
             enabled: panelRoot && ((panelRoot.referencePath !== "") || (panelRoot.generatedPath !== "")) && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_anime"), hot)
             onClicked: if (panelRoot) panelRoot.aiUpscale("anime")
@@ -1445,7 +1445,7 @@ Item {
             Layout.fillWidth: true
             active: isBusy
             selected: isBusy
-            foreground: isBusy ? Color.accent : Color.foreground
+            foreground: isBusy ? Commons.Color.accent : Commons.Color.foreground
             enabled: panelRoot && ((panelRoot.referencePath !== "") || (panelRoot.generatedPath !== "")) && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_half"), hot)
             onClicked: if (panelRoot) panelRoot.scaleImage(0.5)
@@ -1459,7 +1459,7 @@ Item {
             Layout.fillWidth: true
             active: isBusy
             selected: isBusy
-            foreground: isBusy ? Color.accent : Color.foreground
+            foreground: isBusy ? Commons.Color.accent : Commons.Color.foreground
             enabled: ((panelRoot && panelRoot.referencePath !== "") || (panelRoot && panelRoot.generatedPath !== "")) && !panelRoot.isGenerating
             onHotChanged: root.setHelp(root.tr("help_scale_fit1k"), hot)
             onClicked: if (panelRoot) panelRoot.scaleImage(-1.0)
@@ -1520,12 +1520,12 @@ Item {
     Rectangle {
       Layout.fillWidth: true
       Layout.preferredHeight: Style.space(26)
-      color: Util.alpha(Color.background, 0.85)
+      color: Commons.Util.alpha(Commons.Color.background, 0.85)
       border.color: root.activeHelpText !== ""
         ? (root.activeHelpText.indexOf("VAROVÁNÍ") !== -1 || root.activeHelpText.indexOf("WARNING") !== -1
-            ? Util.alpha(Color.urgent, 0.55)
-            : Util.alpha(Color.accent, 0.45))
-        : Color.menu.border
+            ? Commons.Util.alpha(Commons.Color.urgent, 0.55)
+            : Commons.Util.alpha(Commons.Color.accent, 0.45))
+        : Commons.Color.menu.border
       border.width: 1
       radius: Style.cornerRadius
 
@@ -1543,9 +1543,9 @@ Item {
           font.bold: true
           color: root.activeHelpText !== ""
             ? (root.activeHelpText.indexOf("VAROVÁNÍ") !== -1 || root.activeHelpText.indexOf("WARNING") !== -1
-                ? Color.urgent
-                : Color.accent)
-            : Util.alpha(Color.foreground, 0.55)
+                ? Commons.Color.urgent
+                : Commons.Color.accent)
+            : Commons.Util.alpha(Commons.Color.foreground, 0.55)
         }
 
         Text {
@@ -1555,7 +1555,7 @@ Item {
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           font.bold: root.activeHelpText !== ""
-          color: root.activeHelpText !== "" ? Color.foreground : Util.alpha(Color.foreground, 0.45)
+          color: root.activeHelpText !== "" ? Commons.Color.foreground : Commons.Util.alpha(Commons.Color.foreground, 0.45)
           elide: Text.ElideRight
         }
       }
@@ -1657,7 +1657,7 @@ Item {
         bordered: true
         active: isBusy
         selected: isBusy
-        foreground: isBusy ? Color.urgent : Color.foreground
+        foreground: isBusy ? Commons.Color.urgent : Commons.Color.foreground
         enabled: panelRoot && (isBusy || !panelRoot.isGameLocked)
         onHotChanged: root.setHelp(isBusy ? root.tr("help_cancel") : root.tr("help_generate"), hot)
         onClicked: {

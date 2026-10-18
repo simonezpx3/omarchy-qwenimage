@@ -4,7 +4,7 @@ import QtQuick.Controls
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "views"
 
@@ -177,7 +177,7 @@ Panel {
                 source: qisLogo
                 visible: true
                 colorization: 1.0
-                colorizationColor: Color.accent
+                colorizationColor: Commons.Color.accent
               }
             }
 
@@ -187,7 +187,7 @@ Panel {
               font.family: Style.font.family
               font.pixelSize: Style.font.body
               font.bold: true
-              color: Color.accent
+              color: Commons.Color.accent
               Layout.alignment: Qt.AlignVCenter
             }
           }
@@ -196,8 +196,8 @@ Panel {
           Rectangle {
             height: Style.space(20)
             implicitWidth: qwenModelRow.implicitWidth + Style.spacing.xs * 2
-            color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.12)
-            border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.45)
+            color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.12)
+            border.color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.45)
             border.width: 1
             radius: Style.cornerRadius
 
@@ -210,7 +210,7 @@ Panel {
                 text: "QWEN //"
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
-                color: Color.accent
+                color: Commons.Color.accent
               }
               Text {
                 textFormat: Text.PlainText
@@ -218,7 +218,7 @@ Panel {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 font.bold: true
-                color: Color.accent
+                color: Commons.Color.accent
               }
             }
           }
@@ -231,8 +231,8 @@ Panel {
             Rectangle {
               height: Style.space(20)
               implicitWidth: comfyRow.implicitWidth + Style.spacing.xs * 2
-              color: root.svcComfy ? Util.alpha(root.positiveColor, 0.15) : Util.alpha(Color.urgent, 0.15)
-              border.color: root.svcComfy ? Util.alpha(root.positiveColor, 0.6) : Util.alpha(Color.urgent, 0.6)
+              color: root.svcComfy ? Commons.Util.alpha(root.positiveColor, 0.15) : Commons.Util.alpha(Commons.Color.urgent, 0.15)
+              border.color: root.svcComfy ? Commons.Util.alpha(root.positiveColor, 0.6) : Commons.Util.alpha(Commons.Color.urgent, 0.6)
               border.width: 1
               radius: Style.cornerRadius
 
@@ -244,7 +244,7 @@ Panel {
                   textFormat: Text.PlainText
                   text: "●"
                   font.pixelSize: Style.font.caption
-                  color: root.svcComfy ? root.positiveColor : Color.urgent
+                  color: root.svcComfy ? root.positiveColor : Commons.Color.urgent
                 }
                 Text {
                   textFormat: Text.PlainText
@@ -252,7 +252,7 @@ Panel {
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
                   font.bold: true
-                  color: root.svcComfy ? root.positiveColor : Color.urgent
+                  color: root.svcComfy ? root.positiveColor : Commons.Color.urgent
                 }
               }
             }
@@ -261,8 +261,8 @@ Panel {
             Rectangle {
               height: Style.space(20)
               implicitWidth: ollamaRow.implicitWidth + Style.spacing.xs * 2
-              color: root.svcOllama ? Util.alpha(root.positiveColor, 0.15) : Util.alpha(Color.urgent, 0.15)
-              border.color: root.svcOllama ? Util.alpha(root.positiveColor, 0.6) : Util.alpha(Color.urgent, 0.6)
+              color: root.svcOllama ? Commons.Util.alpha(root.positiveColor, 0.15) : Commons.Util.alpha(Commons.Color.urgent, 0.15)
+              border.color: root.svcOllama ? Commons.Util.alpha(root.positiveColor, 0.6) : Commons.Util.alpha(Commons.Color.urgent, 0.6)
               border.width: 1
               radius: Style.cornerRadius
 
@@ -274,7 +274,7 @@ Panel {
                   textFormat: Text.PlainText
                   text: "●"
                   font.pixelSize: Style.font.caption
-                  color: root.svcOllama ? root.positiveColor : Color.urgent
+                  color: root.svcOllama ? root.positiveColor : Commons.Color.urgent
                 }
                 Text {
                   textFormat: Text.PlainText
@@ -282,7 +282,7 @@ Panel {
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
                   font.bold: true
-                  color: root.svcOllama ? root.positiveColor : Color.urgent
+                  color: root.svcOllama ? root.positiveColor : Commons.Color.urgent
                 }
               }
             }
@@ -291,8 +291,8 @@ Panel {
             Rectangle {
               height: Style.space(20)
               implicitWidth: wd14Row.implicitWidth + Style.spacing.xs * 2
-              color: root.svcWd14 ? Util.alpha(root.positiveColor, 0.15) : Util.alpha(Color.urgent, 0.15)
-              border.color: root.svcWd14 ? Util.alpha(root.positiveColor, 0.6) : Util.alpha(Color.urgent, 0.6)
+              color: root.svcWd14 ? Commons.Util.alpha(root.positiveColor, 0.15) : Commons.Util.alpha(Commons.Color.urgent, 0.15)
+              border.color: root.svcWd14 ? Commons.Util.alpha(root.positiveColor, 0.6) : Commons.Util.alpha(Commons.Color.urgent, 0.6)
               border.width: 1
               radius: Style.cornerRadius
 
@@ -304,7 +304,7 @@ Panel {
                   textFormat: Text.PlainText
                   text: "●"
                   font.pixelSize: Style.font.caption
-                  color: root.svcWd14 ? root.positiveColor : Color.urgent
+                  color: root.svcWd14 ? root.positiveColor : Commons.Color.urgent
                 }
                 Text {
                   textFormat: Text.PlainText
@@ -312,7 +312,7 @@ Panel {
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
                   font.bold: true
-                  color: root.svcWd14 ? root.positiveColor : Color.urgent
+                  color: root.svcWd14 ? root.positiveColor : Commons.Color.urgent
                 }
               }
             }
@@ -326,7 +326,7 @@ Panel {
             font.family: Style.font.family
             font.features: { "tnum": 1 }
             font.pixelSize: Style.font.caption
-            color: Color.foreground
+            color: Commons.Color.foreground
           }
         }
 
@@ -337,8 +337,8 @@ Panel {
           Layout.fillWidth: true
           visible: !root.isBridgeAvailable
           implicitHeight: Style.space(34)
-          color: Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.15)
-          border.color: Color.urgent
+          color: Qt.rgba(Commons.Color.urgent.r, Commons.Color.urgent.g, Commons.Color.urgent.b, 0.15)
+          border.color: Commons.Color.urgent
           border.width: 1
           radius: Style.cornerRadius
 
@@ -351,7 +351,7 @@ Panel {
             Text {
               textFormat: Text.PlainText
               text: "ERR //"
-              color: Color.urgent
+              color: Commons.Color.urgent
               font.pixelSize: Style.font.caption
               font.bold: true
             }
@@ -362,7 +362,7 @@ Panel {
               text: root.currentLang === "cs"
                 ? "CHYBA MŮSTKU: bin/qwen-bridge chybí nebo není spustitelný. Spusť install.sh nebo cargo build --release."
                 : "BRIDGE ERROR: bin/qwen-bridge is missing or not executable. Run install.sh or cargo build --release."
-              color: Color.urgent
+              color: Commons.Color.urgent
               font.pixelSize: Style.font.caption
               font.bold: true
               elide: Text.ElideRight
@@ -434,7 +434,7 @@ Panel {
               text: root.pluginVersion
               font.family: root.bar ? root.bar.fontFamily : Style.font.family
               font.pixelSize: Style.font.caption
-              color: Util.alpha(root.bar ? root.bar.foreground : Color.foreground, 0.55)
+              color: Commons.Util.alpha(root.bar ? root.bar.foreground : Commons.Color.foreground, 0.55)
             }
           }
 
@@ -445,7 +445,7 @@ Panel {
             text: "ESC // " + (root.currentLang === "cs" ? "ZAVŘÍT" : "CLOSE")
             font.family: root.bar ? root.bar.fontFamily : Style.font.family
             font.pixelSize: Style.font.caption
-            color: Util.alpha(root.bar ? root.bar.foreground : Color.foreground, 0.55)
+            color: Commons.Util.alpha(root.bar ? root.bar.foreground : Commons.Color.foreground, 0.55)
           }
         }
       }

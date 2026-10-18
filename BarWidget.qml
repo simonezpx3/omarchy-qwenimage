@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 BarWidget {
@@ -13,12 +13,17 @@ BarWidget {
     ? bar.shell.serviceFor("simonez.qwenimage")
     : null
 
-  Service {
-    id: localFallbackService
-    activePolling: root.shellService === null
+  Loader {
+    id: localServiceLoader
+    active: root.shellService === null
+    sourceComponent: Component {
+      Service {
+        activePolling: true
+      }
+    }
   }
 
-  readonly property var svc: root.shellService ? root.shellService : localFallbackService
+  readonly property var svc: root.shellService ? root.shellService : (localServiceLoader.item || null)
 
   property string studioStatus: svc ? svc.studioStatus : "READY"
   property int vramUsed: svc ? svc.vramUsed : 0
@@ -36,10 +41,10 @@ BarWidget {
   }
 
   readonly property color statusColor: {
-    if (isBusy) return Color.accent;
-    if (isGameLocked) return Color.urgent;
-    if (!isOnline) return Util.alpha(Color.foreground, 0.45);
-    return Color.foreground;
+    if (isBusy) return Commons.Color.accent;
+    if (isGameLocked) return Commons.Color.urgent;
+    if (!isOnline) return Commons.Util.alpha(Commons.Color.foreground, 0.45);
+    return Commons.Color.foreground;
   }
 
   readonly property real _iconDpiScale: Screen.devicePixelRatio
@@ -172,7 +177,7 @@ BarWidget {
         source: hereticIcon
         visible: true
         colorization: 1.0
-        colorizationColor: (typeof bar !== "undefined" && bar && bar.foreground) ? bar.foreground : Color.foreground
+        colorizationColor: (typeof bar !== "undefined" && bar && bar.foreground) ? bar.foreground : Commons.Color.foreground
       }
     }
 

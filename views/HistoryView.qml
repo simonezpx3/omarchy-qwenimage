@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 Item {
@@ -28,8 +28,8 @@ Item {
     Rectangle {
       Layout.fillWidth: true
       Layout.fillHeight: true
-      color: Color.background
-      border.color: Color.menu.border
+      color: Commons.Color.background
+      border.color: Commons.Color.menu.border
       border.width: 1
       radius: Style.cornerRadius
       clip: true
@@ -44,8 +44,8 @@ Item {
         delegate: Rectangle {
           width: historyList.width - Style.spacing.sm
           height: Style.space(125)
-          color: Color.menu.background
-          border.color: Color.menu.border
+          color: Commons.Color.menu.background
+          border.color: Commons.Color.menu.border
           border.width: 1
           radius: Style.cornerRadius
 
@@ -58,7 +58,7 @@ Item {
             Rectangle {
               Layout.preferredWidth: Style.space(120)
               Layout.fillHeight: true
-              color: Color.background
+              color: Commons.Color.background
               radius: Style.cornerRadius
               clip: true
 
@@ -86,7 +86,7 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 font.bold: true
-                color: Color.accent
+                color: Commons.Color.accent
                 elide: Text.ElideMiddle
                 Layout.preferredWidth: 0
                 Layout.fillWidth: true
@@ -97,7 +97,7 @@ Item {
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
-                color: Color.foreground
+                color: Commons.Color.foreground
                 elide: Text.ElideRight
                 maximumLineCount: 2
                 wrapMode: Text.Wrap
@@ -111,7 +111,7 @@ Item {
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: Math.max(10, Style.font.caption * 0.9)
-                color: Util.alpha(Color.foreground, 0.55)
+                color: Commons.Util.alpha(Commons.Color.foreground, 0.55)
                 elide: Text.ElideRight
                 maximumLineCount: 1
                 Layout.preferredWidth: 0
@@ -125,7 +125,7 @@ Item {
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
-                color: Util.alpha(Color.foreground, 0.45)
+                color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
                 Layout.fillWidth: true
               }
             }
@@ -206,8 +206,8 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             height: Style.space(24)
             implicitWidth: historyLoadingText.implicitWidth + Style.spacing.md * 2
-            color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.12)
-            border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.45)
+            color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.12)
+            border.color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.45)
             border.width: 1
             radius: Style.cornerRadius
 
@@ -219,7 +219,7 @@ Item {
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               font.bold: true
-              color: Color.accent
+              color: Commons.Color.accent
 
               SequentialAnimation on opacity {
                 loops: Animation.Infinite
@@ -239,7 +239,7 @@ Item {
             font.family: Style.font.family
             font.pixelSize: Style.font.body
             font.bold: true
-            color: Color.accent
+            color: Commons.Color.accent
           }
 
           Text {
@@ -250,7 +250,7 @@ Item {
               : "Loading metadata, prompts and previews..."
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
-            color: Util.alpha(Color.foreground, 0.45)
+            color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
           }
         }
 
@@ -262,7 +262,7 @@ Item {
           text: panelRoot && panelRoot.currentLang === "cs" ? "Žádné vygenerované obrázky v ~/Pictures/Qwen-Image/" : "No generated images found in ~/Pictures/Qwen-Image/"
           font.family: Style.font.family
           font.pixelSize: Style.font.body
-          color: Util.alpha(Color.foreground, 0.45)
+          color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
         }
       }
     }

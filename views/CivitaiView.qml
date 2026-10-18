@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 Item {
@@ -99,10 +99,10 @@ Item {
   }
 
   function spectralColor(hue, sat) {
-    var darkTheme = Color.background.hslLightness < 0.52;
+    var darkTheme = Commons.Color.background.hslLightness < 0.52;
     var val = darkTheme ? 0.94 : 0.65;
     var chroma = darkTheme ? sat : Math.min(0.82, sat * 1.1);
-    return Color.blend(Qt.hsva(hue, chroma, val, 1), Color.accent, 0.12);
+    return Commons.Color.blend(Qt.hsva(hue, chroma, val, 1), Commons.Color.accent, 0.12);
   }
 
   function sourceColor(src) {
@@ -118,12 +118,12 @@ Item {
       case "playground":
       case "playground.com": return root.spectralColor(0.92, 0.65);
       case "lexica": return root.spectralColor(0.66, 0.60);
-      case "prompthero": return Color.urgent;
+      case "prompthero": return Commons.Color.urgent;
       case "openart": return root.spectralColor(0.48, 0.65);
       case "huggingface": return root.spectralColor(0.13, 0.75);
       case "krea": return root.spectralColor(0.78, 0.65);
       case "tensorart": return root.spectralColor(0.55, 0.68);
-      default: return Color.accent;
+      default: return Commons.Color.accent;
     }
   }
 
@@ -316,8 +316,8 @@ Item {
         BorderSurface {
           anchors.fill: parent
           radius: Style.cornerRadius
-          borderSpec: Border.controlSpec(searchField.activeFocus ? "focus" : (mouseArea.containsMouse ? "hover-cursor" : "normal"), Color.foreground, Color.accent)
-          color: Style.controlFill(searchField.activeFocus, mouseArea.containsMouse, Color.foreground, Color.accent)
+          borderSpec: Border.controlSpec(searchField.activeFocus ? "focus" : (mouseArea.containsMouse ? "hover-cursor" : "normal"), Commons.Color.foreground, Commons.Color.accent)
+          color: Style.controlFill(searchField.activeFocus, mouseArea.containsMouse, Commons.Color.foreground, Commons.Color.accent)
         }
 
         Text {
@@ -330,7 +330,7 @@ Item {
           elide: Text.ElideLeft
           font.family: Style.font.family
           font.pixelSize: Style.font.body
-          color: searchField.text.length ? Color.foreground : Util.alpha(Color.foreground, 0.55)
+          color: searchField.text.length ? Commons.Color.foreground : Commons.Util.alpha(Commons.Color.foreground, 0.55)
           text: searchField.text.length ? searchField.text : searchField.placeholderText
         }
 
@@ -339,7 +339,7 @@ Item {
           height: label.font.pixelSize + 4
           anchors.verticalCenter: parent.verticalCenter
           x: label.x + Math.min(label.contentWidth, Math.max(0, label.width - Style.spacing.controlPaddingX * 2)) * (searchField.text.length ? 1 : 0)
-          color: Color.accent
+          color: Commons.Color.accent
           visible: searchField.activeFocus && cursorBlink.on
 
           Timer {
@@ -387,8 +387,12 @@ Item {
               searchField.text = a.join("");
             }
           } else if (e.key === Qt.Key_Escape) {
-            e.accepted = true;
-            searchField.text = "";
+            if (searchField.text.length > 0) {
+              e.accepted = true;
+              searchField.text = "";
+            } else {
+              e.accepted = false; // probublá do rodičovského panelu
+            }
           } else if (!mod && !(e.modifiers & Qt.AltModifier) && e.text.length > 0) {
             e.accepted = true;
             searchField.text += e.text;
@@ -400,6 +404,11 @@ Item {
         }
       }
 
+      Shortcut {
+        sequence: "Ctrl+K"
+        onActivated: searchField.forceActiveFocus()
+      }
+
       Button {
         text: root.isLoading ? (panelRoot && panelRoot.currentLang === "cs" ? "NAČÍTÁM..." : "FETCHING...") : (panelRoot && panelRoot.currentLang === "cs" ? "VYHLEDAT" : "FETCH PROMPTS")
         bordered: true
@@ -409,13 +418,11 @@ Item {
       }
     }
 
-    // Results Scroll Area
+    // Results Scroll Area (tichý povrch bez tvrdého rámečku proti box-clutteru)
     Rectangle {
       Layout.fillWidth: true
       Layout.fillHeight: true
-      color: Color.background
-      border.color: Color.menu.border
-      border.width: 1
+      color: Commons.Color.blend(Commons.Color.background, Commons.Color.foreground, 0.04)
       radius: Style.cornerRadius
       clip: true
 
@@ -438,8 +445,8 @@ Item {
           id: cardDelegate
           width: promptList.width - Style.spacing.sm
           implicitHeight: Math.max(Style.space(150), rowContent.implicitHeight + Style.spacing.sm * 2)
-          color: cardArea.containsMouse ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.06) : Color.menu.background
-          border.color: cardArea.containsMouse ? Color.accent : Color.menu.border
+          color: cardArea.containsMouse ? Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.06) : Commons.Color.menu.background
+          border.color: cardArea.containsMouse ? Commons.Color.accent : Commons.Color.menu.border
           border.width: 1
           radius: Style.cornerRadius
 
@@ -495,10 +502,10 @@ Item {
               readonly property bool hasGenuineLiveImage: /^https:\/\/image\.civitai\.com\//.test(String(modelData.preview_url || ""))
               readonly property bool showThematicCard: !hasGenuineLiveImage || (previewImg.status === Image.Error)
 
-              color: showThematicCard ? Qt.rgba(domainColor.r, domainColor.g, domainColor.b, 0.07) : Color.background
+              color: showThematicCard ? Qt.rgba(domainColor.r, domainColor.g, domainColor.b, 0.07) : Commons.Color.background
               radius: Style.cornerRadius
               clip: true
-              border.color: showThematicCard ? Util.alpha(domainColor, 0.35) : Util.alpha(Color.menu.border, 0.6)
+              border.color: showThematicCard ? Commons.Util.alpha(domainColor, 0.35) : Commons.Util.alpha(Commons.Color.menu.border, 0.6)
               border.width: 1
 
               // A. Thematic Visual Card (Option 2: platform badge, domain color, word count, subtitle)
@@ -535,7 +542,7 @@ Item {
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
                   font.bold: true
-                  color: Color.foreground
+                  color: Commons.Color.foreground
                 }
 
                 Text {
@@ -544,7 +551,7 @@ Item {
                   text: root.sourceCardSubtitle(previewBox.itemSource)
                   font.family: Style.font.family
                   font.pixelSize: Math.max(10, Style.font.caption)
-                  color: Util.alpha(Color.foreground, 0.45)
+                  color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
                 }
               }
 
@@ -560,7 +567,7 @@ Item {
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
                   font.bold: true
-                  color: Util.alpha(Color.foreground, 0.35)
+                  color: Commons.Util.alpha(Commons.Color.foreground, 0.35)
                   visible: previewImg.status !== Image.Ready
                 }
 
@@ -583,7 +590,7 @@ Item {
                   width: nsfwBadgeText.implicitWidth + Style.spacing.xs
                   height: nsfwBadgeText.implicitHeight + 2
                   radius: Style.cornerRadius
-                  color: Color.urgent
+                  color: Commons.Color.urgent
                   visible: {
                     var n = String(modelData.nsfw || "none").toLowerCase();
                     return n !== "none" && n !== "1" && n !== "false" && n !== "0" && n !== "";
@@ -597,7 +604,7 @@ Item {
                     font.family: Style.font.family
                     font.pixelSize: 10
                     font.bold: true
-                    color: Color.foreground
+                    color: Commons.Color.foreground
                   }
                 }
               }
@@ -640,7 +647,7 @@ Item {
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
                   font.bold: true
-                  color: Color.accent
+                  color: Commons.Color.accent
                   elide: Text.ElideRight
                   Layout.fillWidth: true
                 }
@@ -673,7 +680,7 @@ Item {
                 elide: Text.ElideRight
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
-                color: Color.foreground
+                color: Commons.Color.foreground
               }
 
               Text {
@@ -685,7 +692,7 @@ Item {
                 elide: Text.ElideRight
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
-                color: Util.alpha(Color.foreground, 0.55)
+                color: Commons.Util.alpha(Commons.Color.foreground, 0.55)
                 visible: !!modelData.negative_prompt
               }
             }
@@ -702,8 +709,8 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             height: Style.space(24)
             implicitWidth: loadingText.implicitWidth + Style.spacing.md * 2
-            color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.12)
-            border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.45)
+            color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.12)
+            border.color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.45)
             border.width: 1
             radius: Style.cornerRadius
 
@@ -715,7 +722,7 @@ Item {
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               font.bold: true
-              color: Color.accent
+              color: Commons.Color.accent
 
               SequentialAnimation on opacity {
                 loops: Animation.Infinite
@@ -735,7 +742,7 @@ Item {
             font.family: Style.font.family
             font.pixelSize: Style.font.body
             font.bold: true
-            color: Color.accent
+            color: Commons.Color.accent
           }
 
           Text {
@@ -746,7 +753,7 @@ Item {
               : "Querying database and retrieving community metadata..."
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
-            color: Util.alpha(Color.foreground, 0.45)
+            color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
           }
         }
 
@@ -758,7 +765,7 @@ Item {
           text: panelRoot && panelRoot.currentLang === "cs" ? ("Zadej klíčová slova a klikni na VYHLEDAT pro inspiraci z " + root.sourceDisplayName(root.activeSource)) : ("Enter keywords and click FETCH PROMPTS to explore " + root.sourceDisplayName(root.activeSource))
           font.family: Style.font.family
           font.pixelSize: Style.font.body
-          color: Util.alpha(Color.foreground, 0.45)
+          color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
         }
       }
     }

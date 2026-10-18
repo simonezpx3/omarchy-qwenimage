@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
-import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 Item {
@@ -23,8 +23,8 @@ Item {
       id: viewport
       Layout.fillWidth: true
       Layout.fillHeight: true
-      color: Color.background
-      border.color: Color.menu.border
+      color: Commons.Color.background
+      border.color: Commons.Color.menu.border
       border.width: 1
       radius: Style.cornerRadius
       clip: true
@@ -35,6 +35,10 @@ Item {
         anchors.fill: parent
         anchors.margins: Style.spacing.xs
         fillMode: Image.PreserveAspectFit
+        asynchronous: true
+        sourceSize.width: Math.max(1, Math.round(viewport.width * Screen.devicePixelRatio))
+        sourceSize.height: Math.max(1, Math.round(viewport.height * Screen.devicePixelRatio))
+        retainWhileLoading: true
         source: panelRoot && panelRoot.generatedPath !== "" ? ("file://" + encodeURI(panelRoot.generatedPath)) : ""
         cache: false
       }
@@ -52,8 +56,42 @@ Item {
           width: viewport.width
           height: viewport.height
           fillMode: Image.PreserveAspectFit
+          asynchronous: true
+          sourceSize.width: Math.max(1, Math.round(viewport.width * Screen.devicePixelRatio))
+          sourceSize.height: Math.max(1, Math.round(viewport.height * Screen.devicePixelRatio))
+          retainWhileLoading: true
           source: panelRoot && panelRoot.referencePath !== "" ? ("file://" + encodeURI(panelRoot.referencePath)) : ""
           cache: false
+        }
+      }
+
+      // Indikátor asynchronního načítání náhledů (#screens standard)
+      RowLayout {
+        anchors.centerIn: parent
+        spacing: Style.spacing.sm
+        visible: imgAfter.status === Image.Loading || imgBefore.status === Image.Loading
+
+        Rectangle {
+          implicitWidth: Style.space(8)
+          implicitHeight: Style.space(8)
+          radius: width / 2
+          color: Commons.Color.accent
+
+          SequentialAnimation on opacity {
+            loops: Animation.Infinite
+            running: imgAfter.status === Image.Loading || imgBefore.status === Image.Loading
+            NumberAnimation { from: 0.3; to: 1.0; duration: 400; easing.type: Easing.InOutQuad }
+            NumberAnimation { from: 1.0; to: 0.3; duration: 400; easing.type: Easing.InOutQuad }
+          }
+        }
+
+        Text {
+          textFormat: Text.PlainText
+          text: panelRoot && panelRoot.currentLang === "cs" ? "NAČÍTÁM NÁHLED..." : "LOADING PREVIEW..."
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
+          font.bold: true
+          color: Commons.Color.accent
         }
       }
 
@@ -64,15 +102,15 @@ Item {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         width: 2
-        color: Color.accent
+        color: Commons.Color.accent
 
         Rectangle {
           anchors.centerIn: parent
           width: Style.space(24)
           height: Style.space(24)
           radius: width / 2
-          color: Color.background
-          border.color: Color.accent
+          color: Commons.Color.background
+          border.color: Commons.Color.accent
           border.width: 2
 
           Text {
@@ -82,7 +120,7 @@ Item {
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             font.bold: true
-            color: Color.accent
+            color: Commons.Color.accent
           }
         }
       }
@@ -112,7 +150,7 @@ Item {
         font.family: Style.font.family
         font.pixelSize: Style.font.caption
         font.bold: true
-        color: Color.foreground
+        color: Commons.Color.foreground
       }
 
       Text {
@@ -124,7 +162,7 @@ Item {
         font.family: Style.font.family
         font.pixelSize: Style.font.caption
         font.bold: true
-        color: Color.accent
+        color: Commons.Color.accent
       }
     }
 
@@ -138,7 +176,7 @@ Item {
         text: (panelRoot && panelRoot.currentLang === "cs" ? "POMĚR ROZDĚLENÍ: " : "SPLIT RATIO: ") + Math.round(root.splitPosition * 100) + "%"
         font.family: Style.font.family
         font.pixelSize: Style.font.caption
-        color: Color.foreground
+        color: Commons.Color.foreground
       }
 
       PanelSlider {
