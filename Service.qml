@@ -25,7 +25,7 @@ Item {
       return v ? String(v).replace(/^v/i, "").trim() : "";
     }
 
-    readonly property string effectiveVersion: localVersion !== "" ? localVersion : (bridgeVersion !== "" ? bridgeVersion : "1.2.3")
+    readonly property string effectiveVersion: localVersion !== "" ? localVersion : (bridgeVersion !== "" ? bridgeVersion : "1.2.4")
   }
 
   readonly property string pluginVersion: "v" + d.effectiveVersion

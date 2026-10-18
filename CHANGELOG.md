@@ -2,6 +2,29 @@
 
 Všechny významné změny, audity a bezpečnostní opravy projektu jsou zaznamenávány v tomto souboru. Formát vychází z [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) a dodržuje [Semantic Versioning](https://semver.org/).
 
+## [1.2.4] — 2026-10-18
+
+### Architecture & Features
+- **Quattro Service Singleton & Lazy Panel Lifecycle (`Service.qml`, `BarWidget.qml`, `manifest.json`, `install.sh`):**
+  - Extracted persistent Studio session state, background process runners, and live telemetry into a dedicated Quattro `Service.qml` singleton (`"kinds": ["service", "bar-widget"]`).
+  - Wired `panelLoader` in `BarWidget.qml` to `active: root.opened`, unmounting the `Panel.qml` component tree when closed to reduce idle shell memory footprint while keeping active diffusion tasks running.
+- **Turbo Image-to-Image `SplitSigmasDenoise` Routing (`rust-bridge/src/comfy.rs`):**
+  - Inserted node `21` (`SplitSigmasDenoise`) between `ViggleTurboSigmas` (`20`) and `SamplerCustomAdvanced` (`6`) when a reference image is active and `denoise < 0.999`, enforcing a safe lower bound (`min_denoise`) for accurate denoising strength in Turbo mode.
+- **Restored QIS Studio Vector Branding (`BarWidget.qml`, `Panel.qml`):**
+  - Restored the dedicated `assets/qwen-heretic.svg` vector mark with `MultiEffect` theme colorization in the bar widget and panel header.
+
+### Security, Hardening & UI Refinement
+- **Status Process Watchdog (`BarWidget.qml`, `Service.qml`):**
+  - Added an 8000 ms `statusWatchdog` timer to terminate stalled `statusProc` invocations and prevent polling lockups.
+- **Strict Civitai CDN Origin Validation (`views/CivitaiView.qml`):**
+  - Restricted remote preview image loading to verified `^https:\/\/image\.civitai\.com\/` URLs.
+- **Hardware-Agnostic Local GPU Telemetry (`Service.qml`, `views/StudioView.qml`, `rust-bridge/src/main.rs`):**
+  - Generalized static GPU strings across UI tooltips, status indicators, and Rust bridge fallback telemetry to `LOCAL GPU` / `Local NVIDIA GPU`.
+- **Theme Color & Signal Harmonization (`Panel.qml`, `BarWidget.qml`, `views/*.qml`):**
+  - Unified `blend` and `withAlpha` color helpers, enforced `Text.PlainText` formatting on remaining labels, and aligned `WidgetButton` click/press signal handlers.
+
+---
+
 ## [1.2.3] — 2026-10-18
 
 ### Security & Hardening

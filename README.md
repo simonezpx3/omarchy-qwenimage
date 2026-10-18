@@ -1,6 +1,6 @@
 # QIS (Qwen Image Studio)
 
-[![Version](https://img.shields.io/badge/version-1.2.3-3b82f6.svg)](https://github.com/simonezpx3/omarchy-qwenimage/releases/tag/v1.2.3)
+[![Version](https://img.shields.io/badge/version-1.2.4-3b82f6.svg)](https://github.com/simonezpx3/omarchy-qwenimage/releases/tag/v1.2.4)
 [![QIS CI](https://github.com/simonezpx3/omarchy-qwenimage/actions/workflows/ci.yml/badge.svg)](https://github.com/simonezpx3/omarchy-qwenimage/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Omarchy%20Linux%20%7C%20Hyprland-teal.svg)](#)
@@ -18,13 +18,14 @@ Engineered for high-performance local diffusion inference with zero cloud depend
 
 ## Architecture Overview
 
-QIS connects the reactive QtQuick/QML interface with a native Rust orchestration layer and local AI engines:
+QIS connects the reactive QtQuick/QML interface with a persistent Quattro service singleton, a native Rust orchestration layer, and local AI engines:
 
 ```mermaid
 graph LR
     subgraph UI ["Linux Desktop (Wayland / Hyprland)"]
-        Bar["Quickshell Bar Widget"]
-        Panel["QIS Studio Panel (QML / #screens)"]
+        Bar["Quickshell Bar Widget (BarWidget.qml)"]
+        Service["Quattro Service Singleton (Service.qml)"]
+        Panel["Lazy Studio Panel (Panel.qml / #screens)"]
     end
 
     subgraph Core ["Native Performance Layer"]
@@ -37,8 +38,10 @@ graph LR
         Ollama["Ollama / Vision (Prompt Optimizer & WD14)"]
     end
 
+    Bar <--> Service
     Bar <--> Panel
-    Panel <--> Bridge
+    Panel <--> Service
+    Service <--> Bridge
     CLI <--> Bridge
     Bridge <--> Comfy
     Bridge <--> Ollama
@@ -57,11 +60,12 @@ graph LR
 ## Features
 
 - **Text-to-Image (DiT Diffusion):** Native high-resolution generation via a local ComfyUI backend.
+- **Quattro Service Singleton & Lazy Panel Lifecycle:** Persistent background state orchestration (`Service.qml`) paired with lazy panel loading (`active: root.opened` in `BarWidget.qml`), unmounting the `Panel.qml` QML tree when closed to minimize resident shell memory while keeping active diffusion jobs and telemetry alive.
 - **SageAttention 2 Acceleration:** Hardware-accelerated INT8 Tensor Core matrix operations (`sm_86` Ampere and newer) reducing attention memory footprint and delivering 25–35% faster sampling without altering GGUF model weights.
 - **POSIX Shared Memory Previews (`/dev/shm`):** Live step previews written directly to an isolated RAM disk (`/dev/shm/qis_preview_${UID}/`) with atomic file replacement, eliminating disk I/O latency and micro-stutter on high-refresh-rate Wayland compositors.
-- **Process Lifecycle Hardening & Zombie Protection:** Kernel-level process tracking via `libc::prctl(PR_SET_PDEATHSIG, SIGKILL)` and transient systemd scopes (`systemd-run --user --scope`), ensuring immediate GPU VRAM eviction and zero orphan processes if the parent bridge terminates.
+- **Process Lifecycle Hardening & Zombie Protection:** Kernel-level process tracking via `libc::prctl(PR_SET_PDEATHSIG, SIGKILL)`, 8-second status process watchdogs, and transient systemd scopes (`systemd-run --user --scope`), ensuring immediate GPU VRAM eviction and zero orphan processes if the parent bridge terminates.
 - **Complete Bilingual Parity (EN // CS):** Dynamic language switcher with full localization across UI labels, tooltips, bridge error messages, and desktop notifications.
-- **Turbo Mode (Viggle Turbo DMD):** 6-step Distribution Matching Distillation (DMD) with zero-redundancy MLP hooks yielding ~5s generation on consumer GPUs (8 GB+ VRAM, enforcing a strict 1.8 GB VRAM system reserve), toggleable directly from the bottom action bar.
+- **Turbo Mode (Viggle Turbo DMD & SplitSigmasDenoise):** 6-step Distribution Matching Distillation (DMD) with zero-redundancy MLP hooks yielding ~5s generation on consumer GPUs (8 GB+ VRAM, enforcing a strict 1.8 GB VRAM system reserve), including dedicated `SplitSigmasDenoise` node routing for accurate denoise strength in Turbo Image-to-Image workflows.
 - **Neural Super-Resolution (4X Upscalers):** Integrated local super-resolution suite executed within ComfyUI:
   - `4X ESRGAN` (RealESRGAN_x4plus) — General photographic and cinematic restoration with grain denoising.
   - `4X ULTRA` (4x-UltraSharp) — Micro-contrast and high-frequency texture preservation.
