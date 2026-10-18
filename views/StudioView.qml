@@ -425,7 +425,7 @@ Item {
           id: promptCard
           Layout.fillWidth: true
           Layout.preferredHeight: Style.space(138)
-          color: Qt.darker(Color.background, 1.15)
+          color: Util.alpha(Color.background, 0.85)
           border.color: promptInput.activeFocus ? Color.accent : (promptCardHover.hovered || promptInput.hovered ? Qt.lighter(Color.menu.border, 1.4) : Color.menu.border)
           border.width: 1
           radius: Style.cornerRadius
@@ -499,6 +499,7 @@ Item {
 
               TextArea {
                 id: promptInput
+                textFormat: TextEdit.PlainText
                 width: parent.availableWidth
                 wrapMode: TextEdit.Wrap
                 font.family: Style.font.family
@@ -506,7 +507,7 @@ Item {
                 color: Color.foreground
                 selectionColor: Style.selectionFillFor(Color.foreground, Color.accent)
                 selectedTextColor: Color.foreground
-                placeholderTextColor: Qt.darker(Color.foreground, 1.8)
+                placeholderTextColor: Util.alpha(Color.foreground, 0.45)
                 placeholderText: root.tr("prompt_placeholder")
                 text: panelRoot ? panelRoot.promptText : ""
                 background: null
@@ -569,7 +570,7 @@ Item {
           id: negativeCard
           Layout.fillWidth: true
           Layout.preferredHeight: Style.space(80)
-          color: Qt.darker(Color.background, 1.15)
+          color: Util.alpha(Color.background, 0.85)
           border.color: negativeInput.activeFocus ? Color.accent : (negativeCardHover.hovered || negativeInput.hovered ? Qt.lighter(Color.menu.border, 1.4) : Color.menu.border)
           border.width: 1
           radius: Style.cornerRadius
@@ -608,6 +609,7 @@ Item {
 
               TextArea {
                 id: negativeInput
+                textFormat: TextEdit.PlainText
                 width: parent.availableWidth
                 wrapMode: TextEdit.Wrap
                 font.family: Style.font.family
@@ -615,7 +617,7 @@ Item {
                 color: Color.foreground
                 selectionColor: Style.selectionFillFor(Color.foreground, Color.accent)
                 selectedTextColor: Color.foreground
-                placeholderTextColor: Qt.darker(Color.foreground, 1.8)
+                placeholderTextColor: Util.alpha(Color.foreground, 0.45)
                 placeholderText: root.tr("negative_placeholder")
                 text: panelRoot ? panelRoot.negativePromptText : ""
                 background: null
@@ -858,7 +860,7 @@ Item {
           text: root.tr("warn_low_steps")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
-          color: "#f59e0b"
+          color: Color.urgent
           Layout.fillWidth: true
           wrapMode: Text.WordWrap
         }
@@ -868,7 +870,7 @@ Item {
           text: root.tr("warn_human_draft")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
-          color: "#f59e0b"
+          color: Color.urgent
           Layout.fillWidth: true
           wrapMode: Text.WordWrap
         }
@@ -880,7 +882,7 @@ Item {
           Layout.fillHeight: true
           Layout.preferredHeight: Style.space(260)
           Layout.minimumHeight: Style.space(200)
-          color: Qt.darker(Color.background, 1.15)
+          color: Util.alpha(Color.background, 0.85)
           border.color: Color.menu.border
           border.width: 1
           radius: Style.cornerRadius
@@ -929,7 +931,7 @@ Item {
               Layout.fillWidth: true
               Layout.fillHeight: true
               Layout.minimumHeight: Style.space(130)
-              color: refBoxMouse.containsMouse ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.08) : Qt.darker(Color.background, 1.4)
+              color: refBoxMouse.containsMouse ? Util.alpha(Color.accent, 0.08) : Util.alpha(Color.background, 0.65)
               border.color: refBoxMouse.containsMouse ? Color.accent : (panelRoot && panelRoot.referencePath !== "" ? Color.accent : Color.menu.border)
               border.width: 1
               radius: Style.cornerRadius
@@ -978,7 +980,7 @@ Item {
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
                   font.bold: true
-                  color: Qt.darker(Color.foreground, 1.8)
+                  color: Util.alpha(Color.foreground, 0.45)
                   horizontalAlignment: Text.AlignHCenter
                   Layout.alignment: Qt.AlignHCenter
                 }
@@ -987,8 +989,8 @@ Item {
                   textFormat: Text.PlainText
                   text: root.tr("drop_hint")
                   font.family: Style.font.family
-                  font.pixelSize: Style.font.caption - 1
-                  color: Qt.darker(Color.foreground, 2.2)
+                  font.pixelSize: Math.max(10, Style.font.caption)
+                  color: Util.alpha(Color.foreground, 0.35)
                   horizontalAlignment: Text.AlignHCenter
                   Layout.alignment: Qt.AlignHCenter
                 }
@@ -1066,7 +1068,7 @@ Item {
                 text: root.tr("denoise") + (panelRoot ? panelRoot.denoise.toFixed(2) : "0.65")
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
-                color: panelRoot && panelRoot.referencePath !== "" ? Color.foreground : Qt.darker(Color.foreground, 2.0)
+                color: panelRoot && panelRoot.referencePath !== "" ? Color.foreground : Util.alpha(Color.foreground, 0.45)
                 Layout.preferredWidth: Style.space(85)
 
                 HoverHandler {
@@ -1109,7 +1111,7 @@ Item {
           id: canvasFrame
           Layout.fillWidth: true
           Layout.fillHeight: true
-          color: Qt.darker(Color.background, 1.15)
+          color: Util.alpha(Color.background, 0.85)
           border.color: Color.menu.border
           border.width: 1
           radius: Style.cornerRadius
@@ -1141,7 +1143,7 @@ Item {
                 text: panelRoot && panelRoot.generationTelemetry !== "" ? panelRoot.generationTelemetry : "1024x1024 | 25 STEPS | RTX 3070 (0 TOKENS)"
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
-                color: Qt.darker(Color.foreground, 1.6)
+                color: Util.alpha(Color.foreground, 0.55)
                 elide: Text.ElideRight
               }
             }
@@ -1267,7 +1269,7 @@ Item {
                     font.features: { "tnum": 1 }
                     font.pixelSize: Style.font.body
                     font.bold: true
-                    color: panelRoot && panelRoot.isGenerating ? Color.accent : Qt.darker(Color.foreground, 1.6)
+                    color: panelRoot && panelRoot.isGenerating ? Color.accent : Util.alpha(Color.foreground, 0.55)
                   }
 
                   Text {
@@ -1278,7 +1280,7 @@ Item {
                       : (panelRoot && panelRoot.currentLang === "cs" ? "Zadejte prompt a stiskněte Ctrl+Enter" : "Enter prompt and press Ctrl+Enter")
                     font.family: Style.font.family
                     font.pixelSize: Style.font.caption
-                    color: Qt.darker(Color.foreground, 2.4)
+                    color: Util.alpha(Color.foreground, 0.35)
                   }
                 }
               }
@@ -1518,11 +1520,11 @@ Item {
     Rectangle {
       Layout.fillWidth: true
       Layout.preferredHeight: Style.space(26)
-      color: Qt.darker(Color.background, 1.2)
+      color: Util.alpha(Color.background, 0.85)
       border.color: root.activeHelpText !== ""
         ? (root.activeHelpText.indexOf("VAROVÁNÍ") !== -1 || root.activeHelpText.indexOf("WARNING") !== -1
-            ? Qt.rgba(1.0, 0.82, 0.40, 0.55)
-            : Qt.darker(Color.accent, 1.8))
+            ? Util.alpha(Color.urgent, 0.55)
+            : Util.alpha(Color.accent, 0.45))
         : Color.menu.border
       border.width: 1
       radius: Style.cornerRadius
@@ -1541,9 +1543,9 @@ Item {
           font.bold: true
           color: root.activeHelpText !== ""
             ? (root.activeHelpText.indexOf("VAROVÁNÍ") !== -1 || root.activeHelpText.indexOf("WARNING") !== -1
-                ? "#ffd166"
+                ? Color.urgent
                 : Color.accent)
-            : Qt.darker(Color.foreground, 1.6)
+            : Util.alpha(Color.foreground, 0.55)
         }
 
         Text {
@@ -1553,7 +1555,7 @@ Item {
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
           font.bold: root.activeHelpText !== ""
-          color: root.activeHelpText !== "" ? Color.foreground : Qt.darker(Color.foreground, 1.8)
+          color: root.activeHelpText !== "" ? Color.foreground : Util.alpha(Color.foreground, 0.45)
           elide: Text.ElideRight
         }
       }

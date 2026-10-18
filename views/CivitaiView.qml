@@ -98,24 +98,31 @@ Item {
     }
   }
 
+  function spectralColor(hue, sat) {
+    var darkTheme = Color.background.hslLightness < 0.52;
+    var val = darkTheme ? 0.94 : 0.65;
+    var chroma = darkTheme ? sat : Math.min(0.82, sat * 1.1);
+    return Color.blend(Qt.hsva(hue, chroma, val, 1), Color.accent, 0.12);
+  }
+
   function sourceColor(src) {
     switch (String(src).toLowerCase()) {
-      case "civitai": return "#3B82F6";
+      case "civitai": return root.spectralColor(0.60, 0.65);
       case "midlibrary":
-      case "midlibrary.io": return "#8B5CF6";
-      case "diffusiondb": return "#10B981";
+      case "midlibrary.io": return root.spectralColor(0.75, 0.60);
+      case "diffusiondb": return root.spectralColor(0.42, 0.65);
       case "seaart":
-      case "seaart.ai": return "#06B6D4";
+      case "seaart.ai": return root.spectralColor(0.52, 0.68);
       case "shakker":
-      case "shakker.ai": return "#F59E0B";
+      case "shakker.ai": return root.spectralColor(0.11, 0.72);
       case "playground":
-      case "playground.com": return "#EC4899";
-      case "lexica": return "#6366F1";
-      case "prompthero": return "#EF4444";
-      case "openart": return "#14B8A6";
-      case "huggingface": return "#FBBF24";
-      case "krea": return "#A855F7";
-      case "tensorart": return "#0EA5E9";
+      case "playground.com": return root.spectralColor(0.92, 0.65);
+      case "lexica": return root.spectralColor(0.66, 0.60);
+      case "prompthero": return Color.urgent;
+      case "openart": return root.spectralColor(0.48, 0.65);
+      case "huggingface": return root.spectralColor(0.13, 0.75);
+      case "krea": return root.spectralColor(0.78, 0.65);
+      case "tensorart": return root.spectralColor(0.55, 0.68);
       default: return Color.accent;
     }
   }
@@ -323,7 +330,7 @@ Item {
           elide: Text.ElideLeft
           font.family: Style.font.family
           font.pixelSize: Style.font.body
-          color: searchField.text.length ? Color.foreground : Qt.darker(Color.foreground, 1.6)
+          color: searchField.text.length ? Color.foreground : Util.alpha(Color.foreground, 0.55)
           text: searchField.text.length ? searchField.text : searchField.placeholderText
         }
 
@@ -448,9 +455,13 @@ Item {
               if (modelData.cfg) panelRoot.cfg = modelData.cfg;
               panelRoot.currentView = "studio";
               if (autoGenerate) {
-                Qt.callLater(function() {
-                  if (panelRoot) panelRoot.startGeneration();
-                });
+                if (panelRoot && !panelRoot.isGenerating && !panelRoot.isGameLocked) {
+                  Qt.callLater(function() {
+                    if (panelRoot && !panelRoot.isGenerating && !panelRoot.isGameLocked) {
+                      panelRoot.startGeneration();
+                    }
+                  });
+                }
               }
             }
           }
@@ -487,7 +498,7 @@ Item {
               color: showThematicCard ? Qt.rgba(domainColor.r, domainColor.g, domainColor.b, 0.07) : Color.background
               radius: Style.cornerRadius
               clip: true
-              border.color: showThematicCard ? Qt.rgba(domainColor.r, domainColor.g, domainColor.b, 0.35) : Qt.darker(Color.menu.border, 1.2)
+              border.color: showThematicCard ? Util.alpha(domainColor, 0.35) : Util.alpha(Color.menu.border, 0.6)
               border.width: 1
 
               // A. Thematic Visual Card (Option 2: platform badge, domain color, word count, subtitle)
@@ -532,8 +543,8 @@ Item {
                   Layout.alignment: Qt.AlignHCenter
                   text: root.sourceCardSubtitle(previewBox.itemSource)
                   font.family: Style.font.family
-                  font.pixelSize: Style.font.caption - 1
-                  color: Qt.darker(Color.foreground, 1.8)
+                  font.pixelSize: Math.max(10, Style.font.caption)
+                  color: Util.alpha(Color.foreground, 0.45)
                 }
               }
 
@@ -549,7 +560,7 @@ Item {
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
                   font.bold: true
-                  color: Qt.darker(Color.foreground, 2.5)
+                  color: Util.alpha(Color.foreground, 0.35)
                   visible: previewImg.status !== Image.Ready
                 }
 
@@ -573,7 +584,10 @@ Item {
                   height: nsfwBadgeText.implicitHeight + 2
                   radius: Style.cornerRadius
                   color: Color.urgent
-                  visible: modelData.nsfw && modelData.nsfw !== "None" && modelData.nsfw !== 1
+                  visible: {
+                    var n = String(modelData.nsfw || "none").toLowerCase();
+                    return n !== "none" && n !== "1" && n !== "false" && n !== "0" && n !== "";
+                  }
 
                   Text {
                     id: nsfwBadgeText
@@ -581,7 +595,7 @@ Item {
                     anchors.centerIn: parent
                     text: String(modelData.nsfw).toUpperCase()
                     font.family: Style.font.family
-                    font.pixelSize: 8
+                    font.pixelSize: 10
                     font.bold: true
                     color: Color.foreground
                   }
@@ -614,7 +628,7 @@ Item {
                     anchors.centerIn: parent
                     text: (modelData.source || root.activeSource).toUpperCase()
                     font.family: Style.font.family
-                    font.pixelSize: 8
+                    font.pixelSize: 10
                     font.bold: true
                     color: previewBox.domainColor
                   }
@@ -671,7 +685,7 @@ Item {
                 elide: Text.ElideRight
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
-                color: Qt.darker(Color.foreground, 1.6)
+                color: Util.alpha(Color.foreground, 0.55)
                 visible: !!modelData.negative_prompt
               }
             }
@@ -732,7 +746,7 @@ Item {
               : "Querying database and retrieving community metadata..."
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
-            color: Qt.darker(Color.foreground, 1.8)
+            color: Util.alpha(Color.foreground, 0.45)
           }
         }
 
@@ -744,7 +758,7 @@ Item {
           text: panelRoot && panelRoot.currentLang === "cs" ? ("Zadej klíčová slova a klikni na VYHLEDAT pro inspiraci z " + root.sourceDisplayName(root.activeSource)) : ("Enter keywords and click FETCH PROMPTS to explore " + root.sourceDisplayName(root.activeSource))
           font.family: Style.font.family
           font.pixelSize: Style.font.body
-          color: Qt.darker(Color.foreground, 1.8)
+          color: Util.alpha(Color.foreground, 0.45)
         }
       }
     }

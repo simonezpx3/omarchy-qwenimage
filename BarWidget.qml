@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import qs.Commons
@@ -38,7 +37,7 @@ BarWidget {
   readonly property color statusColor: {
     if (isBusy) return Color.accent;
     if (isGameLocked) return Color.urgent;
-    if (!isOnline) return Qt.darker(Color.foreground, 1.8);
+    if (!isOnline) return Util.alpha(Color.foreground, 0.45);
     return Color.foreground;
   }
 
@@ -85,9 +84,6 @@ BarWidget {
     if (root.svc) {
       root.svc.refresh();
     }
-    if (!statusProc.running) {
-      statusProc.running = true;
-    }
   }
 
   readonly property real openPanelIndicatorWidth: Math.round(Style.bar.iconSlot * 0.55)
@@ -120,60 +116,14 @@ BarWidget {
   onSettingsChanged: injectPanel()
   onSvcChanged: injectPanel()
 
-  readonly property string bridgeBin: Qt.resolvedUrl("bin/qwen-bridge").toString().replace(/^file:\/\//, "")
-
-  // Status querying process with watchdog Timer protection against hung processes
-  Process {
-    id: statusProc
-    command: [root.bridgeBin, "status"]
-    onRunningChanged: {
-      if (statusProc.running) {
-        statusWatchdog.restart();
-      } else {
-        statusWatchdog.stop();
-      }
-    }
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        statusWatchdog.stop();
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var data = JSON.parse(str);
-          if (data && data.status) {
-            if (root.svc) {
-              root.svc.updateTelemetry(data);
-            }
-            if (panelLoader.item) {
-              panelLoader.item.updateTelemetry(data);
-            }
-          }
-        } catch (e) {}
-      }
-    }
-  }
-
-  Timer {
-    id: statusWatchdog
-    interval: 8000
-    repeat: false
-    running: false
-    onTriggered: {
-      if (statusProc.running) {
-        statusProc.running = false;
-      }
-    }
-  }
-
   onOpenedChanged: {
     if (root.opened) {
       if (!root.watchingService && root.svc) {
         root.watchingService = true;
         root.svc.watch();
       }
-      if (!statusProc.running) {
-        statusProc.running = true;
+      if (root.svc) {
+        root.svc.refresh();
       }
     } else {
       if (root.watchingService && root.svc) {
@@ -190,18 +140,6 @@ BarWidget {
     }
   }
 
-  Timer {
-    id: pollTimer
-    interval: root.opened ? 2000 : Math.max(1000, root.setting("refreshIntervalSec", 3) * 1000)
-    repeat: true
-    running: root.shellService === null
-    onTriggered: {
-      if (!statusProc.running) {
-        statusProc.running = true;
-      }
-    }
-  }
-
   WidgetButton {
     id: button
     bar: root.bar
@@ -211,30 +149,15 @@ BarWidget {
     active: root.opened
     tooltipText: "Qwen-Image Studio (" + root.studioStatus + " · " + root.vramUsed + " / " + root.vramTotal + " MB VRAM)"
 
-    Item {
+    Text {
       anchors.centerIn: parent
-      width: Style.bar.iconFont
-      height: Style.bar.iconFont
-
-      Image {
-        id: hereticIcon
-        anchors.fill: parent
-        source: Qt.resolvedUrl("assets/qwen-heretic.svg")
-        sourceSize.width: Math.round(width * root._iconDpiScale)
-        sourceSize.height: Math.round(height * root._iconDpiScale)
-        fillMode: Image.PreserveAspectFit
-        smooth: true
-        visible: false
-        layer.enabled: true
-      }
-
-      MultiEffect {
-        anchors.fill: hereticIcon
-        source: hereticIcon
-        visible: true
-        colorization: 1.0
-        colorizationColor: (typeof bar !== "undefined" && bar && bar.foreground) ? bar.foreground : Color.foreground
-      }
+      text: "QIS"
+      font.family: Style.font.family
+      font.pixelSize: Math.max(10, Style.font.caption)
+      font.weight: Font.DemiBold
+      font.features: {"tnum": 1}
+      textFormat: Text.PlainText
+      color: (typeof bar !== "undefined" && bar && bar.foreground) ? bar.foreground : Color.foreground
     }
 
     onPressed: function(btn) {
@@ -306,6 +229,8 @@ BarWidget {
 
   Component.onCompleted: {
     root.syncService();
-    statusProc.running = true;
+    if (root.svc) {
+      root.svc.refresh();
+    }
   }
 }

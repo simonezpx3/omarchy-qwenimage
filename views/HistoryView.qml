@@ -111,7 +111,7 @@ Item {
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: Math.max(10, Style.font.caption * 0.9)
-                color: Qt.darker(Color.foreground, 1.8)
+                color: Util.alpha(Color.foreground, 0.55)
                 elide: Text.ElideRight
                 maximumLineCount: 1
                 Layout.preferredWidth: 0
@@ -125,7 +125,7 @@ Item {
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
-                color: Qt.darker(Color.foreground, 2.0)
+                color: Util.alpha(Color.foreground, 0.45)
                 Layout.fillWidth: true
               }
             }
@@ -250,7 +250,7 @@ Item {
               : "Loading metadata, prompts and previews..."
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
-            color: Qt.darker(Color.foreground, 1.8)
+            color: Util.alpha(Color.foreground, 0.45)
           }
         }
 
@@ -262,7 +262,7 @@ Item {
           text: panelRoot && panelRoot.currentLang === "cs" ? "Žádné vygenerované obrázky v ~/Pictures/Qwen-Image/" : "No generated images found in ~/Pictures/Qwen-Image/"
           font.family: Style.font.family
           font.pixelSize: Style.font.body
-          color: Qt.darker(Color.foreground, 1.8)
+          color: Util.alpha(Color.foreground, 0.45)
         }
       }
     }

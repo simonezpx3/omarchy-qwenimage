@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
-import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import qs.Commons
@@ -17,7 +16,7 @@ Panel {
   property var anchorItem: null
   property var hostWidget: null
   property var injectedService: null
-  readonly property var barIdentity: hostWidget || root
+  readonly property color positiveColor: Qt.hsva(0.38, 0.65, 0.85, 1.0)
 
   Service {
     id: fallbackService
@@ -45,7 +44,12 @@ Panel {
   readonly property int vramPct: svc.vramPct
   readonly property bool isBridgeAvailable: svc.isBridgeAvailable
 
-  property alias activePromptSource: fallbackService.activePromptSource
+  property string activePromptSource: svc ? svc.activePromptSource : "civitai"
+  onActivePromptSourceChanged: {
+    if (svc && svc.activePromptSource !== activePromptSource) {
+      svc.activePromptSource = activePromptSource;
+    }
+  }
 
   function updateTelemetry(data) {
     svc.updateTelemetry(data);
@@ -150,39 +154,26 @@ Panel {
           RowLayout {
             spacing: Style.spacing.xs
 
-            Item {
-              width: Style.space(18)
-              height: Style.space(18)
+            Text {
+              textFormat: Text.PlainText
+              text: "QIS //"
+              font.family: Style.font.family
+              font.pixelSize: Style.font.body
+              font.bold: true
+              font.features: {"tnum": 1}
+              color: Color.accent
               Layout.alignment: Qt.AlignVCenter
-
-              Image {
-                id: qisLogo
-                anchors.fill: parent
-                source: Qt.resolvedUrl("assets/qwen-heretic.svg")
-                sourceSize.width: 36
-                sourceSize.height: 36
-                fillMode: Image.PreserveAspectFit
-                smooth: true
-                visible: false
-                layer.enabled: true
-              }
-
-              MultiEffect {
-                anchors.fill: qisLogo
-                source: qisLogo
-                visible: true
-                colorization: 1.0
-                colorizationColor: Color.accent
-              }
             }
 
             Text {
               textFormat: Text.PlainText
-              text: "QIS"
+              text: "STUDIO"
               font.family: Style.font.family
               font.pixelSize: Style.font.body
               font.bold: true
-              color: Color.accent
+              font.features: {"tnum": 1}
+              color: Color.foreground
+              Layout.alignment: Qt.AlignVCenter
             }
           }
 
@@ -225,8 +216,8 @@ Panel {
             Rectangle {
               height: Style.space(20)
               implicitWidth: comfyRow.implicitWidth + Style.spacing.xs * 2
-              color: root.svcComfy ? Qt.rgba(0.2, 0.8, 0.2, 0.15) : Qt.rgba(0.9, 0.2, 0.2, 0.15)
-              border.color: root.svcComfy ? Qt.rgba(0.2, 0.8, 0.2, 0.6) : Qt.rgba(0.9, 0.2, 0.2, 0.6)
+              color: root.svcComfy ? Util.alpha(root.positiveColor, 0.15) : Util.alpha(Color.urgent, 0.15)
+              border.color: root.svcComfy ? Util.alpha(root.positiveColor, 0.6) : Util.alpha(Color.urgent, 0.6)
               border.width: 1
               radius: Style.cornerRadius
 
@@ -238,7 +229,7 @@ Panel {
                   textFormat: Text.PlainText
                   text: "●"
                   font.pixelSize: Style.font.caption
-                  color: root.svcComfy ? "#4ade80" : "#f87171"
+                  color: root.svcComfy ? root.positiveColor : Color.urgent
                 }
                 Text {
                   textFormat: Text.PlainText
@@ -246,7 +237,7 @@ Panel {
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
                   font.bold: true
-                  color: root.svcComfy ? "#4ade80" : "#f87171"
+                  color: root.svcComfy ? root.positiveColor : Color.urgent
                 }
               }
             }
@@ -255,8 +246,8 @@ Panel {
             Rectangle {
               height: Style.space(20)
               implicitWidth: ollamaRow.implicitWidth + Style.spacing.xs * 2
-              color: root.svcOllama ? Qt.rgba(0.2, 0.8, 0.2, 0.15) : Qt.rgba(0.9, 0.2, 0.2, 0.15)
-              border.color: root.svcOllama ? Qt.rgba(0.2, 0.8, 0.2, 0.6) : Qt.rgba(0.9, 0.2, 0.2, 0.6)
+              color: root.svcOllama ? Util.alpha(root.positiveColor, 0.15) : Util.alpha(Color.urgent, 0.15)
+              border.color: root.svcOllama ? Util.alpha(root.positiveColor, 0.6) : Util.alpha(Color.urgent, 0.6)
               border.width: 1
               radius: Style.cornerRadius
 
@@ -268,7 +259,7 @@ Panel {
                   textFormat: Text.PlainText
                   text: "●"
                   font.pixelSize: Style.font.caption
-                  color: root.svcOllama ? "#4ade80" : "#f87171"
+                  color: root.svcOllama ? root.positiveColor : Color.urgent
                 }
                 Text {
                   textFormat: Text.PlainText
@@ -276,7 +267,7 @@ Panel {
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
                   font.bold: true
-                  color: root.svcOllama ? "#4ade80" : "#f87171"
+                  color: root.svcOllama ? root.positiveColor : Color.urgent
                 }
               }
             }
@@ -285,8 +276,8 @@ Panel {
             Rectangle {
               height: Style.space(20)
               implicitWidth: wd14Row.implicitWidth + Style.spacing.xs * 2
-              color: root.svcWd14 ? Qt.rgba(0.2, 0.8, 0.2, 0.15) : Qt.rgba(0.9, 0.2, 0.2, 0.15)
-              border.color: root.svcWd14 ? Qt.rgba(0.2, 0.8, 0.2, 0.6) : Qt.rgba(0.9, 0.2, 0.2, 0.6)
+              color: root.svcWd14 ? Util.alpha(root.positiveColor, 0.15) : Util.alpha(Color.urgent, 0.15)
+              border.color: root.svcWd14 ? Util.alpha(root.positiveColor, 0.6) : Util.alpha(Color.urgent, 0.6)
               border.width: 1
               radius: Style.cornerRadius
 
@@ -298,7 +289,7 @@ Panel {
                   textFormat: Text.PlainText
                   text: "●"
                   font.pixelSize: Style.font.caption
-                  color: root.svcWd14 ? "#4ade80" : "#f87171"
+                  color: root.svcWd14 ? root.positiveColor : Color.urgent
                 }
                 Text {
                   textFormat: Text.PlainText
@@ -306,7 +297,7 @@ Panel {
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
                   font.bold: true
-                  color: root.svcWd14 ? "#4ade80" : "#f87171"
+                  color: root.svcWd14 ? root.positiveColor : Color.urgent
                 }
               }
             }
@@ -428,7 +419,7 @@ Panel {
               text: root.pluginVersion
               font.family: root.bar ? root.bar.fontFamily : Style.font.family
               font.pixelSize: Style.font.caption
-              color: Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 1.6)
+              color: Util.alpha(root.bar ? root.bar.foreground : Color.foreground, 0.55)
             }
           }
 
@@ -439,7 +430,7 @@ Panel {
             text: "ESC // " + (root.currentLang === "cs" ? "ZAVŘÍT" : "CLOSE")
             font.family: root.bar ? root.bar.fontFamily : Style.font.family
             font.pixelSize: Style.font.caption
-            color: Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 1.6)
+            color: Util.alpha(root.bar ? root.bar.foreground : Color.foreground, 0.55)
           }
         }
       }

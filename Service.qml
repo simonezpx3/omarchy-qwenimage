@@ -129,7 +129,7 @@ Item {
       "dívka", "dívky", "žena", "ženy", "muž", "muži", "tělo", "nahá", "nahý",
       "nahé", "akt", "ruce", "ruka", "prsty", "prst", "obličej", "tvář", "postava"
     ];
-    var words = p.match(/[\p{L}\p{N}_]+/gu) || [];
+    var words = p.split(/[\s,.;:!?_"'`\(\)\[\]\{\}\/\\~-]+/).filter(Boolean);
     for (var i = 0; i < words.length; ++i) {
       if (kw.indexOf(words[i]) !== -1) return true;
     }
@@ -150,26 +150,32 @@ Item {
     watchers = Math.max(0, watchers - 1);
   }
 
+  function saveSetting(key, val) {
+    if (saveSettingsProc.running) {
+      saveSettingsProc.running = false;
+    }
+    saveSettingsProc.command = [root.bridgeBin, "settings", "set", String(key), String(val)];
+    Qt.callLater(function() {
+      if (!saveSettingsProc.running) {
+        saveSettingsProc.running = true;
+      }
+    });
+  }
+
   function toggleLanguage() {
     currentLang = (currentLang === "cs" ? "en" : "cs");
-    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "language", root.currentLang];
-    saveSettingsProc.running = false;
-    saveSettingsProc.running = true;
+    saveSetting("language", root.currentLang);
   }
 
   function toggleNsfw() {
     isNsfwEnabled = !isNsfwEnabled;
-    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "nsfw", root.isNsfwEnabled ? "true" : "false"];
-    saveSettingsProc.running = false;
-    saveSettingsProc.running = true;
+    saveSetting("nsfw", root.isNsfwEnabled ? "true" : "false");
     root.fetchPrompts(root.activePromptSource, "");
   }
 
   function toggleAnimeLoRA() {
     isAnimeLoRAEnabled = !isAnimeLoRAEnabled;
-    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "anime_lora", root.isAnimeLoRAEnabled ? "true" : "false"];
-    saveSettingsProc.running = false;
-    saveSettingsProc.running = true;
+    saveSetting("anime_lora", root.isAnimeLoRAEnabled ? "true" : "false");
   }
 
   function toggleTurbo() {
@@ -181,31 +187,23 @@ Item {
       steps = 6;
       cfg = 1.0;
     }
-    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "turbo", root.isTurboEnabled ? "true" : "false"];
-    saveSettingsProc.running = false;
-    saveSettingsProc.running = true;
+    saveSetting("turbo", root.isTurboEnabled ? "true" : "false");
   }
 
   function toggleUncensored() {
     isUncensoredEnabled = !isUncensoredEnabled;
-    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "uncensored", root.isUncensoredEnabled ? "true" : "false"];
-    saveSettingsProc.running = false;
-    saveSettingsProc.running = true;
+    saveSetting("uncensored", root.isUncensoredEnabled ? "true" : "false");
   }
 
   function toggleAutoExpand() {
     isAutoExpandEnabled = !isAutoExpandEnabled;
-    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "auto_expand", root.isAutoExpandEnabled ? "true" : "false"];
-    saveSettingsProc.running = false;
-    saveSettingsProc.running = true;
+    saveSetting("auto_expand", root.isAutoExpandEnabled ? "true" : "false");
   }
 
   function setResolutionMode(mode) {
     if (!mode) return;
     root.resMode = mode;
-    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "res_mode", root.resMode];
-    saveSettingsProc.running = false;
-    saveSettingsProc.running = true;
+    saveSetting("res_mode", root.resMode);
   }
 
   function updateTelemetry(data) {
