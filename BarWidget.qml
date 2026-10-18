@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import qs.Commons
@@ -149,15 +150,30 @@ BarWidget {
     active: root.opened
     tooltipText: "Qwen-Image Studio (" + root.studioStatus + " · " + root.vramUsed + " / " + root.vramTotal + " MB VRAM)"
 
-    Text {
+    Item {
       anchors.centerIn: parent
-      text: "QIS"
-      font.family: Style.font.family
-      font.pixelSize: Math.max(10, Style.font.caption)
-      font.weight: Font.DemiBold
-      font.features: {"tnum": 1}
-      textFormat: Text.PlainText
-      color: (typeof bar !== "undefined" && bar && bar.foreground) ? bar.foreground : Color.foreground
+      width: Style.bar.iconFont
+      height: Style.bar.iconFont
+
+      Image {
+        id: hereticIcon
+        anchors.fill: parent
+        source: Qt.resolvedUrl("assets/qwen-heretic.svg")
+        sourceSize.width: Math.round(width * root._iconDpiScale)
+        sourceSize.height: Math.round(height * root._iconDpiScale)
+        fillMode: Image.PreserveAspectFit
+        smooth: true
+        visible: false
+        layer.enabled: true
+      }
+
+      MultiEffect {
+        anchors.fill: hereticIcon
+        source: hereticIcon
+        visible: true
+        colorization: 1.0
+        colorizationColor: (typeof bar !== "undefined" && bar && bar.foreground) ? bar.foreground : Color.foreground
+      }
     }
 
     onPressed: function(btn) {

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import qs.Commons
@@ -154,25 +155,39 @@ Panel {
           RowLayout {
             spacing: Style.spacing.xs
 
-            Text {
-              textFormat: Text.PlainText
-              text: "QIS //"
-              font.family: Style.font.family
-              font.pixelSize: Style.font.body
-              font.bold: true
-              font.features: {"tnum": 1}
-              color: Color.accent
+            Item {
+              width: Style.space(18)
+              height: Style.space(18)
               Layout.alignment: Qt.AlignVCenter
+
+              Image {
+                id: qisLogo
+                anchors.fill: parent
+                source: Qt.resolvedUrl("assets/qwen-heretic.svg")
+                sourceSize.width: 36
+                sourceSize.height: 36
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+                visible: false
+                layer.enabled: true
+              }
+
+              MultiEffect {
+                anchors.fill: qisLogo
+                source: qisLogo
+                visible: true
+                colorization: 1.0
+                colorizationColor: Color.accent
+              }
             }
 
             Text {
               textFormat: Text.PlainText
-              text: "STUDIO"
+              text: "QIS"
               font.family: Style.font.family
               font.pixelSize: Style.font.body
               font.bold: true
-              font.features: {"tnum": 1}
-              color: Color.foreground
+              color: Color.accent
               Layout.alignment: Qt.AlignVCenter
             }
           }
