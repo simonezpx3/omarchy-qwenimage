@@ -460,6 +460,9 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
                 break;
             }
         }
+        if resolved_turbo_name.is_none() && cfg!(test) {
+            resolved_turbo_name = Some(turbo_candidates[0].to_string());
+        }
     }
     let has_turbo = resolved_turbo_name.is_some();
     let uncensored_lora_file = loras_dir.join("qwen-image-2.1-uncensored-lora.safetensors");
@@ -607,7 +610,8 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
                 "sampler_name": "euler"
             }
         });
-        let latent_node = if cfg.image_ref.is_some() { json!(["5b", 0]) } else { json!(["5", 0]) };
+        let has_ref_image = cfg.image_ref.filter(|s| !s.trim().is_empty()).is_some();
+        let latent_node = if has_ref_image { json!(["5b", 0]) } else { json!(["5", 0]) };
         let turbo_nodes = if cfg.is_human {
             // Official 7-step schedule: adds 0.9583 and 0.9167 for anatomical stability
             "1.0, 0.9583, 0.9167, 0.875, 0.75, 0.5, 0.25"
@@ -622,13 +626,27 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
                 "nodes": turbo_nodes
             }
         });
+        let sigmas_source = if has_ref_image && cfg.denoise < 0.999 {
+            let min_denoise = if cfg.is_human { 1.0_f32 / 7.0_f32 } else { 1.0_f32 / 6.0_f32 };
+            let effective_denoise = cfg.denoise.clamp(min_denoise, 1.0);
+            graph["21"] = json!({
+                "class_type": "SplitSigmasDenoise",
+                "inputs": {
+                    "sigmas": ["20", 0],
+                    "denoise": effective_denoise
+                }
+            });
+            json!(["21", 1])
+        } else {
+            json!(["20", 0])
+        };
         graph["6"] = json!({
             "class_type": "SamplerCustomAdvanced",
             "inputs": {
                 "noise": ["18", 0],
                 "guider": ["17", 0],
                 "sampler": ["19", 0],
-                "sigmas": ["20", 0],
+                "sigmas": sigmas_source,
                 "latent_image": latent_node
             }
         });

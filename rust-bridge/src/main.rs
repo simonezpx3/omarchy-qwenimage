@@ -3349,8 +3349,63 @@ mod tests {
         assert_eq!(final_seed, 12345);
         assert_eq!(w, 1280);
         assert_eq!(h, 720);
-        // If viggle turbo is present, node 6 sampler has CFG 1.0; if not present fallback still has node 6
         assert!(graph.get("6").is_some());
+        assert_eq!(graph["6"]["class_type"], "SamplerCustomAdvanced");
+        assert_eq!(graph["6"]["inputs"]["sigmas"], serde_json::json!(["20", 0]));
+        assert_eq!(graph["6"]["inputs"]["latent_image"], serde_json::json!(["5", 0]));
+        assert!(graph.get("21").is_none());
+    }
+
+    #[test]
+    fn test_turbo_i2i_split_sigmas_denoise() {
+        let dir = std::env::temp_dir();
+        let ref_img = dir.join("qis_test_turbo_i2i_ref.png");
+        let _ = fs::write(&ref_img, b"dummy_png");
+        let ref_str = ref_img.to_string_lossy().to_string();
+
+        // 1. Partial denoise (0.65) in Turbo I2I -> inserts SplitSigmasDenoise (node 21) and links ["21", 1]
+        let cfg_partial = comfy::GenerationConfig {
+            prompt: "cyberpunk street",
+            negative_prompt: "blurry",
+            ratio: "1:1",
+            steps: 25,
+            cfg: 4.0,
+            seed: 777,
+            image_ref: Some(&ref_str),
+            denoise: 0.65,
+            anime: false,
+            turbo: true,
+            uncensored: false,
+            res_mode: "standard",
+            is_human: false,
+        };
+        let (graph_partial, _, _, _) = comfy::build_generation_graph(&cfg_partial).expect("turbo i2i partial denoise should succeed");
+        assert_eq!(graph_partial["21"]["class_type"], "SplitSigmasDenoise");
+        assert_eq!(graph_partial["21"]["inputs"]["sigmas"], serde_json::json!(["20", 0]));
+        let d_val = graph_partial["21"]["inputs"]["denoise"].as_f64().unwrap();
+        assert!((d_val - 0.65).abs() < 1e-5);
+        assert_eq!(graph_partial["6"]["inputs"]["sigmas"], serde_json::json!(["21", 1]));
+        assert_eq!(graph_partial["6"]["inputs"]["latent_image"], serde_json::json!(["5b", 0]));
+
+        // 2. Full denoise (1.0) in Turbo I2I -> bypasses SplitSigmasDenoise, connects ["20", 0] directly
+        let cfg_full = comfy::GenerationConfig {
+            denoise: 1.0,
+            ..cfg_partial
+        };
+        let (graph_full, _, _, _) = comfy::build_generation_graph(&cfg_full).expect("turbo i2i full denoise should succeed");
+        assert!(graph_full.get("21").is_none());
+        assert_eq!(graph_full["6"]["inputs"]["sigmas"], serde_json::json!(["20", 0]));
+
+        // 3. Ultra-low denoise (0.05) -> clamped to >= 1/6 so SplitSigmasDenoise never yields 0 steps
+        let cfg_low = comfy::GenerationConfig {
+            denoise: 0.05,
+            ..cfg_partial
+        };
+        let (graph_low, _, _, _) = comfy::build_generation_graph(&cfg_low).expect("turbo i2i low denoise should succeed");
+        let low_d = graph_low["21"]["inputs"]["denoise"].as_f64().unwrap();
+        assert!(low_d >= (1.0 / 6.0) - 1e-5);
+
+        let _ = fs::remove_file(&ref_img);
     }
 
     #[test]
