@@ -9,13 +9,24 @@ BarWidget {
   id: root
   moduleName: "simonez.qwenimage"
 
-  property string studioStatus: "READY"
-  property int vramUsed: 0
-  property int vramTotal: 8192
-  property int vramPct: 0
-  property bool isOnline: false
-  property bool isGameLocked: false
-  property bool isBusy: false
+  readonly property var shellService: (bar && bar.shell && typeof bar.shell.serviceFor === "function")
+    ? bar.shell.serviceFor("simonez.qwenimage")
+    : null
+
+  Service {
+    id: localFallbackService
+    activePolling: root.shellService === null
+  }
+
+  readonly property var svc: root.shellService ? root.shellService : localFallbackService
+
+  property string studioStatus: svc ? svc.studioStatus : "READY"
+  property int vramUsed: svc ? svc.vramUsed : 0
+  property int vramTotal: svc ? svc.vramTotal : 8192
+  property int vramPct: svc ? svc.vramPct : 0
+  property bool isOnline: svc ? svc.isOnline : false
+  property bool isGameLocked: svc ? svc.isGameLocked : false
+  property bool isBusy: svc ? svc.isBusy : false
 
   readonly property string displayLabel: {
     if (isBusy) return "QIS // BUSY";
@@ -34,18 +45,36 @@ BarWidget {
   readonly property real _iconDpiScale: Screen.devicePixelRatio
 
   property alias anchorButton: button
-  readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
+  property bool opened: false
+  property bool watchingService: false
+
+  function syncService() {
+    if (!root.svc) return;
+    if ("settings" in root.svc) root.svc.settings = root.settings;
+    if ("bar" in root.svc) root.svc.bar = root.bar;
+  }
 
   function open() {
-    if (panelLoader.item) panelLoader.item.open();
+    root.syncService();
+    root.opened = true;
+    if (panelLoader.item) {
+      panelLoader.item.open();
+    }
   }
 
   function close() {
-    if (panelLoader.item) panelLoader.item.close();
+    if (panelLoader.item) {
+      panelLoader.item.close();
+    }
+    root.opened = false;
   }
 
   function toggle() {
-    if (panelLoader.item) panelLoader.item.toggle();
+    if (root.opened) {
+      root.close();
+    } else {
+      root.open();
+    }
   }
 
   function togglePanel() {
@@ -53,7 +82,12 @@ BarWidget {
   }
 
   function refresh() {
-    statusProc.running = true;
+    if (root.svc) {
+      root.svc.refresh();
+    }
+    if (!statusProc.running) {
+      statusProc.running = true;
+    }
   }
 
   readonly property real openPanelIndicatorWidth: Math.round(Style.bar.iconSlot * 0.55)
@@ -62,16 +96,21 @@ BarWidget {
   readonly property bool popoutSwitchClosing: panelLoader.item ? panelLoader.item.popoutSwitchClosing === true : false
 
   function closeForPopoutSwitch() {
-    if (panelLoader.item) panelLoader.item.closeForPopoutSwitch();
+    if (panelLoader.item) {
+      panelLoader.item.closeForPopoutSwitch();
+    }
+    root.opened = false;
   }
 
   function injectPanel() {
+    root.syncService();
     var target = panelLoader.item;
     if (!target) return;
     if ("bar" in target) target.bar = root.bar;
     if ("settings" in target) target.settings = root.settings;
     if ("anchorItem" in target) target.anchorItem = button;
     if ("hostWidget" in target) target.hostWidget = root;
+    if ("injectedService" in target) target.injectedService = root.svc;
   }
 
   implicitWidth: button.implicitWidth
@@ -79,27 +118,33 @@ BarWidget {
 
   onBarChanged: injectPanel()
   onSettingsChanged: injectPanel()
+  onSvcChanged: injectPanel()
 
   readonly property string bridgeBin: Qt.resolvedUrl("bin/qwen-bridge").toString().replace(/^file:\/\//, "")
 
-  // Status querying process running our compiled Rust binary
+  // Status querying process with watchdog Timer protection against hung processes
   Process {
     id: statusProc
     command: [root.bridgeBin, "status"]
+    onRunningChanged: {
+      if (statusProc.running) {
+        statusWatchdog.restart();
+      } else {
+        statusWatchdog.stop();
+      }
+    }
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        statusWatchdog.stop();
         var str = (text || "").trim();
         if (str.length === 0 || str.length > 65536) return;
         try {
           var data = JSON.parse(str);
           if (data && data.status) {
-            root.studioStatus = data.status;
-            root.isOnline = !!data.online;
-            root.isGameLocked = !!data.game_locked;
-            root.vramUsed = data.vram_used_mb || 0;
-            root.vramTotal = data.vram_total_mb || 8192;
-            root.vramPct = data.vram_pct || 0;
+            if (root.svc) {
+              root.svc.updateTelemetry(data);
+            }
             if (panelLoader.item) {
               panelLoader.item.updateTelemetry(data);
             }
@@ -109,9 +154,39 @@ BarWidget {
     }
   }
 
+  Timer {
+    id: statusWatchdog
+    interval: 8000
+    repeat: false
+    running: false
+    onTriggered: {
+      if (statusProc.running) {
+        statusProc.running = false;
+      }
+    }
+  }
+
   onOpenedChanged: {
-    if (root.opened && !statusProc.running) {
-      statusProc.running = true;
+    if (root.opened) {
+      if (!root.watchingService && root.svc) {
+        root.watchingService = true;
+        root.svc.watch();
+      }
+      if (!statusProc.running) {
+        statusProc.running = true;
+      }
+    } else {
+      if (root.watchingService && root.svc) {
+        root.watchingService = false;
+        root.svc.unwatch();
+      }
+    }
+  }
+
+  Component.onDestruction: {
+    if (root.watchingService && root.svc) {
+      root.watchingService = false;
+      root.svc.unwatch();
     }
   }
 
@@ -119,7 +194,7 @@ BarWidget {
     id: pollTimer
     interval: root.opened ? 2000 : Math.max(1000, root.setting("refreshIntervalSec", 3) * 1000)
     repeat: true
-    running: true
+    running: root.shellService === null
     onTriggered: {
       if (!statusProc.running) {
         statusProc.running = true;
@@ -141,7 +216,6 @@ BarWidget {
       width: Style.bar.iconFont
       height: Style.bar.iconFont
 
-      // 100% brightness & contrast icon with dynamic theme color matching system icon standards
       Image {
         id: hereticIcon
         anchors.fill: parent
@@ -174,12 +248,20 @@ BarWidget {
 
   Loader {
     id: panelLoader
-    active: true
+    active: root.opened
     source: Qt.resolvedUrl("Panel.qml")
     visible: false
     onLoaded: {
       root.injectPanel();
-      Qt.callLater(root.injectPanel);
+      if (root.opened && panelLoader.item) {
+        panelLoader.item.open();
+      }
+      Qt.callLater(function() {
+        root.injectPanel();
+        if (root.opened && panelLoader.item && !panelLoader.item.opened) {
+          panelLoader.item.open();
+        }
+      });
     }
   }
 
@@ -188,42 +270,42 @@ BarWidget {
 
     function refresh(): void { root.refresh(); }
     function open(): void {
-      if (panelLoader.item) {
-        panelLoader.item.currentView = "studio";
-        panelLoader.item.open();
-      } else {
-        root.open();
+      if (root.svc) {
+        root.svc.currentView = "studio";
       }
+      root.open();
     }
     function close(): void { root.close(); }
     function toggle(): void { root.togglePanel(); }
     function prompts(source: string): void {
       var s = String(source || "").trim().toLowerCase();
       if (s.length > 32) s = s.substring(0, 32);
-      var validSources = ["civitai", "lexica", "prompthero", "openart", "huggingface", "midlibrary", "diffusiondb", "arthub", "seaart", "shakker", "playground", "krea", "tensorart", "all"];
+      var validSources = ["civitai", "lexica", "prompthero", "openart", "huggingface", "midlibrary", "diffusiondb", "seaart", "shakker", "playground", "krea", "tensorart", "all"];
       if (validSources.indexOf(s) === -1) s = "civitai";
-      if (panelLoader.item) {
-        panelLoader.item.activePromptSource = s;
-        panelLoader.item.fetchPrompts(s, "");
-        panelLoader.item.currentView = "civitai";
-        panelLoader.item.open();
+      if (root.svc) {
+        root.svc.activePromptSource = s;
+        root.svc.fetchPrompts(s, "");
+        root.svc.currentView = "civitai";
       }
+      root.open();
     }
     function history(): void {
-      if (panelLoader.item) {
-        panelLoader.item.currentView = "history";
-        panelLoader.item.open();
+      if (root.svc) {
+        root.svc.currentView = "history";
+        root.svc.fetchHistory();
       }
+      root.open();
     }
     function paste(): void {
-      if (panelLoader.item) {
-        panelLoader.item.pasteFromClipboard();
-        panelLoader.item.open();
+      if (root.svc) {
+        root.svc.pasteFromClipboard();
       }
+      root.open();
     }
   }
 
   Component.onCompleted: {
+    root.syncService();
     statusProc.running = true;
   }
 }

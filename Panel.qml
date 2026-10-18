@@ -16,248 +16,60 @@ Panel {
 
   property var anchorItem: null
   property var hostWidget: null
+  property var injectedService: null
   readonly property var barIdentity: hostWidget || root
-  readonly property string bridgeBin: Qt.resolvedUrl("bin/qwen-bridge").toString().replace(/^file:\/\//, "")
-  QtObject {
-    id: d
-    property string localVersion: ""
-    property string bridgeVersion: ""
 
-    function cleanVer(v) {
-      return v ? String(v).replace(/^v/i, "").trim() : "";
-    }
-
-    readonly property string effectiveVersion: localVersion !== "" ? localVersion : (bridgeVersion !== "" ? bridgeVersion : "1.2.3")
-  }
-  readonly property string pluginVersion: "v" + d.effectiveVersion
-  readonly property string userHome: Quickshell.env("HOME") || "/home/" + (Quickshell.env("USER") || "user")
-  readonly property string picturesDir: userHome + "/Pictures/Qwen-Image"
-
-  property string currentView: "studio" // "studio", "compare", "civitai", "history"
-  onCurrentViewChanged: {
-    if (currentView === "civitai") {
-      root.fetchPrompts(root.activePromptSource || "civitai", "");
-    } else if (currentView === "history") {
-      root.fetchHistory();
-    }
-  }
-  property string promptText: ""
-  property string negativePromptText: "blurry, low quality, deformed, extra fingers, text, watermark"
-  property string aspectRatio: "1:1"
-  property string resMode: "standard" // "draft", "standard", "high", "ultra", "max"
-  property string hardwareTier: "B" // "B" (<=8G), "A" (12-16G), "S" (>=20G)
-  property int maxSupportedDim: 1536
-  property var supportedResModes: ["draft", "standard", "high"]
-  property int steps: 25
-  property real cfg: 4.0
-  property bool seedLocked: false
-  property var seedVal: -1
-  property string referencePath: ""
-  property string referenceMatchedRatio: ""
-  property int referenceRevision: 0
-  property real denoise: 0.65
-  property string generatedPath: ""
-  property string baseGeneratedPath: ""
-  property string previousGeneratedPath: ""
-  property bool isGenerating: false
-  property bool isCancelling: false
-  property string generatingMode: "generate" // "generate", "scale", "enhance"
-  property real currentScaleFactor: 0.0
-  property bool isInterrogating: false
-  property string generationTelemetry: "1024x1024 | 25 STEPS | RTX 3070 (0 TOKENS)"
-
-  // Live TAEQI / Diffusion Preview State
-  property string livePreviewPath: ""
-  property int livePreviewStep: 0
-  property int livePreviewMaxSteps: 25
-  property int livePreviewTick: 0
-
-  // Telemetry from Host
-  property string studioStatus: "READY"
-  property int vramUsed: 0
-  property int vramTotal: 8192
-  property int vramPct: 0
-  property bool isOnline: false
-  property bool isGameLocked: false
-
-  // Service Health Badges
-  property bool svcComfy: false
-  property bool svcGpu: true
-  property bool svcOllama: false
-  property bool svcWd14: false
-  property bool svcCivitai: true
-
-  // Dynamic Stack & Model Versions
-  property string versionQwen: "Qwen-Image 2.1 Heretic"
-  property string versionComfy: ""
-  property string versionOllama: ""
-  property string versionGpuDriver: ""
-  property string versionQuickshell: ""
-  property string versionHyprland: ""
-
-  // Models
-  property var civitaiModel: []
-  property bool isCivitaiLoading: false
-  property string activePromptSource: "civitai"
-  property bool isVisionLoading: false
-  property var historyModel: []
-  property bool isHistoryLoading: false
-  property bool isBridgeAvailable: true
-  property var promptHistory: []
-  property int promptHistoryIndex: -1
-  property bool isOptimizingPrompt: false
-
-
-  // Language state (cs = Čeština, en = English)
-  property string currentLang: "cs"
-
-  function toggleLanguage() {
-    currentLang = (currentLang === "cs" ? "en" : "cs");
-    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "language", root.currentLang];
-    saveSettingsProc.running = false;
-    saveSettingsProc.running = true;
+  Service {
+    id: fallbackService
+    activePolling: false
+    bar: root.bar
+    settings: root.settings
   }
 
-  // NSFW filter state (false = SFW only, true = NSFW allowed)
-  property bool isNsfwEnabled: false
+  readonly property var svc: root.injectedService
+    ? root.injectedService
+    : (root.hostWidget && root.hostWidget.svc ? root.hostWidget.svc : fallbackService)
 
-  function toggleNsfw() {
-    isNsfwEnabled = !isNsfwEnabled;
-    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "nsfw", root.isNsfwEnabled ? "true" : "false"];
-    saveSettingsProc.running = false;
-    saveSettingsProc.running = true;
-    root.fetchPrompts(root.activePromptSource, "");
-  }
-
-  // Anime LoRA state (false = standard style, true = anime consistency LoRA)
-  property bool isAnimeLoRAEnabled: false
-
-  function toggleAnimeLoRA() {
-    isAnimeLoRAEnabled = !isAnimeLoRAEnabled;
-    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "anime_lora", root.isAnimeLoRAEnabled ? "true" : "false"];
-    saveSettingsProc.running = false;
-    saveSettingsProc.running = true;
-  }
-
-  // Turbo Viggle LoRA state (true = 6-step DMD acceleration ~5s, false = standard 25 steps)
-  property bool isTurboEnabled: true
-
-  function toggleTurbo() {
-    isTurboEnabled = !isTurboEnabled;
-    if (!isTurboEnabled && steps < 25) {
-      steps = 28;
-      cfg = 4.0;
-    } else if (isTurboEnabled && steps > 8) {
-      steps = 6;
-      cfg = 1.0;
-    }
-    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "turbo", root.isTurboEnabled ? "true" : "false"];
-    saveSettingsProc.running = false;
-    saveSettingsProc.running = true;
-  }
-
-  // Anatomical Safety Guard: Sledování lidského subjektu v promptu (Marci standard: přesné hranice slov)
-  readonly property bool isHumanSubjectInPrompt: {
-    var p = promptText.toLowerCase();
-    var kw = [
-      "woman", "women", "man", "men", "girl", "girls", "boy", "boys",
-      "person", "people", "human", "body", "nude", "naked", "erotic",
-      "portrait", "skin", "breasts", "legs", "face", "buttocks", "ass",
-      "waist", "hips", "thighs", "female", "male", "model", "hand", "hands",
-      "finger", "fingers", "child", "children", "character", "warrior", "elf",
-      "slim", "petite", "slender",
-      "dívka", "dívky", "žena", "ženy", "muž", "muži", "tělo", "nahá", "nahý",
-      "nahé", "akt", "ruce", "ruka", "prsty", "prst", "obličej", "tvář", "postava"
-    ];
-    var words = p.match(/[\p{L}\p{N}_]+/gu) || [];
-    for (var i = 0; i < words.length; ++i) {
-      if (kw.indexOf(words[i]) !== -1) return true;
-    }
-    return false;
-  }
-
-  // Uncensored Latent LoRA state (true = uncensored latent LoRA, false = standard latent)
-  property bool isUncensoredEnabled: false
-
-  function toggleUncensored() {
-    isUncensoredEnabled = !isUncensoredEnabled;
-    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "uncensored", root.isUncensoredEnabled ? "true" : "false"];
-    saveSettingsProc.running = false;
-    saveSettingsProc.running = true;
-  }
-
-  // Auto-Expand prompt via local LLM state (true = expand before generation, false = raw prompt)
-  property bool isAutoExpandEnabled: false
-
-  function toggleAutoExpand() {
-    isAutoExpandEnabled = !isAutoExpandEnabled;
-    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "auto_expand", root.isAutoExpandEnabled ? "true" : "false"];
-    saveSettingsProc.running = false;
-    saveSettingsProc.running = true;
-  }
-
-  function setResolutionMode(mode) {
-    if (!mode) return;
-    root.resMode = mode;
-    saveSettingsProc.command = [root.bridgeBin, "settings", "set", "res_mode", root.resMode];
-    saveSettingsProc.running = false;
-    saveSettingsProc.running = true;
-  }
-
-  // Algorithmic author signature embedded in view switcher seed
   readonly property int viewCalibrationSeed: (0x732641 % 50)
+  readonly property string pluginVersion: svc.pluginVersion
+  readonly property string currentView: svc.currentView
+  readonly property string currentLang: svc.currentLang
+  readonly property string versionQwen: svc.versionQwen
+  readonly property string versionComfy: svc.versionComfy
+  readonly property string versionOllama: svc.versionOllama
+  readonly property bool svcComfy: svc.svcComfy
+  readonly property bool svcOllama: svc.svcOllama
+  readonly property bool svcWd14: svc.svcWd14
+  readonly property int vramUsed: svc.vramUsed
+  readonly property int vramTotal: svc.vramTotal
+  readonly property int vramPct: svc.vramPct
+  readonly property bool isBridgeAvailable: svc.isBridgeAvailable
+
+  property alias activePromptSource: fallbackService.activePromptSource
 
   function updateTelemetry(data) {
-    if (!data) return;
-    root.studioStatus = data.status || "READY";
-    root.isOnline = !!data.online;
-    root.isGameLocked = !!data.game_locked;
-    root.vramUsed = data.vram_used_mb || 0;
-    root.vramTotal = data.vram_total_mb || 8192;
-    root.vramPct = data.vram_pct || 0;
-    root.hardwareTier = data.hardware_tier || root.hardwareTier;
-    root.maxSupportedDim = data.max_res_dim || root.maxSupportedDim;
-    if (data.supported_res_modes && Array.isArray(data.supported_res_modes)) {
-      root.supportedResModes = data.supported_res_modes;
-    }
-    if (data.services) {
-      root.svcComfy = !!data.services.comfyui;
-      root.svcGpu = !!data.services.gpu;
-      root.svcOllama = !!data.services.ollama;
-      root.svcWd14 = !!data.services.wd14;
-      root.svcCivitai = !!data.services.civitai;
-    }
-    if (data.versions) {
-      if (data.versions.plugin) {
-        d.bridgeVersion = d.cleanVer(data.versions.plugin);
-      }
-      root.versionQwen = data.versions.qwen_model || root.versionQwen;
-      root.versionComfy = data.versions.comfyui || "";
-      root.versionOllama = data.versions.ollama || "";
-      root.versionGpuDriver = data.versions.driver ? (data.gpu_name + " (" + data.versions.driver + ")") : (data.gpu_name || "");
-      root.versionQuickshell = data.versions.quickshell || "";
-      root.versionHyprland = data.versions.hyprland || "";
-    }
-  }
-
-  Process {
-    id: checkBridgeProc
-    command: ["test", "-x", root.bridgeBin]
-    onExited: function(exitCode, exitStatus) {
-      root.isBridgeAvailable = (exitCode === 0);
-    }
+    svc.updateTelemetry(data);
   }
 
   function checkBridge() {
-    checkBridgeProc.running = true;
+    svc.checkBridge();
   }
 
   function refreshTelemetry() {
-    root.checkBridge();
-    if (root.isBridgeAvailable) {
-      panelStatusProc.running = true;
-    }
+    svc.refreshTelemetry();
     if (hostWidget && hostWidget.refresh) hostWidget.refresh();
+  }
+
+  function fetchPrompts(source, query) {
+    svc.fetchPrompts(source, query);
+  }
+
+  function fetchHistory() {
+    svc.fetchHistory();
+  }
+
+  function pasteFromClipboard() {
+    svc.pasteFromClipboard();
   }
 
   function open() {
@@ -268,6 +80,9 @@ Panel {
 
   function close() {
     panel.open = false;
+    if (hostWidget && hostWidget.opened) {
+      hostWidget.opened = false;
+    }
   }
 
   function toggle() {
@@ -275,779 +90,30 @@ Panel {
   }
 
   function closeForPopoutSwitch() {
-    panel.closeForPopoutSwitch();
+    panel.popoutSwitchClosing = true;
+    root.close();
   }
 
   readonly property bool opened: panel.open
   readonly property bool popoutSwitchClosing: panel.popoutSwitchClosing
 
-  function paste() {
-    root.pasteFromClipboard();
-  }
-
-  function snip() {
-    root.triggerScreenSnip();
-  }
-
-  function snipScreenArea() {
-    root.triggerScreenSnip();
-  }
-
-  function clear() {
-    root.clearReference();
-  }
-
-  function clearReferenceBuffer() {
-    root.clearReference();
-  }
-
-  property var activePasteTarget: null
-  function pasteTextInto(targetItem) {
-    if (pasteTextProc.running) return;
-    root.activePasteTarget = targetItem;
-    pasteTextProc.running = true;
-  }
-
-  function validateReference(filePath) {
-    if (!filePath || validateRefProc.running) return;
-    validateRefProc.command = [root.bridgeBin, "validate-ref", filePath];
-    validateRefProc.running = true;
-  }
-
-  function cancelGeneration() {
-    if ((!root.isGenerating && !genProc.running) || root.isCancelling) return;
-    root.isCancelling = true;
-
-    if (genProc.running) {
-      genProc.running = false;
-    }
-    interruptProc.running = false;
-    interruptProc.running = true;
-    root.isGenerating = false;
-    root.currentScaleFactor = 0.0;
-    root.livePreviewPath = "";
-    if (hostWidget) hostWidget.isBusy = false;
-    root.generationTelemetry = root.currentLang === "cs"
-      ? "GENEROVÁNÍ PŘERUŠENO"
-      : "GENERATION INTERRUPTED";
-  }
-
-  function resetForm() {
-    if (root.isGenerating || genProc.running) {
-      root.cancelGeneration();
-    }
-    root.promptText = "";
-    root.negativePromptText = "blurry, low quality, deformed, extra fingers, text, watermark";
-    root.aspectRatio = "1:1";
-    root.resMode = "standard";
-    root.steps = 25;
-    root.seedLocked = false;
-    root.seedVal = -1;
-    root.referencePath = "";
-    root.referenceMatchedRatio = "";
-    root.referenceRevision = 0;
-    root.denoise = 0.65;
-    root.generatedPath = "";
-    root.baseGeneratedPath = "";
-    root.previousGeneratedPath = "";
-    root.livePreviewPath = "";
-    root.livePreviewStep = 0;
-    root.generationTelemetry = "1024x1024 | 25 STEPS | RTX 3070 (0 TOKENS)";
-  }
-
-  function recallPrompt(delta) {
-    if (promptHistory.length === 0) return;
-    var newIdx = promptHistoryIndex + delta;
-    if (newIdx < 0) newIdx = 0;
-    if (newIdx >= promptHistory.length) newIdx = promptHistory.length - 1;
-    promptHistoryIndex = newIdx;
-    root.promptText = promptHistory[promptHistoryIndex];
-  }
-
-  function startGeneration() {
-    if (!root.isBridgeAvailable) {
-      root.generationTelemetry = root.currentLang === "cs"
-        ? "CHYBA: bin/qwen-bridge chybí! Spusť install.sh"
-        : "ERROR: bin/qwen-bridge is missing! Run install.sh";
-      return;
-    }
-    if (isGenerating || isGameLocked) return;
-    var trimmed = promptText.trim();
-    if (trimmed === "") return;
-
-    // Add to prompt history
-    if (promptHistory.indexOf(trimmed) === -1) {
-      promptHistory.push(trimmed);
-      promptHistoryIndex = promptHistory.length - 1;
-    }
-
-    isGenerating = true;
-    generatingMode = "generate";
-    currentScaleFactor = 0.0;
-    livePreviewPath = "";
-    livePreviewStep = 0;
-    livePreviewMaxSteps = steps;
-    livePreviewTick = 0;
-    if (hostWidget) hostWidget.isBusy = true;
-
-    var actualSeed = seedLocked ? Number(seedVal) : -1;
-    var args = [
-      root.bridgeBin,
-      "generate",
-      trimmed,
-      aspectRatio,
-      String(steps),
-      String(cfg),
-      String(actualSeed),
-      negativePromptText
-    ];
-
-    if (referencePath !== "") {
-      args.push(referencePath);
-      var clampedDenoise = Math.min(0.95, Math.max(0.05, denoise));
-      args.push(String(clampedDenoise));
-    }
-
-    if (root.isAnimeLoRAEnabled) {
-      args.push("--anime");
-    }
-
-    if (root.isTurboEnabled) {
-      args.push("--turbo");
-    }
-
-    if (root.isUncensoredEnabled) {
-      args.push("--uncensored");
-    }
-
-    if (root.isAutoExpandEnabled) {
-      args.push("--expand");
-    }
-
-    if (root.resMode && root.resMode !== "") {
-      args.push("--res");
-      args.push(root.resMode);
-    }
-
-    genProc.command = args;
-    genProc.running = true;
-  }
-
-  function aiUpscale(modelChoice) {
-    if (!root.isBridgeAvailable) return;
-    var target = root.baseGeneratedPath !== "" ? root.baseGeneratedPath : (root.generatedPath !== "" ? root.generatedPath : root.referencePath);
-    if (target === "" || isGenerating) return;
-
-    isGenerating = true;
-    generatingMode = "scale_" + modelChoice;
-    currentScaleFactor = 4.0;
-    if (hostWidget) hostWidget.isBusy = true;
-
-    var args = [
-      root.bridgeBin,
-      "upscale",
-      target,
-      modelChoice
-    ];
-
-    if (root.isAnimeLoRAEnabled) {
-      args.push("--anime");
-    }
-
-    scaleProc.command = args;
-    scaleProc.running = true;
-  }
-
-  function aiEnhance() {
-    aiUpscale("ultra");
-  }
-
-  function scaleImage(factor) {
-    if (!root.isBridgeAvailable) return;
-    var target = root.baseGeneratedPath !== "" ? root.baseGeneratedPath : (root.generatedPath !== "" ? root.generatedPath : root.referencePath);
-    if (target === "" || isGenerating) return;
-    isGenerating = true;
-    generatingMode = "scale";
-    currentScaleFactor = factor;
-    if (hostWidget) hostWidget.isBusy = true;
-    scaleProc.command = [
-      root.bridgeBin,
-      "scale",
-      target,
-      String(factor)
-    ];
-    scaleProc.running = true;
-  }
-
-  function setAsWallpaper(path) {
-    if (!path) return;
-    var proc = wallProc;
-    proc.command = [root.bridgeBin, "wallpaper", path];
-    proc.running = true;
-  }
-
-  function copyImageToClipboard(path) {
-    if (!path) return;
-    var p = clipCopyProc;
-    p.command = [root.bridgeBin, "copy-image", path];
-    p.running = true;
-  }
-
-  function copyTextToClipboard(text) {
-    var p = clipCopyProc;
-    p.command = [root.bridgeBin, "copy-text", text];
-    p.running = true;
-  }
-
-
-  function openImageViewer(path) {
-    if (!path) return;
-    root.openFullscreenViewer(path);
-  }
-
-  function openFullscreenViewer(path) {
-    if (!path) return;
-    var cleanPath = path;
-    if (cleanPath.startsWith("file://")) {
-      cleanPath = cleanPath.substring(7);
-    }
-    openFullscreenProc.running = false;
-    openFullscreenProc.command = ["imv", "-i", "imv-fullscreen", "-f", "-c", "bind <Escape> quit", "--", cleanPath];
-    openFullscreenProc.running = true;
-  }
-
-  function openPicturesFolder() {
-    var p = openExternalProc;
-    p.command = ["xdg-open", root.picturesDir];
-    p.running = true;
-  }
-
-  function pasteFromClipboard() {
-    pasteProc.running = true;
-  }
-
-  function triggerScreenSnip() {
-    snipProc.running = true;
-  }
-
-  function interrogateWd14() {
-    if (!root.isBridgeAvailable || referencePath === "" || isInterrogating) return;
-    root.isInterrogating = true;
-    tagProc.command = [root.bridgeBin, "interrogate", referencePath];
-    tagProc.running = true;
-  }
-
-  function extractVisionPrompt() {
-    if (!root.isBridgeAvailable || referencePath === "" || isVisionLoading) return;
-    root.isVisionLoading = true;
-    visionProc.command = [root.bridgeBin, "vision", referencePath];
-    visionProc.running = true;
-  }
-
-  function setReferenceImage(path) {
-    if (!path) return;
-    referencePath = path;
-    referenceRevision++;
-    // Inspect for metadata
-    metaProc.command = [root.bridgeBin, "read-meta", path];
-    metaProc.running = true;
-  }
-
-  function clearReference() {
-    if (root.referencePath === "" && root.referenceMatchedRatio === "") return;
-    root.referencePath = "";
-    root.referenceMatchedRatio = "";
-    root.referenceRevision++;
-  }
-
-  function restoreFromHistory(path, prompt, seed, ratio, negative) {
-    if (prompt) promptText = prompt;
-    if (negative !== undefined && negative !== null && negative !== "") {
-      negativePromptText = negative;
-    }
-    if (seed && seed > 0) {
-      seedVal = seed;
-      seedLocked = true;
-    }
-    if (ratio) aspectRatio = ratio;
-    generatedPath = path;
-    baseGeneratedPath = path;
-  }
-
-  function pickReferenceImage() {
-    pickRefImageProc.running = false;
-    var picDir = Quickshell.env("XDG_PICTURES_DIR") || ((Quickshell.env("HOME") || "") + "/Pictures");
-    if (picDir !== "" && !picDir.endsWith("/")) {
-      picDir += "/";
-    }
-    pickRefImageProc.command = [
-      "zenity",
-      "--file-selection",
-      "--filename=" + picDir,
-      "--file-filter=" + (root.currentLang === "cs" ? "Obrázky" : "Images") + " (*.png *.jpg *.jpeg *.webp *.avif) | *.png *.jpg *.jpeg *.webp *.avif *.PNG *.JPG *.JPEG *.WEBP *.AVIF",
-      "--title=" + (root.currentLang === "cs" ? "Vybrat referenční obrázek" : "Select reference image")
-    ];
-    pickRefImageProc.running = true;
-  }
-
-  function fetchPrompts(source, query) {
-    if (!root.isBridgeAvailable) {
-      root.isCivitaiLoading = false;
-      return;
-    }
-    root.isCivitaiLoading = true;
-    root.activePromptSource = source || "civitai";
-    var cmd = [
-      root.bridgeBin,
-      "prompts",
-      root.activePromptSource,
-      query || "",
-      "--limit",
-      "100"
-    ];
-    if (root.isNsfwEnabled) {
-      cmd.push("--nsfw");
-    }
-    civitaiProc.running = false;
-    civitaiProc.command = cmd;
-    civitaiProc.running = true;
-  }
-
-  function fetchCivitaiPrompts(query) {
-    root.fetchPrompts(root.activePromptSource || "civitai", query);
-  }
-
-  function fetchHistory() {
-    if (!root.isBridgeAvailable) {
-      root.isHistoryLoading = false;
-      return;
-    }
-    if (histProc.running) {
-      return;
-    }
-    root.isHistoryLoading = true;
-    histProc.command = [root.bridgeBin, "history", "30"];
-    histProc.running = true;
-  }
-
-  function handleGenLine(line) {
-    var trimmed = (line || "").trim();
-    if (!trimmed || trimmed === "") return;
-    try {
-      var res = JSON.parse(trimmed);
-      if (res.event === "preview") {
-        root.livePreviewPath = res.path || "";
-        root.livePreviewStep = res.step || 0;
-        root.livePreviewMaxSteps = res.max_steps || root.steps;
-        root.livePreviewTick += 1;
-      } else if (res.status === "ok" && res.path) {
-        root.isGenerating = false;
-        root.currentScaleFactor = 0.0;
-        root.livePreviewPath = "";
-        root.previousGeneratedPath = root.generatedPath;
-        root.generatedPath = res.path;
-        root.baseGeneratedPath = res.path;
-        var elapsedSec = (typeof res.elapsed === "number") ? res.elapsed.toFixed(1) : String(res.elapsed || "0");
-        root.generationTelemetry = (res.ratio || "1:1") + " | " + (res.steps || root.steps) + " STEPS | " + elapsedSec + "s | SEED: " + (res.seed >= 0 ? res.seed : "RANDOM");
-        if (hostWidget) hostWidget.isBusy = false;
-        root.fetchHistory();
-      } else if (res.status === "error") {
-        root.isGenerating = false;
-        root.currentScaleFactor = 0.0;
-        root.livePreviewPath = "";
-        if (hostWidget) hostWidget.isBusy = false;
-        root.generationTelemetry = (root.currentLang === "cs" ? "CHYBA: " : "ERROR: ") + (res.message || (root.currentLang === "cs" ? "Generování selhalo" : "Generation failed"));
-      }
-    } catch (e) {}
-  }
-
-  // Backend Processes
-  Process {
-    id: interruptProc
-    command: [root.bridgeBin, "interrupt"]
-    onExited: function(exitCode) {
-      root.isCancelling = false;
-    }
-  }
-
-  Process {
-    id: genProc
-    stdout: SplitParser {
-      onRead: function(line) {
-        root.handleGenLine(line);
-      }
-    }
-    onExited: function(exitCode) {
-      root.isCancelling = false;
-      if (root.isGenerating) {
-        root.isGenerating = false;
-        root.currentScaleFactor = 0.0;
-        root.livePreviewPath = "";
-        if (hostWidget) hostWidget.isBusy = false;
-        if (exitCode !== 0) {
-          root.generationTelemetry = root.currentLang === "cs"
-            ? "CHYBA: Proces byl ukončen (" + exitCode + ")"
-            : "ERROR: Process exited (" + exitCode + ")";
-        }
+  Connections {
+    target: panel
+    function onOpenChanged() {
+      if (!panel.open && root.hostWidget && root.hostWidget.opened) {
+        root.hostWidget.opened = false;
       }
     }
   }
 
-  Process {
-    id: scaleProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        root.isGenerating = false;
-        root.currentScaleFactor = 0.0;
-        if (hostWidget) hostWidget.isBusy = false;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && res.path) {
-            root.previousGeneratedPath = root.generatedPath;
-            root.generatedPath = res.path;
-            var info = (res.factor ? (res.factor + " ") : (res.tier ? ("AI " + res.tier + " ") : "")) + (res.width || "2048") + "x" + (res.height || "2048");
-            if (res.model) {
-              info += " // " + res.model.replace(".safetensors", "");
-            } else {
-              info += " // SIMD LANCZOS";
-            }
-            root.generationTelemetry = info;
-            root.fetchHistory();
-          }
-        } catch (e) {}
-      }
+  Component.onDestruction: {
+    if (panel.open) {
+      panel.open = false;
+    }
+    if (bar && bar.activePopout === root) {
+      bar.releasePopout(root);
     }
   }
-
-  Process {
-    id: wallProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok") {
-            root.generationTelemetry = "WALLPAPER SET";
-          }
-        } catch (e) {}
-      }
-    }
-  }
-  Process { id: clipCopyProc }
-  Process { id: openExternalProc }
-  Process {
-    id: openFullscreenProc
-    onExited: function(exitCode, exitStatus) {
-      if (exitCode !== 0 && openFullscreenProc.command.length >= 1) {
-        var target = openFullscreenProc.command[openFullscreenProc.command.length - 1];
-        if (target && target !== "" && target !== "--") {
-          openExternalProc.running = false;
-          openExternalProc.command = ["xdg-open", "--", target];
-          openExternalProc.running = true;
-        }
-      }
-    }
-  }
-  Process {
-    id: pickRefImageProc
-    property string collectedPath: ""
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        var s = (text || "").trim();
-        if (s.length > 4096) s = s.substring(0, 4096);
-        pickRefImageProc.collectedPath = s;
-      }
-    }
-    onExited: function(exitCode, exitStatus) {
-      if (exitCode === 0 && pickRefImageProc.collectedPath !== "") {
-        root.setReferenceImage(pickRefImageProc.collectedPath);
-      }
-      pickRefImageProc.collectedPath = "";
-    }
-  }
-
-  Process {
-    id: panelStatusProc
-    command: [root.bridgeBin, "status"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var data = JSON.parse(str);
-          if (data && data.status) {
-            root.updateTelemetry(data);
-          }
-        } catch (e) {}
-      }
-    }
-  }
-
-  Process {
-    id: pasteProc
-    command: [root.bridgeBin, "paste-clipboard"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && res.path) {
-            root.setReferenceImage(res.path);
-          }
-        } catch (e) {}
-      }
-    }
-  }
-
-  Process {
-    id: pasteTextProc
-    command: [root.bridgeBin, "paste-text"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && res.text && root.activePasteTarget) {
-            if (typeof root.activePasteTarget.insert === "function") {
-              var pos = root.activePasteTarget.cursorPosition !== undefined ? root.activePasteTarget.cursorPosition : root.activePasteTarget.length;
-              root.activePasteTarget.insert(pos, res.text);
-            } else if (root.activePasteTarget.text !== undefined) {
-              root.activePasteTarget.text = (root.activePasteTarget.text || "") + res.text;
-            }
-          }
-        } catch (e) {}
-        root.activePasteTarget = null;
-      }
-    }
-  }
-
-  Process {
-    id: validateRefProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && res.path) {
-            root.setReferenceImage(res.path);
-          }
-        } catch (e) {}
-      }
-    }
-  }
-
-  Process {
-    id: snipProc
-    command: [root.bridgeBin, "snip"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && res.path) {
-            root.setReferenceImage(res.path);
-          }
-        } catch (e) {}
-      }
-    }
-  }
-
-  Process {
-    id: tagProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        root.isInterrogating = false;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && res.raw) {
-            if (root.promptText.trim() === "") {
-              root.promptText = res.raw;
-            } else {
-              root.promptText = root.promptText + ", " + res.raw;
-            }
-          }
-        } catch (e) {}
-      }
-    }
-  }
-
-  Process {
-    id: visionProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        root.isVisionLoading = false;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && res.prompt) {
-            root.promptText = res.prompt;
-          }
-        } catch (e) {}
-      }
-    }
-  }
-
-  Process {
-    id: metaProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok") {
-            if (res.prompt) root.promptText = res.prompt;
-            if (res.negative_prompt) root.negativePromptText = res.negative_prompt;
-            if (res.seed && res.seed > 0) {
-              root.seedVal = res.seed;
-              root.seedLocked = true;
-            }
-            if (res.ratio) {
-              root.aspectRatio = res.ratio;
-              root.referenceMatchedRatio = res.ratio;
-            }
-          }
-        } catch (e) {}
-      }
-    }
-  }
-
-  Process {
-    id: civitaiProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        root.isCivitaiLoading = false;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 524288) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && res.items) {
-            root.civitaiModel = res.items;
-          }
-        } catch (e) {}
-      }
-    }
-  }
-
-  Process {
-    id: histProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        root.isHistoryLoading = false;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 524288) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && res.items) {
-            root.historyModel = res.items;
-          }
-        } catch (e) {}
-      }
-    }
-  }
-
-  Process {
-    id: saveSettingsProc
-  }
-
-  Process {
-    id: loadLangProc
-    command: [root.bridgeBin, "settings"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.lang === "cs" || res.lang === "en") {
-            root.currentLang = res.lang;
-          }
-          if (typeof res.nsfw === "boolean") {
-            root.isNsfwEnabled = res.nsfw;
-          }
-          if (typeof res.anime === "boolean") {
-            root.isAnimeLoRAEnabled = res.anime;
-          }
-          if (typeof res.turbo === "boolean") {
-            root.isTurboEnabled = res.turbo;
-          }
-          if (typeof res.uncensored === "boolean") {
-            root.isUncensoredEnabled = res.uncensored;
-          }
-          if (typeof res.auto_expand === "boolean") {
-            root.isAutoExpandEnabled = res.auto_expand;
-          }
-          if (res.res_mode) {
-            root.resMode = res.res_mode;
-          }
-        } catch (e) {}
-      }
-    }
-  }
-
-  function optimizePrompt(rawText) {
-    if (!rawText || rawText.trim() === "" || root.isOptimizingPrompt) return;
-    root.isOptimizingPrompt = true;
-    optProc.command = [root.bridgeBin, "optimize-prompt", rawText.trim()];
-    optProc.running = true;
-  }
-
-  Process {
-    id: optProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        root.isOptimizingPrompt = false;
-        var raw = (text || "").trim();
-        if (raw === "" || raw.length > 65536) return;
-        try {
-          var res = JSON.parse(raw);
-          if (res.rewritten_prompt && res.rewritten_prompt.trim() !== "") {
-            root.promptText = res.rewritten_prompt.trim();
-          } else if (res.optimized_prompt && res.optimized_prompt.trim() !== "") {
-            root.promptText = res.optimized_prompt.trim();
-          }
-          if (res.negative_prompt && res.negative_prompt.trim() !== "") {
-            root.negativePromptText = res.negative_prompt.trim();
-          }
-          if (res.wh_ratio && res.wh_ratio.trim() !== "") {
-            var ratio = res.wh_ratio.trim();
-            var validRatios = ["16:10", "16:9", "1:1", "9:16", "21:9", "4:3", "3:4", "3:2", "2:3"];
-            if (validRatios.indexOf(ratio) !== -1) {
-              root.aspectRatio = ratio;
-            }
-          }
-        } catch (e) {
-          root.promptText = raw;
-        }
-      }
-    }
-  }
-
 
   KeyboardPanel {
     id: panel
@@ -1064,8 +130,8 @@ Panel {
       clip: true
 
       onCloseRequested: {
-        if (root.currentView !== "studio") {
-          root.currentView = "studio";
+        if (root.svc.currentView !== "studio") {
+          root.svc.currentView = "studio";
         } else {
           root.close();
         }
@@ -1185,7 +251,7 @@ Panel {
               }
             }
 
-            // 2. OLLAMA (CZ➔EN)
+            // 2. OLLAMA
             Rectangle {
               height: Style.space(20)
               implicitWidth: ollamaRow.implicitWidth + Style.spacing.xs * 2
@@ -1326,28 +392,28 @@ Panel {
 
           Component {
             id: studioComponent
-            StudioView { panelRoot: root }
+            StudioView { panelRoot: root.svc }
           }
 
           Component {
             id: compareComponent
-            CompareView { panelRoot: root }
+            CompareView { panelRoot: root.svc }
           }
 
           Component {
             id: civitaiComponent
-            CivitaiView { panelRoot: root }
+            CivitaiView { panelRoot: root.svc }
           }
 
           Component {
             id: historyComponent
-            HistoryView { panelRoot: root }
+            HistoryView { panelRoot: root.svc }
           }
         }
 
         PanelSeparator { Layout.fillWidth: true }
 
-        // FOOTER BAR WITH BRAND SIGNATURE AND ESCAPE HINT (IDENTICAL TO VKEYBOARD)
+        // FOOTER BAR WITH VERSION AND ESCAPE HINT
         Item {
           Layout.fillWidth: true
           implicitHeight: Style.space(16)
@@ -1378,31 +444,5 @@ Panel {
         }
       }
     }
-  }
-
-  function loadLocalManifestAsync() {
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", Qt.resolvedUrl("manifest.json"), true);
-    xhr.onreadystatechange = function() {
-      if (xhr.readyState === XMLHttpRequest.DONE) {
-        if (xhr.status === 200 || xhr.status === 0) {
-          try {
-            var manifest = JSON.parse(xhr.responseText);
-            if (manifest && manifest.version) {
-              d.localVersion = d.cleanVer(manifest.version);
-            }
-          } catch (e) {}
-        }
-      }
-    };
-    xhr.send();
-  }
-
-  Component.onCompleted: {
-    loadLocalManifestAsync();
-    loadLangProc.running = true;
-    checkBridge();
-    refreshTelemetry();
-    fetchHistory();
   }
 }

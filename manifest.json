@@ -7,9 +7,11 @@
   "license": "MIT",
   "description": "Local-first generative AI studio // Text-to-Image · Image-to-Image · ViggleTurbo DMD · SageAttention 2 · WD14 Danbooru Interrogator · Qwen3-VL Vision Reverse-Engineering · Civitai Explorer · SIMD Lanczos Resizer · ComfyUI v0.41.2 Backend.",
   "kinds": [
+    "service",
     "bar-widget"
   ],
   "entryPoints": {
+    "service": "Service.qml",
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {

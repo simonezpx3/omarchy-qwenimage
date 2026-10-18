@@ -481,11 +481,7 @@ Item {
 
               readonly property string itemSource: String(modelData.source || root.activeSource).toLowerCase()
               readonly property color domainColor: root.sourceColor(itemSource)
-              readonly property bool hasGenuineLiveImage: !!modelData.preview_url && modelData.preview_url !== "" && (
-                modelData.preview_url.indexOf("image.civitai.com") !== -1 ||
-                modelData.preview_url.indexOf("civitai_gallery") !== -1 ||
-                modelData.preview_url.indexOf("lexica.art") !== -1
-              )
+              readonly property bool hasGenuineLiveImage: /^https:\/\/image\.civitai\.com\//.test(String(modelData.preview_url || ""))
               readonly property bool showThematicCard: !hasGenuineLiveImage || (previewImg.status === Image.Error)
 
               color: showThematicCard ? Qt.rgba(domainColor.r, domainColor.g, domainColor.b, 0.07) : Color.background

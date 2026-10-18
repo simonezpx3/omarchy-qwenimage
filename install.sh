@@ -298,6 +298,7 @@ else
   ensure_safe_dir "${TARGET_PLUGIN_DIR}/scripts"
 
   copy_safe "${SCRIPT_DIR}/manifest.json" "${TARGET_PLUGIN_DIR}/manifest.json" 0644
+  copy_safe "${SCRIPT_DIR}/Service.qml" "${TARGET_PLUGIN_DIR}/Service.qml" 0644
   copy_safe "${SCRIPT_DIR}/BarWidget.qml" "${TARGET_PLUGIN_DIR}/BarWidget.qml" 0644
   copy_safe "${SCRIPT_DIR}/Panel.qml" "${TARGET_PLUGIN_DIR}/Panel.qml" 0644
 
