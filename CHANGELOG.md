@@ -2,6 +2,28 @@
 
 Všechny významné změny, audity a bezpečnostní opravy projektu jsou zaznamenávány v tomto souboru. Formát vychází z [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) a dodržuje [Semantic Versioning](https://semver.org/).
 
+## [1.2.3] — 2026-10-18
+
+### Security & Hardening
+- **QML PlainText Sink Hardening (`Panel.qml`, `views/*.qml`):**
+  - Enforced `textFormat: Text.PlainText` across all dynamic text elements and status indicators to eliminate potential injection vectors.
+- **Process Boundaries & Length Checks (`BarWidget.qml`, `Panel.qml`):**
+  - Added strict bounded length checks (64 KiB / 512 KiB) on process collectors prior to JSON parsing to prevent unbounded buffer processing.
+- **IPC Whitelist Hardening (`BarWidget.qml`):**
+  - Restricted `prompts(source)` method to a verified whitelist of allowed source types with string length constraints.
+- **Owner-Binding Resilience (`Panel.qml`):**
+  - Standardized owner-binding to `owner: root` in `KeyboardPanel` to guarantee lifecycle preservation across dismiss transitions.
+
+### Bug Fixes
+- **Signal Binding Correction (`BarWidget.qml`):**
+  - Corrected `WidgetButton` activation to use the `pressed` signal matching Quickshell's component interface.
+- **IPC Introspection Warning Elimination (`BarWidget.qml`):**
+  - Moved static lookup structures from property declarations into method scope to resolve `QVariant cannot be used across IPC` warnings.
+- **URL Encoding for File Buffers (`views/*.qml`):**
+  - Escaped file buffer paths with `encodeURI` across preview and history components to ensure reliable asset resolution.
+
+---
+
 ## [1.2.2] — 2026-10-16
 
 ### Security & Hardening

@@ -27,7 +27,7 @@ Panel {
       return v ? String(v).replace(/^v/i, "").trim() : "";
     }
 
-    readonly property string effectiveVersion: localVersion !== "" ? localVersion : (bridgeVersion !== "" ? bridgeVersion : "1.2.2")
+    readonly property string effectiveVersion: localVersion !== "" ? localVersion : (bridgeVersion !== "" ? bridgeVersion : "1.2.3")
   }
   readonly property string pluginVersion: "v" + d.effectiveVersion
   readonly property string userHome: Quickshell.env("HOME") || "/home/" + (Quickshell.env("USER") || "user")
