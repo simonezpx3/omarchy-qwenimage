@@ -163,8 +163,7 @@ BarWidget {
       }
     }
 
-    onClicked: function(mouse) {
-      var btn = (typeof mouse === "object" && mouse.button) ? mouse.button : Qt.LeftButton;
+    onPressed: function(btn) {
       if (btn === Qt.RightButton) {
         root.refresh();
       } else {
