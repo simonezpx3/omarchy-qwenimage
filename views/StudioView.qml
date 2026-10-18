@@ -42,12 +42,12 @@ Item {
       "auto_expand_on": { "cs": "Expand: ON", "en": "Expand: ON" },
       "auto_expand_off": { "cs": "Expand: OFF", "en": "Expand: OFF" },
       "help_optimize": {
-        "cs": "VYLEPŠIT: Jednorázově rozvine zadaný prompt do detailního difuzního promptu na RTX 3070 (0 tokenů).",
-        "en": "OPTIMIZE: One-time prompt expansion into rich diffusion prompt on RTX 3070 (0 tokens)."
+        "cs": "VYLEPŠIT: Jednorázově rozvine zadaný prompt do detailního difuzního promptu na lokální GPU (0 tokenů).",
+        "en": "OPTIMIZE: One-time prompt expansion into rich diffusion prompt on local GPU (0 tokens)."
       },
       "help_auto_expand": {
-        "cs": "AUTO-EXPAND: Automaticky rozvine každý prompt před generováním pomocí lokálního LLM (RTX 3070, 0 tokenů).",
-        "en": "AUTO-EXPAND: Automatically expands prompt via local LLM before generation (RTX 3070, 0 tokens)."
+        "cs": "AUTO-EXPAND: Automaticky rozvine každý prompt před generováním pomocí lokálního LLM (lokální GPU, 0 tokenů).",
+        "en": "AUTO-EXPAND: Automatically expands prompt via local LLM before generation (local GPU, 0 tokens)."
       },
       "negative_title": { "cs": "NEGATIVNÍ PROMPT", "en": "NEGATIVE PROMPT" },
       "negative_placeholder": {
@@ -106,7 +106,7 @@ Item {
 
       // Canvas & Output
       "canvas_title": { "cs": "PLÁTNO & VÝSTUP", "en": "CANVAS & OUTPUT" },
-      "generating_img": { "cs": "GENEROVÁNÍ OBRAZU NA RTX 3070...", "en": "GENERATING IMAGE ON RTX 3070..." },
+      "generating_img": { "cs": "GENEROVÁNÍ OBRAZU NA LOKÁLNÍ GPU...", "en": "GENERATING IMAGE ON LOCAL GPU..." },
       "ready_to_synth": { "cs": "PŘIPRAVENO KE GENEROVÁNÍ", "en": "READY TO SYNTHESIZE" },
       "press_gen_hint": { "cs": "Stiskni GENERATE nebo Ctrl+Enter", "en": "Press GENERATE or Ctrl+Enter" },
       "scale": { "cs": "MĚŘÍTKO:", "en": "SCALE:" },
@@ -136,8 +136,8 @@ Item {
         "en": "CANCEL: Instantly interrupts running ComfyUI diffusion process and frees GPU."
       },
       "help_prompt": {
-        "cs": "PROMPT: Zadej popis scény v angličtině (automatický transparentní překlad na RTX 3070 za 0 tokenů).",
-        "en": "PROMPT: Enter scene description in English (automatic local translation on RTX 3070 at 0 tokens)."
+        "cs": "PROMPT: Zadej popis scény v angličtině (automatický transparentní překlad na lokální GPU za 0 tokenů).",
+        "en": "PROMPT: Enter scene description in English (automatic local translation on local GPU at 0 tokens)."
       },
       "help_negative": {
         "cs": "NEGATIVNÍ PROMPT: Prvky, styly a vady, které nechceš v obraze mít (např. deformace, text, vodoznaky).",
@@ -215,12 +215,12 @@ Item {
         "en": "CLEAR: Remove current reference image from buffer and clear preview."
       },
       "help_interrogate": {
-        "cs": "INTERROGATE WD14: Bleskově extrahuje Danbooru tagy z referenčního obrázku pomocí lokální sítě WD14 na RTX 3070.",
-        "en": "INTERROGATE WD14: Blazingly extracts Danbooru tags from reference image via local WD14 network on RTX 3070."
+        "cs": "INTERROGATE WD14: Bleskově extrahuje Danbooru tagy z referenčního obrázku pomocí lokální sítě WD14 na lokální GPU.",
+        "en": "INTERROGATE WD14: Blazingly extracts Danbooru tags from reference image via local WD14 network on local GPU."
       },
       "help_vision": {
-        "cs": "VISION PROMPT: Zrekonstruuje a popíše scénu přirozeným jazykem pomocí multimodálního modelu Qwen-Vision na RTX 3070.",
-        "en": "VISION PROMPT: Reconstructs and describes scene in natural language via local multimodal Qwen-Vision on RTX 3070."
+        "cs": "VISION PROMPT: Zrekonstruuje a popíše scénu přirozeným jazykem pomocí multimodálního modelu Qwen-Vision na lokální GPU.",
+        "en": "VISION PROMPT: Reconstructs and describes scene in natural language via local multimodal Qwen-Vision on local GPU."
       },
       "help_denoise": {
         "cs": "DENOISE: Míra přepracování referenčního obrázku (0.10 = jemná úprava, 0.65 = vyvážená změna, 0.95 = maximální transformace při zachování předlohy).",
@@ -299,8 +299,8 @@ Item {
         "en": "LANGUAGE SWITCHER: Toggles interface and help text between English (EN) and Czech (CZ)."
       },
       "help_generate": {
-        "cs": "GENERATE (Ctrl+Enter): Spustí generování obrazu na lokální GPU NVIDIA RTX 3070 za 0 tokenů.",
-        "en": "GENERATE (Ctrl+Enter): Starts image generation on local NVIDIA RTX 3070 GPU at 0 tokens."
+        "cs": "GENERATE (Ctrl+Enter): Spustí generování obrazu na lokální GPU za 0 tokenů.",
+        "en": "GENERATE (Ctrl+Enter): Starts image generation on local GPU at 0 tokens."
       }
     };
     if (strings[key] && strings[key][lang]) {
@@ -1140,7 +1140,7 @@ Item {
 
               Text {
                 textFormat: Text.PlainText
-                text: panelRoot && panelRoot.generationTelemetry !== "" ? panelRoot.generationTelemetry : "1024x1024 | 25 STEPS | RTX 3070 (0 TOKENS)"
+                text: panelRoot && panelRoot.generationTelemetry !== "" ? panelRoot.generationTelemetry : "1024x1024 | 25 STEPS | LOCAL GPU (0 TOKENS)"
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 color: Util.alpha(Color.foreground, 0.55)

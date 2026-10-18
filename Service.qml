@@ -65,7 +65,7 @@ Item {
   property string generatingMode: "generate"
   property real currentScaleFactor: 0.0
   property bool isInterrogating: false
-  property string generationTelemetry: "1024x1024 | 25 STEPS | RTX 3070 (0 TOKENS)"
+  property string generationTelemetry: "1024x1024 | 25 STEPS | LOCAL GPU (0 TOKENS)"
 
   // Live TAEQI / Diffusion Preview State
   property string livePreviewPath: ""
@@ -326,7 +326,7 @@ Item {
     root.previousGeneratedPath = "";
     root.livePreviewPath = "";
     root.livePreviewStep = 0;
-    root.generationTelemetry = "1024x1024 | 25 STEPS | RTX 3070 (0 TOKENS)";
+    root.generationTelemetry = "1024x1024 | 25 STEPS | LOCAL GPU (0 TOKENS)";
   }
 
   function recallPrompt(delta) {

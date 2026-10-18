@@ -295,7 +295,7 @@ fn get_vram_info() -> VramInfo {
         total_mb: 8192,
         free_mb: 8192,
         pct: 0,
-        name: "NVIDIA GeForce RTX 3070".to_string(),
+        name: "Local NVIDIA GPU".to_string(),
     };
 
     let out = Command::new("nvidia-smi")
