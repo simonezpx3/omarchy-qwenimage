@@ -92,8 +92,8 @@ BarWidget {
     }
   }
 
-  readonly property real openPanelIndicatorWidth: Math.round(Style.bar.iconSlot * 0.55)
-  readonly property real openPanelIndicatorHeight: Math.max(Style.space(10), Math.round(Style.bar.iconSlot * 0.55))
+  readonly property real openPanelIndicatorWidth: Math.round(Commons.Style.bar.iconSlot * 0.55)
+  readonly property real openPanelIndicatorHeight: Math.max(Commons.Style.space(10), Math.round(Commons.Style.bar.iconSlot * 0.55))
 
   readonly property bool popoutSwitchClosing: panelLoader.item ? panelLoader.item.popoutSwitchClosing === true : false
 
@@ -151,14 +151,14 @@ BarWidget {
     bar: root.bar
     text: " "
     labelVisible: false
-    fixedWidth: Style.bar.iconSlot
+    fixedWidth: Commons.Style.bar.iconSlot
     active: root.opened
     tooltipText: "Qwen-Image Studio (" + root.studioStatus + " · " + root.vramUsed + " / " + root.vramTotal + " MB VRAM)"
 
     Item {
       anchors.centerIn: parent
-      width: Style.bar.iconFont
-      height: Style.bar.iconFont
+      width: Commons.Style.bar.iconFont
+      height: Commons.Style.bar.iconFont
 
       Image {
         id: hereticIcon

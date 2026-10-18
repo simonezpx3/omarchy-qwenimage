@@ -404,31 +404,31 @@ Item {
 
   ColumnLayout {
     anchors.fill: parent
-    spacing: Style.spacing.sm
+    spacing: Commons.Style.spacing.sm
 
     // Main 2-column studio layout
     RowLayout {
       Layout.fillWidth: true
       Layout.fillHeight: true
-      spacing: Style.spacing.lg
+      spacing: Commons.Style.spacing.lg
 
       // ===================================================================
       // LEFT COLUMN: Parameters, Multiline Prompts & Static Buffer Box (460px)
       // ===================================================================
       ColumnLayout {
-        Layout.preferredWidth: Style.space(460)
+        Layout.preferredWidth: Commons.Style.space(460)
         Layout.fillHeight: true
-        spacing: Style.spacing.xs
+        spacing: Commons.Style.spacing.xs
 
         // 1. Multiline Main Prompt Card (Spacious Unified Frame)
         Rectangle {
           id: promptCard
           Layout.fillWidth: true
-          Layout.preferredHeight: Style.space(138)
+          Layout.preferredHeight: Commons.Style.space(138)
           color: Commons.Util.alpha(Commons.Color.background, 0.85)
           border.color: promptInput.activeFocus ? Commons.Color.accent : (promptCardHover.hovered || promptInput.hovered ? Qt.lighter(Commons.Color.menu.border, 1.4) : Commons.Color.menu.border)
           border.width: 1
-          radius: Style.cornerRadius
+          radius: Commons.Style.cornerRadius
           clip: true
 
           HoverHandler {
@@ -438,8 +438,8 @@ Item {
 
           ColumnLayout {
             anchors.fill: parent
-            anchors.margins: Style.spacing.xs
-            spacing: Style.spacing.xxs
+            anchors.margins: Commons.Style.spacing.xs
+            spacing: Commons.Style.spacing.xxs
 
             // Card Header: Section Title + Word Counter
             RowLayout {
@@ -448,8 +448,8 @@ Item {
               Text {
                 textFormat: Text.PlainText
                 text: root.tr("prompt_title")
-                font.family: Style.font.family
-                font.pixelSize: Style.font.caption
+                font.family: Commons.Style.font.family
+                font.pixelSize: Commons.Style.font.caption
                 font.bold: true
                 color: promptInput.activeFocus ? Commons.Color.accent : Commons.Color.foreground
                 Layout.fillWidth: true
@@ -459,7 +459,7 @@ Item {
               Button {
                 visible: promptInput.text.trim() !== ""
                 text: (panelRoot && panelRoot.isOptimizingPrompt) ? (root.tr("optimizing") + " " + root.optElapsedSeconds + "s") : root.tr("optimize")
-                fontSize: Style.font.caption
+                fontSize: Commons.Style.font.caption
                 bordered: true
                 active: panelRoot && panelRoot.isOptimizingPrompt
                 enabled: panelRoot && !panelRoot.isOptimizingPrompt
@@ -469,7 +469,7 @@ Item {
 
               Button {
                 text: (panelRoot && panelRoot.isAutoExpandEnabled) ? root.tr("auto_expand_on") : root.tr("auto_expand_off")
-                fontSize: Style.font.caption
+                fontSize: Commons.Style.font.caption
                 bordered: true
                 active: panelRoot && panelRoot.isAutoExpandEnabled
                 onHotChanged: root.setHelp(root.tr("help_auto_expand"), hot)
@@ -480,8 +480,8 @@ Item {
                 textFormat: Text.PlainText
                 visible: promptInput.text.trim() !== ""
                 text: promptInput.text.trim().split(/\s+/).length + " " + root.tr("words")
-                font.family: Style.font.family
-                font.pixelSize: Style.font.caption
+                font.family: Commons.Style.font.family
+                font.pixelSize: Commons.Style.font.caption
                 color: Commons.Color.accent
               }
             }
@@ -502,19 +502,19 @@ Item {
                 textFormat: TextEdit.PlainText
                 width: parent.availableWidth
                 wrapMode: TextEdit.Wrap
-                font.family: Style.font.family
-                font.pixelSize: Style.font.body
+                font.family: Commons.Style.font.family
+                font.pixelSize: Commons.Style.font.body
                 color: Commons.Color.foreground
-                selectionColor: Style.selectionFillFor(Commons.Color.foreground, Commons.Color.accent)
+                selectionColor: Commons.Style.selectionFillFor(Commons.Color.foreground, Commons.Color.accent)
                 selectedTextColor: Commons.Color.foreground
                 placeholderTextColor: Commons.Util.alpha(Commons.Color.foreground, 0.45)
                 placeholderText: root.tr("prompt_placeholder")
                 text: panelRoot ? panelRoot.promptText : ""
                 background: null
-                leftPadding: Style.spacing.xs
-                rightPadding: Style.spacing.xs
-                topPadding: Style.spacing.xs
-                bottomPadding: Style.spacing.xs
+                leftPadding: Commons.Style.spacing.xs
+                rightPadding: Commons.Style.spacing.xs
+                topPadding: Commons.Style.spacing.xs
+                bottomPadding: Commons.Style.spacing.xs
 
                 ContextMenu.menu: null
                 persistentSelection: false
@@ -569,11 +569,11 @@ Item {
         Rectangle {
           id: negativeCard
           Layout.fillWidth: true
-          Layout.preferredHeight: Style.space(80)
+          Layout.preferredHeight: Commons.Style.space(80)
           color: Commons.Util.alpha(Commons.Color.background, 0.85)
           border.color: negativeInput.activeFocus ? Commons.Color.accent : (negativeCardHover.hovered || negativeInput.hovered ? Qt.lighter(Commons.Color.menu.border, 1.4) : Commons.Color.menu.border)
           border.width: 1
-          radius: Style.cornerRadius
+          radius: Commons.Style.cornerRadius
           clip: true
 
           HoverHandler {
@@ -583,14 +583,14 @@ Item {
 
           ColumnLayout {
             anchors.fill: parent
-            anchors.margins: Style.spacing.xs
-            spacing: Style.spacing.xxs
+            anchors.margins: Commons.Style.spacing.xs
+            spacing: Commons.Style.spacing.xxs
 
             Text {
               textFormat: Text.PlainText
               text: root.tr("negative_title")
-              font.family: Style.font.family
-              font.pixelSize: Style.font.caption
+              font.family: Commons.Style.font.family
+              font.pixelSize: Commons.Style.font.caption
               font.bold: true
               color: negativeInput.activeFocus ? Commons.Color.accent : Commons.Color.foreground
               Layout.fillWidth: true
@@ -612,19 +612,19 @@ Item {
                 textFormat: TextEdit.PlainText
                 width: parent.availableWidth
                 wrapMode: TextEdit.Wrap
-                font.family: Style.font.family
-                font.pixelSize: Style.font.caption
+                font.family: Commons.Style.font.family
+                font.pixelSize: Commons.Style.font.caption
                 color: Commons.Color.foreground
-                selectionColor: Style.selectionFillFor(Commons.Color.foreground, Commons.Color.accent)
+                selectionColor: Commons.Style.selectionFillFor(Commons.Color.foreground, Commons.Color.accent)
                 selectedTextColor: Commons.Color.foreground
                 placeholderTextColor: Commons.Util.alpha(Commons.Color.foreground, 0.45)
                 placeholderText: root.tr("negative_placeholder")
                 text: panelRoot ? panelRoot.negativePromptText : ""
                 background: null
-                leftPadding: Style.spacing.xs
-                rightPadding: Style.spacing.xs
-                topPadding: Style.spacing.xs
-                bottomPadding: Style.spacing.xs
+                leftPadding: Commons.Style.spacing.xs
+                rightPadding: Commons.Style.spacing.xs
+                topPadding: Commons.Style.spacing.xs
+                bottomPadding: Commons.Style.spacing.xs
 
                 ContextMenu.menu: null
                 persistentSelection: false
@@ -670,11 +670,11 @@ Item {
         // 3. Aspect Ratio Selection (Declarative Repeater from 21:9 to 9:16 + AUTO REF)
         RowLayout {
           Layout.fillWidth: true
-          spacing: Style.spacing.xs
+          spacing: Commons.Style.spacing.xs
 
           Button {
             text: root.tr("ratio_auto_ref")
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             bordered: true
             visible: panelRoot && panelRoot.referencePath !== ""
             selected: panelRoot && panelRoot.aspectRatio === "auto"
@@ -689,7 +689,7 @@ Item {
             delegate: Button {
               readonly property bool isRefMatch: panelRoot && panelRoot.referencePath !== "" && panelRoot.referenceMatchedRatio === modelData
               text: modelData + (isRefMatch ? " · REF" : "")
-              fontSize: Style.font.caption
+              fontSize: Commons.Style.font.caption
               bordered: true
               selected: panelRoot && panelRoot.aspectRatio === modelData
               Layout.fillWidth: true
@@ -702,11 +702,11 @@ Item {
         // 5. Resolution Mode (Hardware Tier Adaptive: 8GB -> High 1536, 12GB+ -> Ultra 2048, 20GB+ -> Max 2560)
         RowLayout {
           Layout.fillWidth: true
-          spacing: Style.spacing.xs
+          spacing: Commons.Style.spacing.xs
 
           Button {
             text: root.tr("draft")
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             bordered: true
             selected: panelRoot && panelRoot.resMode === "draft"
             Layout.fillWidth: true
@@ -715,7 +715,7 @@ Item {
           }
           Button {
             text: root.tr("std")
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             bordered: true
             selected: panelRoot && panelRoot.resMode === "standard"
             Layout.fillWidth: true
@@ -724,7 +724,7 @@ Item {
           }
           Button {
             text: root.tr("high")
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             bordered: true
             selected: panelRoot && panelRoot.resMode === "high"
             Layout.fillWidth: true
@@ -734,7 +734,7 @@ Item {
           Button {
             readonly property bool isAllowed: panelRoot && panelRoot.maxSupportedDim >= 2048
             text: root.tr("ultra")
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             bordered: true
             enabled: isAllowed
             opacity: isAllowed ? 1.0 : 0.4
@@ -746,7 +746,7 @@ Item {
           Button {
             readonly property bool isAllowed: panelRoot && panelRoot.maxSupportedDim >= 2560
             text: root.tr("max")
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             bordered: true
             enabled: isAllowed
             opacity: isAllowed ? 1.0 : 0.4
@@ -760,14 +760,14 @@ Item {
         // 6. Seed Control & Steps (with Steps Slider Hover Help)
         RowLayout {
           Layout.fillWidth: true
-          spacing: Style.spacing.sm
+          spacing: Commons.Style.spacing.sm
 
           Button {
             text: panelRoot && panelRoot.seedLocked ? String(panelRoot.seedVal) : root.tr("seed_auto")
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             bordered: true
             selected: panelRoot && panelRoot.seedLocked
-            Layout.preferredWidth: Style.space(110)
+            Layout.preferredWidth: Commons.Style.space(110)
             onHotChanged: {
               if (hot && panelRoot) {
                 if (panelRoot.seedLocked) {
@@ -795,10 +795,10 @@ Item {
             id: stepsLabel
             textFormat: Text.PlainText
             text: root.tr("steps") + (panelRoot ? panelRoot.steps : 25)
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
+            font.family: Commons.Style.font.family
+            font.pixelSize: Commons.Style.font.caption
             color: Commons.Color.foreground
-            Layout.preferredWidth: Style.space(68)
+            Layout.preferredWidth: Commons.Style.space(68)
 
             HoverHandler {
               onHoveredChanged: root.setHelp(root.tr("help_steps"), hovered)
@@ -808,7 +808,7 @@ Item {
           Item {
             id: stepsSliderContainer
             Layout.fillWidth: true
-            Layout.minimumWidth: Style.space(80)
+            Layout.minimumWidth: Commons.Style.space(80)
             implicitHeight: stepsSlider.implicitHeight
             clip: true
 
@@ -833,19 +833,19 @@ Item {
 
           // Quick Step Presets (15 Fast, 25 Standard, 35 Detail)
           RowLayout {
-            spacing: Style.spacing.xs
+            spacing: Commons.Style.spacing.xs
             Layout.alignment: Qt.AlignVCenter
             Repeater {
               model: [15, 25, 35]
               delegate: Button {
                 text: String(modelData)
-                fontSize: Style.font.caption
+                fontSize: Commons.Style.font.caption
                 bordered: true
                 selected: panelRoot && panelRoot.steps === modelData
                 active: panelRoot && panelRoot.steps === modelData
-                Layout.preferredWidth: Style.space(28)
-                horizontalPadding: Style.space(3)
-                verticalPadding: Style.space(2)
+                Layout.preferredWidth: Commons.Style.space(28)
+                horizontalPadding: Commons.Style.space(3)
+                verticalPadding: Commons.Style.space(2)
                 onClicked: if (panelRoot) panelRoot.steps = modelData
                 onHotChanged: root.setHelp(root.tr("help_steps_" + modelData), hot)
               }
@@ -858,8 +858,8 @@ Item {
           textFormat: Text.PlainText
           visible: panelRoot && !panelRoot.isTurboEnabled && panelRoot.steps < 25
           text: root.tr("warn_low_steps")
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
+          font.family: Commons.Style.font.family
+          font.pixelSize: Commons.Style.font.caption
           color: Commons.Color.urgent
           Layout.fillWidth: true
           wrapMode: Text.WordWrap
@@ -868,8 +868,8 @@ Item {
           textFormat: Text.PlainText
           visible: panelRoot && panelRoot.isHumanSubjectInPrompt && panelRoot.resMode === "draft"
           text: root.tr("warn_human_draft")
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
+          font.family: Commons.Style.font.family
+          font.pixelSize: Commons.Style.font.caption
           color: Commons.Color.urgent
           Layout.fillWidth: true
           wrapMode: Text.WordWrap
@@ -880,18 +880,18 @@ Item {
           id: refCard
           Layout.fillWidth: true
           Layout.fillHeight: true
-          Layout.preferredHeight: Style.space(260)
-          Layout.minimumHeight: Style.space(200)
+          Layout.preferredHeight: Commons.Style.space(260)
+          Layout.minimumHeight: Commons.Style.space(200)
           color: Commons.Util.alpha(Commons.Color.background, 0.85)
           border.color: Commons.Color.menu.border
           border.width: 1
-          radius: Style.cornerRadius
+          radius: Commons.Style.cornerRadius
           clip: true
 
           ColumnLayout {
             anchors.fill: parent
-            anchors.margins: Style.spacing.xs
-            spacing: Style.spacing.xs
+            anchors.margins: Commons.Style.spacing.xs
+            spacing: Commons.Style.spacing.xs
 
             // Card Header: Title + File Label
             RowLayout {
@@ -900,8 +900,8 @@ Item {
               Text {
                 textFormat: Text.PlainText
                 text: root.tr("ref_title")
-                font.family: Style.font.family
-                font.pixelSize: Style.font.caption
+                font.family: Commons.Style.font.family
+                font.pixelSize: Commons.Style.font.caption
                 font.bold: true
                 color: panelRoot && panelRoot.referencePath !== "" ? Commons.Color.accent : Commons.Color.foreground
                 Layout.fillWidth: true
@@ -910,12 +910,12 @@ Item {
               Text {
                 textFormat: Text.PlainText
                 text: panelRoot && panelRoot.referencePath !== "" ? (panelRoot.referencePath.indexOf("/tmp/") !== -1 ? root.tr("buffer_ref") : panelRoot.referencePath.split("/").pop()) : ""
-                font.family: Style.font.family
-                font.pixelSize: Style.font.caption
+                font.family: Commons.Style.font.family
+                font.pixelSize: Commons.Style.font.caption
                 font.bold: true
                 color: Commons.Color.accent
                 elide: Text.ElideMiddle
-                Layout.maximumWidth: Style.space(180)
+                Layout.maximumWidth: Commons.Style.space(180)
               }
             }
 
@@ -930,11 +930,11 @@ Item {
               id: previewBox
               Layout.fillWidth: true
               Layout.fillHeight: true
-              Layout.minimumHeight: Style.space(130)
+              Layout.minimumHeight: Commons.Style.space(130)
               color: refBoxMouse.containsMouse ? Commons.Util.alpha(Commons.Color.accent, 0.08) : Commons.Util.alpha(Commons.Color.background, 0.65)
               border.color: refBoxMouse.containsMouse ? Commons.Color.accent : (panelRoot && panelRoot.referencePath !== "" ? Commons.Color.accent : Commons.Color.menu.border)
               border.width: 1
-              radius: Style.cornerRadius
+              radius: Commons.Style.cornerRadius
               clip: true
 
               MouseArea {
@@ -958,7 +958,7 @@ Item {
               Image {
                 id: refThumb
                 anchors.fill: parent
-                anchors.margins: Style.spacing.xxs
+                anchors.margins: Commons.Style.spacing.xxs
                 fillMode: Image.PreserveAspectFit
                 sourceSize: Qt.size(512, 0)
                 source: panelRoot && panelRoot.referencePath !== "" ? ("file://" + encodeURI(panelRoot.referencePath) + (panelRoot.referenceRevision ? "?v=" + panelRoot.referenceRevision : "")) : ""
@@ -971,14 +971,14 @@ Item {
               // Empty buffer placeholder (Marci aesthetic: čistá typografie, žádné ikony)
               ColumnLayout {
                 anchors.centerIn: parent
-                spacing: Style.spacing.xxs
+                spacing: Commons.Style.spacing.xxs
                 visible: !panelRoot || panelRoot.referencePath === ""
 
                 Text {
                   textFormat: Text.PlainText
                   text: root.tr("buffer_empty")
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.caption
+                  font.family: Commons.Style.font.family
+                  font.pixelSize: Commons.Style.font.caption
                   font.bold: true
                   color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
                   horizontalAlignment: Text.AlignHCenter
@@ -988,8 +988,8 @@ Item {
                 Text {
                   textFormat: Text.PlainText
                   text: root.tr("drop_hint")
-                  font.family: Style.font.family
-                  font.pixelSize: Math.max(10, Style.font.caption)
+                  font.family: Commons.Style.font.family
+                  font.pixelSize: Math.max(10, Commons.Style.font.caption)
                   color: Commons.Util.alpha(Commons.Color.foreground, 0.35)
                   horizontalAlignment: Text.AlignHCenter
                   Layout.alignment: Qt.AlignHCenter
@@ -1000,11 +1000,11 @@ Item {
             // 2. Action Buttons Row (Under preview, without icons)
             RowLayout {
               Layout.fillWidth: true
-              spacing: Style.spacing.xs
+              spacing: Commons.Style.spacing.xs
 
               Button {
                 text: root.tr("paste")
-                fontSize: Style.font.caption
+                fontSize: Commons.Style.font.caption
                 bordered: true
                 Layout.fillWidth: true
                 onHotChanged: root.setHelp(root.tr("help_paste"), hot)
@@ -1013,7 +1013,7 @@ Item {
 
               Button {
                 text: root.tr("snip")
-                fontSize: Style.font.caption
+                fontSize: Commons.Style.font.caption
                 bordered: true
                 Layout.fillWidth: true
                 onHotChanged: root.setHelp(root.tr("help_snip"), hot)
@@ -1022,7 +1022,7 @@ Item {
 
               Button {
                 text: root.tr("clear")
-                fontSize: Style.font.caption
+                fontSize: Commons.Style.font.caption
                 bordered: true
                 Layout.fillWidth: true
                 enabled: panelRoot && (panelRoot.referencePath !== "" || panelRoot.referenceMatchedRatio !== "") && !panelRoot.isGenerating && !panelRoot.isInterrogating && !panelRoot.isVisionLoading
@@ -1032,7 +1032,7 @@ Item {
 
               Button {
                 text: (panelRoot && panelRoot.isInterrogating) ? (root.tr("tagging") + " (" + root.wd14ElapsedSeconds + "s)") : root.tr("interrogate_wd14")
-                fontSize: Style.font.caption
+                fontSize: Commons.Style.font.caption
                 bordered: true
                 Layout.fillWidth: true
                 active: panelRoot && panelRoot.isInterrogating
@@ -1045,7 +1045,7 @@ Item {
 
               Button {
                 text: (panelRoot && panelRoot.isVisionLoading) ? (root.tr("analyzing") + " (" + root.visionElapsedSeconds + "s)") : root.tr("vision_prompt")
-                fontSize: Style.font.caption
+                fontSize: Commons.Style.font.caption
                 bordered: true
                 Layout.fillWidth: true
                 active: panelRoot && panelRoot.isVisionLoading
@@ -1060,16 +1060,16 @@ Item {
             // 3. Denoise Slider Row (Bottom)
             RowLayout {
               Layout.fillWidth: true
-              spacing: Style.spacing.xs
+              spacing: Commons.Style.spacing.xs
 
               Text {
                 id: denoiseLabel
                 textFormat: Text.PlainText
                 text: root.tr("denoise") + (panelRoot ? panelRoot.denoise.toFixed(2) : "0.65")
-                font.family: Style.font.family
-                font.pixelSize: Style.font.caption
+                font.family: Commons.Style.font.family
+                font.pixelSize: Commons.Style.font.caption
                 color: panelRoot && panelRoot.referencePath !== "" ? Commons.Color.foreground : Commons.Util.alpha(Commons.Color.foreground, 0.45)
-                Layout.preferredWidth: Style.space(85)
+                Layout.preferredWidth: Commons.Style.space(85)
 
                 HoverHandler {
                   onHoveredChanged: root.setHelp(root.tr("help_denoise"), hovered)
@@ -1104,7 +1104,7 @@ Item {
       ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        spacing: Style.spacing.xs
+        spacing: Commons.Style.spacing.xs
 
         // Image Canvas Card Frame (Symmetrical with left column cards)
         Rectangle {
@@ -1114,13 +1114,13 @@ Item {
           color: Commons.Util.alpha(Commons.Color.background, 0.85)
           border.color: Commons.Color.menu.border
           border.width: 1
-          radius: Style.cornerRadius
+          radius: Commons.Style.cornerRadius
           clip: true
 
           ColumnLayout {
             anchors.fill: parent
-            anchors.margins: Style.spacing.xs
-            spacing: Style.spacing.xxs
+            anchors.margins: Commons.Style.spacing.xs
+            spacing: Commons.Style.spacing.xxs
 
             // Card Header: Canvas Title + Telemetry Badge
             RowLayout {
@@ -1129,8 +1129,8 @@ Item {
               Text {
                 textFormat: Text.PlainText
                 text: root.tr("canvas_title")
-                font.family: Style.font.family
-                font.pixelSize: Style.font.caption
+                font.family: Commons.Style.font.family
+                font.pixelSize: Commons.Style.font.caption
                 font.bold: true
                 color: Commons.Color.foreground
                 elide: Text.ElideRight
@@ -1141,8 +1141,8 @@ Item {
               Text {
                 textFormat: Text.PlainText
                 text: panelRoot && panelRoot.generationTelemetry !== "" ? panelRoot.generationTelemetry : "1024x1024 | 25 STEPS | LOCAL GPU (0 TOKENS)"
-                font.family: Style.font.family
-                font.pixelSize: Style.font.caption
+                font.family: Commons.Style.font.family
+                font.pixelSize: Commons.Style.font.caption
                 color: Commons.Util.alpha(Commons.Color.foreground, 0.55)
                 elide: Text.ElideRight
               }
@@ -1169,8 +1169,8 @@ Item {
                 Rectangle {
                   anchors.top: parent.top
                   anchors.left: parent.left
-                  anchors.margins: Style.spacing.md
-                  width: Style.space(14)
+                  anchors.margins: Commons.Style.spacing.md
+                  width: Commons.Style.space(14)
                   height: 1
                   color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.35)
                   visible: !panelRoot || !panelRoot.isGenerating
@@ -1178,17 +1178,17 @@ Item {
                 Rectangle {
                   anchors.top: parent.top
                   anchors.left: parent.left
-                  anchors.margins: Style.spacing.md
+                  anchors.margins: Commons.Style.spacing.md
                   width: 1
-                  height: Style.space(14)
+                  height: Commons.Style.space(14)
                   color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.35)
                   visible: !panelRoot || !panelRoot.isGenerating
                 }
                 Rectangle {
                   anchors.top: parent.top
                   anchors.right: parent.right
-                  anchors.margins: Style.spacing.md
-                  width: Style.space(14)
+                  anchors.margins: Commons.Style.spacing.md
+                  width: Commons.Style.space(14)
                   height: 1
                   color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.35)
                   visible: !panelRoot || !panelRoot.isGenerating
@@ -1196,17 +1196,17 @@ Item {
                 Rectangle {
                   anchors.top: parent.top
                   anchors.right: parent.right
-                  anchors.margins: Style.spacing.md
+                  anchors.margins: Commons.Style.spacing.md
                   width: 1
-                  height: Style.space(14)
+                  height: Commons.Style.space(14)
                   color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.35)
                   visible: !panelRoot || !panelRoot.isGenerating
                 }
                 Rectangle {
                   anchors.bottom: parent.bottom
                   anchors.left: parent.left
-                  anchors.margins: Style.spacing.md
-                  width: Style.space(14)
+                  anchors.margins: Commons.Style.spacing.md
+                  width: Commons.Style.space(14)
                   height: 1
                   color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.35)
                   visible: !panelRoot || !panelRoot.isGenerating
@@ -1214,17 +1214,17 @@ Item {
                 Rectangle {
                   anchors.bottom: parent.bottom
                   anchors.left: parent.left
-                  anchors.margins: Style.spacing.md
+                  anchors.margins: Commons.Style.spacing.md
                   width: 1
-                  height: Style.space(14)
+                  height: Commons.Style.space(14)
                   color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.35)
                   visible: !panelRoot || !panelRoot.isGenerating
                 }
                 Rectangle {
                   anchors.bottom: parent.bottom
                   anchors.right: parent.right
-                  anchors.margins: Style.spacing.md
-                  width: Style.space(14)
+                  anchors.margins: Commons.Style.spacing.md
+                  width: Commons.Style.space(14)
                   height: 1
                   color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.35)
                   visible: !panelRoot || !panelRoot.isGenerating
@@ -1232,23 +1232,23 @@ Item {
                 Rectangle {
                   anchors.bottom: parent.bottom
                   anchors.right: parent.right
-                  anchors.margins: Style.spacing.md
+                  anchors.margins: Commons.Style.spacing.md
                   width: 1
-                  height: Style.space(14)
+                  height: Commons.Style.space(14)
                   color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.35)
                   visible: !panelRoot || !panelRoot.isGenerating
                 }
 
                 ColumnLayout {
                   anchors.centerIn: parent
-                  spacing: Style.spacing.xs
+                  spacing: Commons.Style.spacing.xs
 
                   Text {
                     textFormat: Text.PlainText
                     Layout.alignment: Qt.AlignHCenter
                     text: panelRoot && panelRoot.isGenerating ? "GENERATING //" : "STANDBY // READY"
-                    font.family: Style.font.family
-                    font.pixelSize: Style.font.body
+                    font.family: Commons.Style.font.family
+                    font.pixelSize: Commons.Style.font.body
                     font.bold: true
                     color: panelRoot && panelRoot.isGenerating ? Commons.Color.accent : Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.45)
                     SequentialAnimation on opacity {
@@ -1265,9 +1265,9 @@ Item {
                     text: panelRoot && panelRoot.isGenerating
                       ? (root.tr("generating_img") + (root.genElapsedSeconds > 0 ? " (" + root.genElapsedSeconds + "s)" : ""))
                       : root.tr("ready_to_synth")
-                    font.family: Style.font.family
+                    font.family: Commons.Style.font.family
                     font.features: { "tnum": 1 }
-                    font.pixelSize: Style.font.body
+                    font.pixelSize: Commons.Style.font.body
                     font.bold: true
                     color: panelRoot && panelRoot.isGenerating ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.foreground, 0.55)
                   }
@@ -1278,8 +1278,8 @@ Item {
                     text: panelRoot && panelRoot.isGenerating
                       ? (panelRoot.currentLang === "cs" ? "Inicializace difúzního modelu..." : "Initializing diffusion pipeline...")
                       : (panelRoot && panelRoot.currentLang === "cs" ? "Zadejte prompt a stiskněte Ctrl+Enter" : "Enter prompt and press Ctrl+Enter")
-                    font.family: Style.font.family
-                    font.pixelSize: Style.font.caption
+                    font.family: Commons.Style.font.family
+                    font.pixelSize: Commons.Style.font.caption
                     color: Commons.Util.alpha(Commons.Color.foreground, 0.35)
                   }
                 }
@@ -1288,7 +1288,7 @@ Item {
               Image {
                 id: mainPreview
                 anchors.fill: parent
-                anchors.margins: Style.spacing.xxs
+                anchors.margins: Commons.Style.spacing.xxs
                 fillMode: Image.PreserveAspectFit
                 sourceSize: Qt.size(Math.min(Math.max(width * (Screen.devicePixelRatio > 0 ? Screen.devicePixelRatio : 1.0), 1280), 2560), 0)
                 source: panelRoot && panelRoot.generatedPath !== "" ? ("file://" + encodeURI(panelRoot.generatedPath)) : ""
@@ -1301,7 +1301,7 @@ Item {
               Image {
                 id: livePreview
                 anchors.fill: parent
-                anchors.margins: Style.spacing.xxs
+                anchors.margins: Commons.Style.spacing.xxs
                 fillMode: Image.PreserveAspectFit
                 sourceSize: Qt.size(1280, 0)
                 source: (panelRoot && panelRoot.isGenerating && panelRoot.livePreviewPath !== "")
@@ -1338,11 +1338,11 @@ Item {
               Rectangle {
                 anchors.top: parent.top
                 anchors.right: parent.right
-                anchors.margins: Style.spacing.sm
+                anchors.margins: Commons.Style.spacing.sm
                 visible: panelRoot && panelRoot.isGenerating && panelRoot.livePreviewStep > 0
-                height: Style.space(24)
-                width: liveStepRow.implicitWidth + Style.space(16)
-                radius: Style.cornerRadius
+                height: Commons.Style.space(24)
+                width: liveStepRow.implicitWidth + Commons.Style.space(16)
+                radius: Commons.Style.cornerRadius
                 color: Qt.rgba(Commons.Color.background.r, Commons.Color.background.g, Commons.Color.background.b, 0.90)
                 border.color: Commons.Color.accent
                 border.width: 1
@@ -1351,11 +1351,11 @@ Item {
                 RowLayout {
                   id: liveStepRow
                   anchors.centerIn: parent
-                  spacing: Style.space(6)
+                  spacing: Commons.Style.space(6)
 
                   Rectangle {
-                    width: Style.space(6)
-                    height: Style.space(6)
+                    width: Commons.Style.space(6)
+                    height: Commons.Style.space(6)
                     radius: width / 2
                     color: Commons.Color.accent
                     SequentialAnimation on opacity {
@@ -1369,9 +1369,9 @@ Item {
                   Text {
                     textFormat: Text.PlainText
                     text: root.tr("step") + " " + (panelRoot ? panelRoot.livePreviewStep : 0) + "/" + (panelRoot ? panelRoot.livePreviewMaxSteps : 25) + (root.genElapsedSeconds > 0 ? (" (" + root.genElapsedSeconds + "s)") : "")
-                    font.family: Style.font.family
+                    font.family: Commons.Style.font.family
                     font.features: { "tnum": 1 }
-                    font.pixelSize: Style.font.caption
+                    font.pixelSize: Commons.Style.font.caption
                     font.bold: true
                     color: Commons.Color.accent
                   }
@@ -1384,21 +1384,21 @@ Item {
         // Image Scaling Row
         RowLayout {
           Layout.fillWidth: true
-          spacing: Style.spacing.xs
+          spacing: Commons.Style.spacing.xs
 
           Text {
             textFormat: Text.PlainText
             text: root.tr("scale")
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
+            font.family: Commons.Style.font.family
+            font.pixelSize: Commons.Style.font.caption
             color: Commons.Color.foreground
-            Layout.preferredWidth: Style.space(46)
+            Layout.preferredWidth: Commons.Style.space(46)
           }
 
           Button {
             readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale_esrgan")
             text: isBusy ? ("ESRGAN " + root.genElapsedSeconds + "s") : "4X ESRGAN"
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             bordered: true
             Layout.fillWidth: true
             active: isBusy
@@ -1412,7 +1412,7 @@ Item {
           Button {
             readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale_ultra")
             text: isBusy ? ("ULTRA " + root.genElapsedSeconds + "s") : "4X ULTRA"
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             bordered: true
             Layout.fillWidth: true
             active: isBusy
@@ -1426,7 +1426,7 @@ Item {
           Button {
             readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale_anime")
             text: isBusy ? ("ANIME " + root.genElapsedSeconds + "s") : "4X ANIME"
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             bordered: true
             Layout.fillWidth: true
             active: isBusy
@@ -1440,7 +1440,7 @@ Item {
           Button {
             readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 0.5)
             text: isBusy ? ("0.5X " + root.genElapsedSeconds + "s") : "0.5X"
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             bordered: true
             Layout.fillWidth: true
             active: isBusy
@@ -1454,7 +1454,7 @@ Item {
           Button {
             readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === -1.0)
             text: isBusy ? ("FIT 1K " + root.genElapsedSeconds + "s") : "FIT 1K"
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             bordered: true
             Layout.fillWidth: true
             active: isBusy
@@ -1469,11 +1469,11 @@ Item {
         // Actions Row
         RowLayout {
           Layout.fillWidth: true
-          spacing: Style.spacing.xs
+          spacing: Commons.Style.spacing.xs
 
           Button {
             text: root.tr("set_wallpaper")
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             bordered: true
             Layout.fillWidth: true
             enabled: panelRoot && panelRoot.generatedPath !== ""
@@ -1483,7 +1483,7 @@ Item {
 
           Button {
             text: root.tr("compare_ab")
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             bordered: true
             Layout.fillWidth: true
             enabled: panelRoot && panelRoot.referencePath !== "" && panelRoot.generatedPath !== ""
@@ -1493,7 +1493,7 @@ Item {
 
           Button {
             text: root.tr("copy_clipboard")
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             bordered: true
             Layout.fillWidth: true
             enabled: panelRoot && panelRoot.generatedPath !== ""
@@ -1503,7 +1503,7 @@ Item {
 
           Button {
             text: root.tr("open_viewer")
-            fontSize: Style.font.caption
+            fontSize: Commons.Style.font.caption
             bordered: true
             Layout.fillWidth: true
             enabled: panelRoot && panelRoot.generatedPath !== ""
@@ -1519,7 +1519,7 @@ Item {
     // ===================================================================
     Rectangle {
       Layout.fillWidth: true
-      Layout.preferredHeight: Style.space(26)
+      Layout.preferredHeight: Commons.Style.space(26)
       color: Commons.Util.alpha(Commons.Color.background, 0.85)
       border.color: root.activeHelpText !== ""
         ? (root.activeHelpText.indexOf("VAROVÁNÍ") !== -1 || root.activeHelpText.indexOf("WARNING") !== -1
@@ -1527,19 +1527,19 @@ Item {
             : Commons.Util.alpha(Commons.Color.accent, 0.45))
         : Commons.Color.menu.border
       border.width: 1
-      radius: Style.cornerRadius
+      radius: Commons.Style.cornerRadius
 
       RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: Style.spacing.sm
-        anchors.rightMargin: Style.spacing.sm
-        spacing: Style.spacing.xs
+        anchors.leftMargin: Commons.Style.spacing.sm
+        anchors.rightMargin: Commons.Style.spacing.sm
+        spacing: Commons.Style.spacing.xs
 
         Text {
           textFormat: Text.PlainText
           text: "//"
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
+          font.family: Commons.Style.font.family
+          font.pixelSize: Commons.Style.font.caption
           font.bold: true
           color: root.activeHelpText !== ""
             ? (root.activeHelpText.indexOf("VAROVÁNÍ") !== -1 || root.activeHelpText.indexOf("WARNING") !== -1
@@ -1552,8 +1552,8 @@ Item {
           Layout.fillWidth: true
           textFormat: Text.PlainText
           text: root.activeHelpText !== "" ? root.activeHelpText : root.tr("default_tip")
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
+          font.family: Commons.Style.font.family
+          font.pixelSize: Commons.Style.font.caption
           font.bold: root.activeHelpText !== ""
           color: root.activeHelpText !== "" ? Commons.Color.foreground : Commons.Util.alpha(Commons.Color.foreground, 0.45)
           elide: Text.ElideRight
@@ -1568,7 +1568,7 @@ Item {
     // ===================================================================
     RowLayout {
       Layout.fillWidth: true
-      spacing: Style.spacing.sm
+      spacing: Commons.Style.spacing.sm
 
       Button {
         text: root.tr("civitai_prompts")
@@ -1582,7 +1582,7 @@ Item {
         text: panelRoot && panelRoot.currentLang === "cs"
               ? (panelRoot.isTurboEnabled ? "TURBO: ZAP" : "TURBO: VYP")
               : (panelRoot.isTurboEnabled ? "TURBO: ON" : "TURBO: OFF")
-        fontSize: Style.font.caption
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: panelRoot && panelRoot.isTurboEnabled
         onHotChanged: root.setHelp(root.tr("help_turbo_lora"), hot)
@@ -1594,7 +1594,7 @@ Item {
         text: panelRoot && panelRoot.currentLang === "cs"
               ? (panelRoot.isAnimeLoRAEnabled ? "ANIME: ZAP" : "ANIME: VYP")
               : (panelRoot.isAnimeLoRAEnabled ? "ANIME: ON" : "ANIME: OFF")
-        fontSize: Style.font.caption
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: panelRoot && panelRoot.isAnimeLoRAEnabled
         onHotChanged: root.setHelp(root.tr("help_anime_lora"), hot)
@@ -1606,7 +1606,7 @@ Item {
         text: panelRoot && panelRoot.currentLang === "cs"
               ? (panelRoot.isUncensoredEnabled ? "HERETIC: ZAP" : "HERETIC: VYP")
               : (panelRoot.isUncensoredEnabled ? "HERETIC: ON" : "HERETIC: OFF")
-        fontSize: Style.font.caption
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: panelRoot && panelRoot.isUncensoredEnabled
         onHotChanged: root.setHelp(root.tr("help_uncensored_lora"), hot)
@@ -1633,7 +1633,7 @@ Item {
       // Language Switcher (CZ <-> EN)
       Button {
         text: panelRoot && panelRoot.currentLang === "cs" ? "LANG: CZ" : "LANG: EN"
-        fontSize: Style.font.caption
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: panelRoot && panelRoot.currentLang === "cs"
         onHotChanged: root.setHelp(root.tr("help_lang"), hot)

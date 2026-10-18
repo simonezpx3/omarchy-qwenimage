@@ -126,8 +126,8 @@ Panel {
     owner: root
     bar: root.bar
     centerOnBar: true
-    contentWidth: panel.fittedContentWidth(Style.space(960))
-    contentHeight: panel.fittedContentHeight(Style.space(720))
+    contentWidth: panel.fittedContentWidth(Commons.Style.space(960))
+    contentHeight: panel.fittedContentHeight(Commons.Style.space(720))
 
     PanelKeyCatcher {
       id: keyCatcher
@@ -144,20 +144,20 @@ Panel {
 
       ColumnLayout {
         anchors.fill: parent
-        anchors.margins: Style.spacing.md
-        spacing: Style.spacing.sm
+        anchors.margins: Commons.Style.spacing.md
+        spacing: Commons.Style.spacing.sm
 
         // HEADER BAR WITH SYSTEM HEALTH & SERVICE BADGES
         RowLayout {
           Layout.fillWidth: true
-          spacing: Style.spacing.sm
+          spacing: Commons.Style.spacing.sm
 
           RowLayout {
-            spacing: Style.spacing.xs
+            spacing: Commons.Style.spacing.xs
 
             Item {
-              width: Style.space(18)
-              height: Style.space(18)
+              width: Commons.Style.space(18)
+              height: Commons.Style.space(18)
               Layout.alignment: Qt.AlignVCenter
 
               Image {
@@ -184,8 +184,8 @@ Panel {
             Text {
               textFormat: Text.PlainText
               text: "QIS"
-              font.family: Style.font.family
-              font.pixelSize: Style.font.body
+              font.family: Commons.Style.font.family
+              font.pixelSize: Commons.Style.font.body
               font.bold: true
               color: Commons.Color.accent
               Layout.alignment: Qt.AlignVCenter
@@ -194,12 +194,12 @@ Panel {
 
           // Active Qwen Model Version Badge
           Rectangle {
-            height: Style.space(20)
-            implicitWidth: qwenModelRow.implicitWidth + Style.spacing.xs * 2
+            height: Commons.Style.space(20)
+            implicitWidth: qwenModelRow.implicitWidth + Commons.Style.spacing.xs * 2
             color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.12)
             border.color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.45)
             border.width: 1
-            radius: Style.cornerRadius
+            radius: Commons.Style.cornerRadius
 
             RowLayout {
               id: qwenModelRow
@@ -208,15 +208,15 @@ Panel {
               Text {
                 textFormat: Text.PlainText
                 text: "QWEN //"
-                font.family: Style.font.family
-                font.pixelSize: Style.font.caption
+                font.family: Commons.Style.font.family
+                font.pixelSize: Commons.Style.font.caption
                 color: Commons.Color.accent
               }
               Text {
                 textFormat: Text.PlainText
                 text: root.versionQwen
-                font.family: Style.font.family
-                font.pixelSize: Style.font.caption
+                font.family: Commons.Style.font.family
+                font.pixelSize: Commons.Style.font.caption
                 font.bold: true
                 color: Commons.Color.accent
               }
@@ -225,16 +225,16 @@ Panel {
 
           // Service Health Badges row
           RowLayout {
-            spacing: Style.spacing.xs
+            spacing: Commons.Style.spacing.xs
 
             // 1. COMFYUI
             Rectangle {
-              height: Style.space(20)
-              implicitWidth: comfyRow.implicitWidth + Style.spacing.xs * 2
+              height: Commons.Style.space(20)
+              implicitWidth: comfyRow.implicitWidth + Commons.Style.spacing.xs * 2
               color: root.svcComfy ? Commons.Util.alpha(root.positiveColor, 0.15) : Commons.Util.alpha(Commons.Color.urgent, 0.15)
               border.color: root.svcComfy ? Commons.Util.alpha(root.positiveColor, 0.6) : Commons.Util.alpha(Commons.Color.urgent, 0.6)
               border.width: 1
-              radius: Style.cornerRadius
+              radius: Commons.Style.cornerRadius
 
               RowLayout {
                 id: comfyRow
@@ -243,14 +243,14 @@ Panel {
                 Text {
                   textFormat: Text.PlainText
                   text: "●"
-                  font.pixelSize: Style.font.caption
+                  font.pixelSize: Commons.Style.font.caption
                   color: root.svcComfy ? root.positiveColor : Commons.Color.urgent
                 }
                 Text {
                   textFormat: Text.PlainText
                   text: (root.versionComfy && root.versionComfy !== "Offline" && root.versionComfy !== "Online") ? ("COMFYUI v" + root.versionComfy) : "COMFYUI"
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.caption
+                  font.family: Commons.Style.font.family
+                  font.pixelSize: Commons.Style.font.caption
                   font.bold: true
                   color: root.svcComfy ? root.positiveColor : Commons.Color.urgent
                 }
@@ -259,12 +259,12 @@ Panel {
 
             // 2. OLLAMA
             Rectangle {
-              height: Style.space(20)
-              implicitWidth: ollamaRow.implicitWidth + Style.spacing.xs * 2
+              height: Commons.Style.space(20)
+              implicitWidth: ollamaRow.implicitWidth + Commons.Style.spacing.xs * 2
               color: root.svcOllama ? Commons.Util.alpha(root.positiveColor, 0.15) : Commons.Util.alpha(Commons.Color.urgent, 0.15)
               border.color: root.svcOllama ? Commons.Util.alpha(root.positiveColor, 0.6) : Commons.Util.alpha(Commons.Color.urgent, 0.6)
               border.width: 1
-              radius: Style.cornerRadius
+              radius: Commons.Style.cornerRadius
 
               RowLayout {
                 id: ollamaRow
@@ -273,14 +273,14 @@ Panel {
                 Text {
                   textFormat: Text.PlainText
                   text: "●"
-                  font.pixelSize: Style.font.caption
+                  font.pixelSize: Commons.Style.font.caption
                   color: root.svcOllama ? root.positiveColor : Commons.Color.urgent
                 }
                 Text {
                   textFormat: Text.PlainText
                   text: (root.versionOllama && root.versionOllama !== "Offline" && root.versionOllama !== "Online") ? ("OLLAMA v" + root.versionOllama) : "OLLAMA"
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.caption
+                  font.family: Commons.Style.font.family
+                  font.pixelSize: Commons.Style.font.caption
                   font.bold: true
                   color: root.svcOllama ? root.positiveColor : Commons.Color.urgent
                 }
@@ -289,12 +289,12 @@ Panel {
 
             // 3. WD14 ONNX
             Rectangle {
-              height: Style.space(20)
-              implicitWidth: wd14Row.implicitWidth + Style.spacing.xs * 2
+              height: Commons.Style.space(20)
+              implicitWidth: wd14Row.implicitWidth + Commons.Style.spacing.xs * 2
               color: root.svcWd14 ? Commons.Util.alpha(root.positiveColor, 0.15) : Commons.Util.alpha(Commons.Color.urgent, 0.15)
               border.color: root.svcWd14 ? Commons.Util.alpha(root.positiveColor, 0.6) : Commons.Util.alpha(Commons.Color.urgent, 0.6)
               border.width: 1
-              radius: Style.cornerRadius
+              radius: Commons.Style.cornerRadius
 
               RowLayout {
                 id: wd14Row
@@ -303,14 +303,14 @@ Panel {
                 Text {
                   textFormat: Text.PlainText
                   text: "●"
-                  font.pixelSize: Style.font.caption
+                  font.pixelSize: Commons.Style.font.caption
                   color: root.svcWd14 ? root.positiveColor : Commons.Color.urgent
                 }
                 Text {
                   textFormat: Text.PlainText
                   text: "WD14 ONNX"
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.caption
+                  font.family: Commons.Style.font.family
+                  font.pixelSize: Commons.Style.font.caption
                   font.bold: true
                   color: root.svcWd14 ? root.positiveColor : Commons.Color.urgent
                 }
@@ -323,9 +323,9 @@ Panel {
           Text {
             textFormat: Text.PlainText
             text: "VRAM: " + (root.vramUsed / 1024).toFixed(1) + " / " + (root.vramTotal / 1024).toFixed(1) + " GB (" + root.vramPct + "%)"
-            font.family: Style.font.family
+            font.family: Commons.Style.font.family
             font.features: { "tnum": 1 }
-            font.pixelSize: Style.font.caption
+            font.pixelSize: Commons.Style.font.caption
             color: Commons.Color.foreground
           }
         }
@@ -336,23 +336,23 @@ Panel {
         Rectangle {
           Layout.fillWidth: true
           visible: !root.isBridgeAvailable
-          implicitHeight: Style.space(34)
+          implicitHeight: Commons.Style.space(34)
           color: Qt.rgba(Commons.Color.urgent.r, Commons.Color.urgent.g, Commons.Color.urgent.b, 0.15)
           border.color: Commons.Color.urgent
           border.width: 1
-          radius: Style.cornerRadius
+          radius: Commons.Style.cornerRadius
 
           RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: Style.spacing.sm
-            anchors.rightMargin: Style.spacing.sm
-            spacing: Style.spacing.xs
+            anchors.leftMargin: Commons.Style.spacing.sm
+            anchors.rightMargin: Commons.Style.spacing.sm
+            spacing: Commons.Style.spacing.xs
 
             Text {
               textFormat: Text.PlainText
               text: "ERR //"
               color: Commons.Color.urgent
-              font.pixelSize: Style.font.caption
+              font.pixelSize: Commons.Style.font.caption
               font.bold: true
             }
 
@@ -363,14 +363,14 @@ Panel {
                 ? "CHYBA MŮSTKU: bin/qwen-bridge chybí nebo není spustitelný. Spusť install.sh nebo cargo build --release."
                 : "BRIDGE ERROR: bin/qwen-bridge is missing or not executable. Run install.sh or cargo build --release."
               color: Commons.Color.urgent
-              font.pixelSize: Style.font.caption
+              font.pixelSize: Commons.Style.font.caption
               font.bold: true
               elide: Text.ElideRight
             }
 
             Button {
               text: root.currentLang === "cs" ? "ZKONTROLOVAT" : "RECHECK"
-              fontSize: Style.font.caption
+              fontSize: Commons.Style.font.caption
               bordered: true
               onClicked: {
                 root.checkBridge();
@@ -422,18 +422,18 @@ Panel {
         // FOOTER BAR WITH VERSION AND ESCAPE HINT
         Item {
           Layout.fillWidth: true
-          implicitHeight: Style.space(16)
+          implicitHeight: Commons.Style.space(16)
 
           Row {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            spacing: Style.space(6)
+            spacing: Commons.Style.space(6)
 
             Text {
               textFormat: Text.PlainText
               text: root.pluginVersion
-              font.family: root.bar ? root.bar.fontFamily : Style.font.family
-              font.pixelSize: Style.font.caption
+              font.family: root.bar ? root.bar.fontFamily : Commons.Style.font.family
+              font.pixelSize: Commons.Style.font.caption
               color: Commons.Util.alpha(root.bar ? root.bar.foreground : Commons.Color.foreground, 0.55)
             }
           }
@@ -443,8 +443,8 @@ Panel {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             text: "ESC // " + (root.currentLang === "cs" ? "ZAVŘÍT" : "CLOSE")
-            font.family: root.bar ? root.bar.fontFamily : Style.font.family
-            font.pixelSize: Style.font.caption
+            font.family: root.bar ? root.bar.fontFamily : Commons.Style.font.family
+            font.pixelSize: Commons.Style.font.caption
             color: Commons.Util.alpha(root.bar ? root.bar.foreground : Commons.Color.foreground, 0.55)
           }
         }

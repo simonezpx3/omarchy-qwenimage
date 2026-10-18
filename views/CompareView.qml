@@ -12,7 +12,7 @@ Item {
 
   ColumnLayout {
     anchors.fill: parent
-    spacing: Style.spacing.md
+    spacing: Commons.Style.spacing.md
 
     PanelSectionHeader {
       text: panelRoot && panelRoot.currentLang === "cs" ? "INTERAKTIVNÍ ROZDĚLENÉ SROVNÁNÍ A/B" : "INTERACTIVE A/B SPLIT COMPARISON"
@@ -26,18 +26,33 @@ Item {
       color: Commons.Color.background
       border.color: Commons.Color.menu.border
       border.width: 1
-      radius: Style.cornerRadius
+      radius: Commons.Style.cornerRadius
       clip: true
+
+      property int decodeW: 1
+      property int decodeH: 1
+      Timer {
+        id: decodeDebounce
+        interval: 150
+        onTriggered: {
+          var dpr = Screen.devicePixelRatio;
+          viewport.decodeW = Math.max(1, Math.ceil(viewport.width * dpr / 64) * 64);
+          viewport.decodeH = Math.max(1, Math.ceil(viewport.height * dpr / 64) * 64);
+        }
+      }
+      onWidthChanged: decodeDebounce.restart()
+      onHeightChanged: decodeDebounce.restart()
+      Component.onCompleted: decodeDebounce.triggered()
 
       // Bottom Layer: Generated Image (After)
       Image {
         id: imgAfter
         anchors.fill: parent
-        anchors.margins: Style.spacing.xs
+        anchors.margins: Commons.Style.spacing.xs
         fillMode: Image.PreserveAspectFit
         asynchronous: true
-        sourceSize.width: Math.max(1, Math.round(viewport.width * Screen.devicePixelRatio))
-        sourceSize.height: Math.max(1, Math.round(viewport.height * Screen.devicePixelRatio))
+        sourceSize.width: viewport.decodeW
+        sourceSize.height: viewport.decodeH
         retainWhileLoading: true
         source: panelRoot && panelRoot.generatedPath !== "" ? ("file://" + encodeURI(panelRoot.generatedPath)) : ""
         cache: false
@@ -57,8 +72,8 @@ Item {
           height: viewport.height
           fillMode: Image.PreserveAspectFit
           asynchronous: true
-          sourceSize.width: Math.max(1, Math.round(viewport.width * Screen.devicePixelRatio))
-          sourceSize.height: Math.max(1, Math.round(viewport.height * Screen.devicePixelRatio))
+          sourceSize.width: viewport.decodeW
+          sourceSize.height: viewport.decodeH
           retainWhileLoading: true
           source: panelRoot && panelRoot.referencePath !== "" ? ("file://" + encodeURI(panelRoot.referencePath)) : ""
           cache: false
@@ -68,18 +83,20 @@ Item {
       // Indikátor asynchronního načítání náhledů (#screens standard)
       RowLayout {
         anchors.centerIn: parent
-        spacing: Style.spacing.sm
-        visible: imgAfter.status === Image.Loading || imgBefore.status === Image.Loading
+        spacing: Commons.Style.spacing.sm
+        visible: (imgAfter.status === Image.Loading && imgAfter.progress < 1.0 && imgAfter.paintedWidth === 0)
+              || (imgBefore.status === Image.Loading && imgBefore.progress < 1.0 && imgBefore.paintedWidth === 0)
 
         Rectangle {
-          implicitWidth: Style.space(8)
-          implicitHeight: Style.space(8)
+          implicitWidth: Commons.Style.space(8)
+          implicitHeight: Commons.Style.space(8)
           radius: width / 2
           color: Commons.Color.accent
 
           SequentialAnimation on opacity {
             loops: Animation.Infinite
-            running: imgAfter.status === Image.Loading || imgBefore.status === Image.Loading
+            running: (imgAfter.status === Image.Loading && imgAfter.progress < 1.0 && imgAfter.paintedWidth === 0)
+                  || (imgBefore.status === Image.Loading && imgBefore.progress < 1.0 && imgBefore.paintedWidth === 0)
             NumberAnimation { from: 0.3; to: 1.0; duration: 400; easing.type: Easing.InOutQuad }
             NumberAnimation { from: 1.0; to: 0.3; duration: 400; easing.type: Easing.InOutQuad }
           }
@@ -88,8 +105,8 @@ Item {
         Text {
           textFormat: Text.PlainText
           text: panelRoot && panelRoot.currentLang === "cs" ? "NAČÍTÁM NÁHLED..." : "LOADING PREVIEW..."
-          font.family: Style.font.family
-          font.pixelSize: Style.font.caption
+          font.family: Commons.Style.font.family
+          font.pixelSize: Commons.Style.font.caption
           font.bold: true
           color: Commons.Color.accent
         }
@@ -106,8 +123,8 @@ Item {
 
         Rectangle {
           anchors.centerIn: parent
-          width: Style.space(24)
-          height: Style.space(24)
+          width: Commons.Style.space(24)
+          height: Commons.Style.space(24)
           radius: width / 2
           color: Commons.Color.background
           border.color: Commons.Color.accent
@@ -117,8 +134,8 @@ Item {
             textFormat: Text.PlainText
             anchors.centerIn: parent
             text: "AB"
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
+            font.family: Commons.Style.font.family
+            font.pixelSize: Commons.Style.font.caption
             font.bold: true
             color: Commons.Color.accent
           }
@@ -145,10 +162,10 @@ Item {
         textFormat: Text.PlainText
         anchors.left: parent.left
         anchors.top: parent.top
-        anchors.margins: Style.spacing.md
+        anchors.margins: Commons.Style.spacing.md
         text: panelRoot && panelRoot.currentLang === "cs" ? "PŘEDTÍM (ORIGINÁL)" : "BEFORE (ORIGINAL)"
-        font.family: Style.font.family
-        font.pixelSize: Style.font.caption
+        font.family: Commons.Style.font.family
+        font.pixelSize: Commons.Style.font.caption
         font.bold: true
         color: Commons.Color.foreground
       }
@@ -157,10 +174,10 @@ Item {
         textFormat: Text.PlainText
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: Style.spacing.md
+        anchors.margins: Commons.Style.spacing.md
         text: panelRoot && panelRoot.currentLang === "cs" ? "POTOM (VARIACE)" : "AFTER (VARIATION)"
-        font.family: Style.font.family
-        font.pixelSize: Style.font.caption
+        font.family: Commons.Style.font.family
+        font.pixelSize: Commons.Style.font.caption
         font.bold: true
         color: Commons.Color.accent
       }
@@ -169,13 +186,13 @@ Item {
     // Split Slider Control Row
     RowLayout {
       Layout.fillWidth: true
-      spacing: Style.spacing.sm
+      spacing: Commons.Style.spacing.sm
 
       Text {
         textFormat: Text.PlainText
         text: (panelRoot && panelRoot.currentLang === "cs" ? "POMĚR ROZDĚLENÍ: " : "SPLIT RATIO: ") + Math.round(root.splitPosition * 100) + "%"
-        font.family: Style.font.family
-        font.pixelSize: Style.font.caption
+        font.family: Commons.Style.font.family
+        font.pixelSize: Commons.Style.font.caption
         color: Commons.Color.foreground
       }
 
@@ -197,7 +214,7 @@ Item {
     // Bottom Action Row
     RowLayout {
       Layout.fillWidth: true
-      spacing: Style.spacing.sm
+      spacing: Commons.Style.spacing.sm
 
       Button {
         text: panelRoot && panelRoot.currentLang === "cs" ? "POUŽÍT JAKO FINÁLNÍ" : "APPLY AS FINAL"

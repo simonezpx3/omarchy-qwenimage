@@ -102,7 +102,7 @@ Item {
     var darkTheme = Commons.Color.background.hslLightness < 0.52;
     var val = darkTheme ? 0.94 : 0.65;
     var chroma = darkTheme ? sat : Math.min(0.82, sat * 1.1);
-    return Commons.Color.blend(Qt.hsva(hue, chroma, val, 1), Commons.Color.accent, 0.12);
+    return Qt.tint(Qt.hsva(hue, chroma, val, 1), Commons.Util.alpha(Commons.Color.accent, 0.12));
   }
 
   function sourceColor(src) {
@@ -175,7 +175,7 @@ Item {
 
   ColumnLayout {
     anchors.fill: parent
-    spacing: Style.spacing.sm
+    spacing: Commons.Style.spacing.sm
 
     // Header with current source indicator
     PanelSectionHeader {
@@ -185,11 +185,11 @@ Item {
     // Source Selector Tabs
     Flow {
       Layout.fillWidth: true
-      spacing: Style.spacing.xs
+      spacing: Commons.Style.spacing.xs
 
       Button {
         text: "CIVITAI"
-        fontSize: Style.font.caption
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: root.activeSource === "civitai"
         onClicked: root.selectSource("civitai")
@@ -197,7 +197,7 @@ Item {
 
       Button {
         text: "MIDLIBRARY"
-        fontSize: Style.font.caption
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: root.activeSource === "midlibrary"
         onClicked: root.selectSource("midlibrary")
@@ -205,7 +205,7 @@ Item {
 
       Button {
         text: "DIFFUSIONDB"
-        fontSize: Style.font.caption
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: root.activeSource === "diffusiondb"
         onClicked: root.selectSource("diffusiondb")
@@ -213,7 +213,7 @@ Item {
 
       Button {
         text: "SEAART"
-        fontSize: Style.font.caption
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: root.activeSource === "seaart"
         onClicked: root.selectSource("seaart")
@@ -221,7 +221,7 @@ Item {
 
       Button {
         text: "SHAKKER"
-        fontSize: Style.font.caption
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: root.activeSource === "shakker"
         onClicked: root.selectSource("shakker")
@@ -229,7 +229,7 @@ Item {
 
       Button {
         text: "PLAYGROUND"
-        fontSize: Style.font.caption
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: root.activeSource === "playground"
         onClicked: root.selectSource("playground")
@@ -237,7 +237,7 @@ Item {
 
       Button {
         text: "LEXICA"
-        fontSize: Style.font.caption
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: root.activeSource === "lexica"
         onClicked: root.selectSource("lexica")
@@ -245,7 +245,7 @@ Item {
 
       Button {
         text: "PROMPT HERO"
-        fontSize: Style.font.caption
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: root.activeSource === "prompthero"
         onClicked: root.selectSource("prompthero")
@@ -253,7 +253,7 @@ Item {
 
       Button {
         text: "OPENART"
-        fontSize: Style.font.caption
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: root.activeSource === "openart"
         onClicked: root.selectSource("openart")
@@ -261,7 +261,7 @@ Item {
 
       Button {
         text: "HUGGING FACE"
-        fontSize: Style.font.caption
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: root.activeSource === "huggingface"
         onClicked: root.selectSource("huggingface")
@@ -269,7 +269,7 @@ Item {
 
       Button {
         text: "KREA.AI"
-        fontSize: Style.font.caption
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: root.activeSource === "krea"
         onClicked: root.selectSource("krea")
@@ -277,7 +277,7 @@ Item {
 
       Button {
         text: "TENSOR.ART"
-        fontSize: Style.font.caption
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: root.activeSource === "tensorart"
         onClicked: root.selectSource("tensorart")
@@ -287,12 +287,12 @@ Item {
     // Search Row
     RowLayout {
       Layout.fillWidth: true
-      spacing: Style.spacing.sm
+      spacing: Commons.Style.spacing.sm
 
       FocusScope {
         id: searchField
         Layout.fillWidth: true
-        implicitHeight: Style.space(30)
+        implicitHeight: Commons.Style.space(30)
         activeFocusOnTab: true
 
         property string text: ""
@@ -315,21 +315,21 @@ Item {
 
         BorderSurface {
           anchors.fill: parent
-          radius: Style.cornerRadius
-          borderSpec: Border.controlSpec(searchField.activeFocus ? "focus" : (mouseArea.containsMouse ? "hover-cursor" : "normal"), Commons.Color.foreground, Commons.Color.accent)
-          color: Style.controlFill(searchField.activeFocus, mouseArea.containsMouse, Commons.Color.foreground, Commons.Color.accent)
+          radius: Commons.Style.cornerRadius
+          borderSpec: Commons.Border.controlSpec(searchField.activeFocus ? "focus" : (mouseArea.containsMouse ? "hover-cursor" : "normal"), Commons.Color.foreground, Commons.Color.accent)
+          color: Commons.Style.controlFill(searchField.activeFocus, mouseArea.containsMouse, Commons.Color.foreground, Commons.Color.accent)
         }
 
         Text {
           id: label
           textFormat: Text.PlainText
           anchors.fill: parent
-          anchors.leftMargin: Style.spacing.controlPaddingX
-          anchors.rightMargin: Style.spacing.controlPaddingX
+          anchors.leftMargin: Commons.Style.spacing.controlPaddingX
+          anchors.rightMargin: Commons.Style.spacing.controlPaddingX
           verticalAlignment: Text.AlignVCenter
           elide: Text.ElideLeft
-          font.family: Style.font.family
-          font.pixelSize: Style.font.body
+          font.family: Commons.Style.font.family
+          font.pixelSize: Commons.Style.font.body
           color: searchField.text.length ? Commons.Color.foreground : Commons.Util.alpha(Commons.Color.foreground, 0.55)
           text: searchField.text.length ? searchField.text : searchField.placeholderText
         }
@@ -338,7 +338,7 @@ Item {
           width: 1
           height: label.font.pixelSize + 4
           anchors.verticalCenter: parent.verticalCenter
-          x: label.x + Math.min(label.contentWidth, Math.max(0, label.width - Style.spacing.controlPaddingX * 2)) * (searchField.text.length ? 1 : 0)
+          x: label.x + Math.min(label.contentWidth, Math.max(0, label.width - Commons.Style.spacing.controlPaddingX * 2)) * (searchField.text.length ? 1 : 0)
           color: Commons.Color.accent
           visible: searchField.activeFocus && cursorBlink.on
 
@@ -378,7 +378,6 @@ Item {
           } else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
             e.accepted = true;
             searchField.accepted(searchField.text);
-            root.searchPrompts(searchField.text);
           } else if (e.key === Qt.Key_Backspace) {
             e.accepted = true;
             if (searchField.text.length > 0) {
@@ -406,6 +405,8 @@ Item {
 
       Shortcut {
         sequence: "Ctrl+K"
+        context: Qt.WindowShortcut
+        enabled: root.visible && root.enabled
         onActivated: searchField.forceActiveFocus()
       }
 
@@ -422,15 +423,15 @@ Item {
     Rectangle {
       Layout.fillWidth: true
       Layout.fillHeight: true
-      color: Commons.Color.blend(Commons.Color.background, Commons.Color.foreground, 0.04)
-      radius: Style.cornerRadius
+      color: Qt.tint(Commons.Color.background, Commons.Util.alpha(Commons.Color.foreground, 0.04))
+      radius: Commons.Style.cornerRadius
       clip: true
 
       ListView {
         id: promptList
         anchors.fill: parent
-        anchors.margins: Style.spacing.xs
-        spacing: Style.spacing.sm
+        anchors.margins: Commons.Style.spacing.xs
+        spacing: Commons.Style.spacing.sm
         model: {
           if (!panelRoot || !panelRoot.civitaiModel) return [];
           if (panelRoot.isNsfwEnabled) return panelRoot.civitaiModel;
@@ -443,12 +444,12 @@ Item {
 
         delegate: Rectangle {
           id: cardDelegate
-          width: promptList.width - Style.spacing.sm
-          implicitHeight: Math.max(Style.space(150), rowContent.implicitHeight + Style.spacing.sm * 2)
+          width: promptList.width - Commons.Style.spacing.sm
+          implicitHeight: Math.max(Commons.Style.space(150), rowContent.implicitHeight + Commons.Style.spacing.sm * 2)
           color: cardArea.containsMouse ? Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.06) : Commons.Color.menu.background
           border.color: cardArea.containsMouse ? Commons.Color.accent : Commons.Color.menu.border
           border.width: 1
-          radius: Style.cornerRadius
+          radius: Commons.Style.cornerRadius
 
           function applyPrompt(autoGenerate) {
             if (panelRoot) {
@@ -487,15 +488,15 @@ Item {
             id: rowContent
             z: 1
             anchors.fill: parent
-            anchors.margins: Style.spacing.sm
-            spacing: Style.spacing.md
+            anchors.margins: Commons.Style.spacing.sm
+            spacing: Commons.Style.spacing.md
 
             // 1. Asynchronous Web Thumbnail OR Thematic Visual Prompt Card (144px width)
             Rectangle {
               id: previewBox
-              Layout.preferredWidth: Style.space(144)
+              Layout.preferredWidth: Commons.Style.space(144)
               Layout.fillHeight: true
-              Layout.minimumHeight: Style.space(136)
+              Layout.minimumHeight: Commons.Style.space(136)
 
               readonly property string itemSource: String(modelData.source || root.activeSource).toLowerCase()
               readonly property color domainColor: root.sourceColor(itemSource)
@@ -503,7 +504,7 @@ Item {
               readonly property bool showThematicCard: !hasGenuineLiveImage || (previewImg.status === Image.Error)
 
               color: showThematicCard ? Qt.rgba(domainColor.r, domainColor.g, domainColor.b, 0.07) : Commons.Color.background
-              radius: Style.cornerRadius
+              radius: Commons.Style.cornerRadius
               clip: true
               border.color: showThematicCard ? Commons.Util.alpha(domainColor, 0.35) : Commons.Util.alpha(Commons.Color.menu.border, 0.6)
               border.width: 1
@@ -511,25 +512,25 @@ Item {
               // A. Thematic Visual Card (Option 2: platform badge, domain color, word count, subtitle)
               ColumnLayout {
                 anchors.centerIn: parent
-                spacing: Style.spacing.xs
+                spacing: Commons.Style.spacing.xs
                 visible: previewBox.showThematicCard
 
                 Rectangle {
                   Layout.alignment: Qt.AlignHCenter
-                  height: Style.space(22)
-                  implicitWidth: textBadgeText.implicitWidth + Style.spacing.sm * 2
+                  height: Commons.Style.space(22)
+                  implicitWidth: textBadgeText.implicitWidth + Commons.Style.spacing.sm * 2
                   color: Qt.rgba(previewBox.domainColor.r, previewBox.domainColor.g, previewBox.domainColor.b, 0.16)
                   border.color: previewBox.domainColor
                   border.width: 1
-                  radius: Style.cornerRadius
+                  radius: Commons.Style.cornerRadius
 
                   Text {
                     id: textBadgeText
                     textFormat: Text.PlainText
                     anchors.centerIn: parent
                     text: root.sourceCardBadge(previewBox.itemSource)
-                    font.family: Style.font.family
-                    font.pixelSize: Style.font.caption
+                    font.family: Commons.Style.font.family
+                    font.pixelSize: Commons.Style.font.caption
                     font.bold: true
                     color: previewBox.domainColor
                   }
@@ -539,8 +540,8 @@ Item {
                   textFormat: Text.PlainText
                   Layout.alignment: Qt.AlignHCenter
                   text: (modelData.prompt ? String(modelData.prompt).trim().split(/\s+/).length : 0) + (panelRoot && panelRoot.currentLang === "cs" ? " SLOV" : " WORDS")
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.caption
+                  font.family: Commons.Style.font.family
+                  font.pixelSize: Commons.Style.font.caption
                   font.bold: true
                   color: Commons.Color.foreground
                 }
@@ -549,8 +550,8 @@ Item {
                   textFormat: Text.PlainText
                   Layout.alignment: Qt.AlignHCenter
                   text: root.sourceCardSubtitle(previewBox.itemSource)
-                  font.family: Style.font.family
-                  font.pixelSize: Math.max(10, Style.font.caption)
+                  font.family: Commons.Style.font.family
+                  font.pixelSize: Math.max(10, Commons.Style.font.caption)
                   color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
                 }
               }
@@ -564,8 +565,8 @@ Item {
                   textFormat: Text.PlainText
                   anchors.centerIn: parent
                   text: root.sourceCardBadge(previewBox.itemSource)
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.caption
+                  font.family: Commons.Style.font.family
+                  font.pixelSize: Commons.Style.font.caption
                   font.bold: true
                   color: Commons.Util.alpha(Commons.Color.foreground, 0.35)
                   visible: previewImg.status !== Image.Ready
@@ -576,8 +577,8 @@ Item {
                   anchors.fill: parent
                   fillMode: Image.PreserveAspectCrop
                   source: previewBox.hasGenuineLiveImage ? modelData.preview_url : ""
-                  sourceSize.width: Style.space(260) * 2
-                  sourceSize.height: Style.space(160) * 2
+                  sourceSize.width: Commons.Style.space(260) * 2
+                  sourceSize.height: Commons.Style.space(160) * 2
                   cache: true
                   asynchronous: true
                   smooth: true
@@ -586,10 +587,10 @@ Item {
                 Rectangle {
                   anchors.top: parent.top
                   anchors.right: parent.right
-                  anchors.margins: Style.spacing.xxs
-                  width: nsfwBadgeText.implicitWidth + Style.spacing.xs
+                  anchors.margins: Commons.Style.spacing.xxs
+                  width: nsfwBadgeText.implicitWidth + Commons.Style.spacing.xs
                   height: nsfwBadgeText.implicitHeight + 2
-                  radius: Style.cornerRadius
+                  radius: Commons.Style.cornerRadius
                   color: Commons.Color.urgent
                   visible: {
                     var n = String(modelData.nsfw || "none").toLowerCase();
@@ -601,7 +602,7 @@ Item {
                     textFormat: Text.PlainText
                     anchors.centerIn: parent
                     text: String(modelData.nsfw).toUpperCase()
-                    font.family: Style.font.family
+                    font.family: Commons.Style.font.family
                     font.pixelSize: 10
                     font.bold: true
                     color: Commons.Color.foreground
@@ -614,27 +615,27 @@ Item {
             ColumnLayout {
               Layout.fillWidth: true
               Layout.fillHeight: true
-              spacing: Style.spacing.xs
+              spacing: Commons.Style.spacing.xs
 
               RowLayout {
                 Layout.fillWidth: true
-                spacing: Style.spacing.xs
+                spacing: Commons.Style.spacing.xs
 
                 // Source Tag Pill
                 Rectangle {
-                  height: Style.space(18)
-                  implicitWidth: srcTagText.implicitWidth + Style.spacing.xs * 2
+                  height: Commons.Style.space(18)
+                  implicitWidth: srcTagText.implicitWidth + Commons.Style.spacing.xs * 2
                   color: Qt.rgba(previewBox.domainColor.r, previewBox.domainColor.g, previewBox.domainColor.b, 0.15)
                   border.color: previewBox.domainColor
                   border.width: 1
-                  radius: Style.cornerRadius
+                  radius: Commons.Style.cornerRadius
 
                   Text {
                     id: srcTagText
                     textFormat: Text.PlainText
                     anchors.centerIn: parent
                     text: (modelData.source || root.activeSource).toUpperCase()
-                    font.family: Style.font.family
+                    font.family: Commons.Style.font.family
                     font.pixelSize: 10
                     font.bold: true
                     color: previewBox.domainColor
@@ -644,8 +645,8 @@ Item {
                 Text {
                   text: "SEED: " + (modelData.seed || "Random") + " | CFG: " + (modelData.cfg || "4.0") + " | STEPS: " + (modelData.steps || "25") + (modelData.sampler ? (" | " + modelData.sampler) : "")
                   textFormat: Text.PlainText
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.caption
+                  font.family: Commons.Style.font.family
+                  font.pixelSize: Commons.Style.font.caption
                   font.bold: true
                   color: Commons.Color.accent
                   elide: Text.ElideRight
@@ -654,7 +655,7 @@ Item {
 
                 Button {
                   text: panelRoot && panelRoot.currentLang === "cs" ? "POUŽÍT PROMPT" : "USE PROMPT"
-                  fontSize: Style.font.caption
+                  fontSize: Commons.Style.font.caption
                   bordered: true
                   selected: true
                   onClicked: cardDelegate.applyPrompt(false)
@@ -662,7 +663,7 @@ Item {
 
                 Button {
                   text: panelRoot && panelRoot.currentLang === "cs" ? "KOPÍROVAT" : "COPY RAW"
-                  fontSize: Style.font.caption
+                  fontSize: Commons.Style.font.caption
                   bordered: true
                   onClicked: {
                     if (panelRoot) panelRoot.copyTextToClipboard(modelData.prompt || "");
@@ -678,8 +679,8 @@ Item {
                 wrapMode: Text.Wrap
                 maximumLineCount: 4
                 elide: Text.ElideRight
-                font.family: Style.font.family
-                font.pixelSize: Style.font.caption
+                font.family: Commons.Style.font.family
+                font.pixelSize: Commons.Style.font.caption
                 color: Commons.Color.foreground
               }
 
@@ -690,8 +691,8 @@ Item {
                 wrapMode: Text.Wrap
                 maximumLineCount: 1
                 elide: Text.ElideRight
-                font.family: Style.font.family
-                font.pixelSize: Style.font.caption
+                font.family: Commons.Style.font.family
+                font.pixelSize: Commons.Style.font.caption
                 color: Commons.Util.alpha(Commons.Color.foreground, 0.55)
                 visible: !!modelData.negative_prompt
               }
@@ -702,25 +703,25 @@ Item {
         // Loading State (#screens standard: Loading / Processing State)
         ColumnLayout {
           anchors.centerIn: parent
-          spacing: Style.spacing.sm
+          spacing: Commons.Style.spacing.sm
           visible: root.isLoading
 
           Rectangle {
             Layout.alignment: Qt.AlignHCenter
-            height: Style.space(24)
-            implicitWidth: loadingText.implicitWidth + Style.spacing.md * 2
+            height: Commons.Style.space(24)
+            implicitWidth: loadingText.implicitWidth + Commons.Style.spacing.md * 2
             color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.12)
             border.color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.45)
             border.width: 1
-            radius: Style.cornerRadius
+            radius: Commons.Style.cornerRadius
 
             Text {
               id: loadingText
               textFormat: Text.PlainText
               anchors.centerIn: parent
               text: "LOADING //"
-              font.family: Style.font.family
-              font.pixelSize: Style.font.caption
+              font.family: Commons.Style.font.family
+              font.pixelSize: Commons.Style.font.caption
               font.bold: true
               color: Commons.Color.accent
 
@@ -739,8 +740,8 @@ Item {
             text: panelRoot && panelRoot.currentLang === "cs"
               ? ("Načítám prompty z " + root.sourceDisplayName(root.activeSource) + "...")
               : ("Fetching prompts from " + root.sourceDisplayName(root.activeSource) + "...")
-            font.family: Style.font.family
-            font.pixelSize: Style.font.body
+            font.family: Commons.Style.font.family
+            font.pixelSize: Commons.Style.font.body
             font.bold: true
             color: Commons.Color.accent
           }
@@ -751,8 +752,8 @@ Item {
             text: panelRoot && panelRoot.currentLang === "cs"
               ? "Dotazuji databázi a stahuji komunitní metadata..."
               : "Querying database and retrieving community metadata..."
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
+            font.family: Commons.Style.font.family
+            font.pixelSize: Commons.Style.font.caption
             color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
           }
         }
@@ -763,8 +764,8 @@ Item {
           anchors.centerIn: parent
           visible: promptList.count === 0 && !root.isLoading
           text: panelRoot && panelRoot.currentLang === "cs" ? ("Zadej klíčová slova a klikni na VYHLEDAT pro inspiraci z " + root.sourceDisplayName(root.activeSource)) : ("Enter keywords and click FETCH PROMPTS to explore " + root.sourceDisplayName(root.activeSource))
-          font.family: Style.font.family
-          font.pixelSize: Style.font.body
+          font.family: Commons.Style.font.family
+          font.pixelSize: Commons.Style.font.body
           color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
         }
       }
@@ -775,7 +776,7 @@ Item {
     // Bottom Navigation Row
     RowLayout {
       Layout.fillWidth: true
-      spacing: Style.spacing.sm
+      spacing: Commons.Style.spacing.sm
 
       // NSFW Switcher matching LANG button design
       Button {
@@ -784,7 +785,7 @@ Item {
           var nsfw = panelRoot && panelRoot.isNsfwEnabled;
           return isCs ? (nsfw ? "NSFW: ZAP" : "NSFW: VYP") : (nsfw ? "NSFW: ON" : "NSFW: OFF");
         }
-        fontSize: Style.font.caption
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: panelRoot && panelRoot.isNsfwEnabled
         onClicked: if (panelRoot) panelRoot.toggleNsfw()
