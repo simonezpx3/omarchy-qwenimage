@@ -65,7 +65,7 @@ Item {
               Image {
                 anchors.fill: parent
                 fillMode: Image.PreserveAspectCrop
-                source: "file://" + modelData.path
+                source: modelData.path ? ("file://" + encodeURI(modelData.path)) : ""
                 sourceSize.width: Style.space(120) * 2
                 sourceSize.height: Style.space(125) * 2
                 smooth: true
@@ -204,31 +204,34 @@ Item {
 
           Rectangle {
             Layout.alignment: Qt.AlignHCenter
-            width: Style.space(48)
-            height: Style.space(48)
+            height: Style.space(24)
+            implicitWidth: historyLoadingText.implicitWidth + Style.spacing.md * 2
             color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.12)
             border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.45)
             border.width: 1
-            radius: width / 2
+            radius: Style.cornerRadius
 
             Text {
+              id: historyLoadingText
+              textFormat: Text.PlainText
               anchors.centerIn: parent
-              text: "󱫠"
+              text: "LOADING //"
               font.family: Style.font.family
-              font.pixelSize: Style.font.title * 1.5
+              font.pixelSize: Style.font.caption
+              font.bold: true
               color: Color.accent
 
-              RotationAnimation on rotation {
-                running: panelRoot && panelRoot.isHistoryLoading
+              SequentialAnimation on opacity {
                 loops: Animation.Infinite
-                from: 0
-                to: 360
-                duration: 1200
+                running: panelRoot && panelRoot.isHistoryLoading
+                PropertyAnimation { to: 0.3; duration: 600 }
+                PropertyAnimation { to: 1.0; duration: 600 }
               }
             }
           }
 
           Text {
+            textFormat: Text.PlainText
             Layout.alignment: Qt.AlignHCenter
             text: panelRoot && panelRoot.currentLang === "cs"
               ? "Prohledávám galerii ~/Pictures/Qwen-Image/..."
@@ -240,6 +243,7 @@ Item {
           }
 
           Text {
+            textFormat: Text.PlainText
             Layout.alignment: Qt.AlignHCenter
             text: panelRoot && panelRoot.currentLang === "cs"
               ? "Načítám metadata, prompty a náhledy..."
@@ -252,6 +256,7 @@ Item {
 
         // Empty state
         Text {
+          textFormat: Text.PlainText
           anchors.centerIn: parent
           visible: historyList.count === 0 && !(panelRoot && panelRoot.isHistoryLoading)
           text: panelRoot && panelRoot.currentLang === "cs" ? "Žádné vygenerované obrázky v ~/Pictures/Qwen-Image/" : "No generated images found in ~/Pictures/Qwen-Image/"

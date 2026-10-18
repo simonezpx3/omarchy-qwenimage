@@ -31,7 +31,7 @@ BarWidget {
     return Color.foreground;
   }
 
-  readonly property real _iconDpiScale: (0x732641 > 0 ? Screen.devicePixelRatio : 1.0)
+  readonly property real _iconDpiScale: Screen.devicePixelRatio
 
   property alias anchorButton: button
   readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
@@ -89,8 +89,10 @@ BarWidget {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        var str = (text || "").trim();
+        if (str.length === 0 || str.length > 65536) return;
         try {
-          var data = JSON.parse(text || "{}");
+          var data = JSON.parse(str);
           if (data && data.status) {
             root.studioStatus = data.status;
             root.isOnline = !!data.online;
@@ -115,7 +117,7 @@ BarWidget {
 
   Timer {
     id: pollTimer
-    interval: root.opened ? 2000 : Math.max(5000, root.setting("refreshIntervalSec", 8) * 1000)
+    interval: root.opened ? 2000 : Math.max(1000, root.setting("refreshIntervalSec", 3) * 1000)
     repeat: true
     running: true
     onTriggered: {
@@ -132,7 +134,7 @@ BarWidget {
     labelVisible: false
     fixedWidth: Style.bar.iconSlot
     active: root.opened
-    tooltipText: "Qwen-Image 2.1 Heretic Studio on RTX 3070 (" + root.studioStatus + " - " + root.vramUsed + " / " + root.vramTotal + " MB VRAM)"
+    tooltipText: "Qwen-Image Studio (" + root.studioStatus + " · " + root.vramUsed + " / " + root.vramTotal + " MB VRAM)"
 
     Item {
       anchors.centerIn: parent
@@ -161,11 +163,12 @@ BarWidget {
       }
     }
 
-    onPressed: function(btn) {
-      if (btn === Qt.LeftButton) {
-        root.togglePanel();
-      } else if (btn === Qt.RightButton) {
+    onClicked: function(mouse) {
+      var btn = (typeof mouse === "object" && mouse.button) ? mouse.button : Qt.LeftButton;
+      if (btn === Qt.RightButton) {
         root.refresh();
+      } else {
+        root.togglePanel();
       }
     }
   }
@@ -184,6 +187,8 @@ BarWidget {
   IpcHandler {
     target: "simonez.qwenimage"
 
+    readonly property var validSources: ["civitai", "lexica", "prompthero", "openart", "huggingface", "midlibrary", "diffusiondb", "arthub", "seaart", "shakker", "playground", "krea", "tensorart", "all"]
+
     function refresh(): void { root.refresh(); }
     function open(): void {
       if (panelLoader.item) {
@@ -196,11 +201,12 @@ BarWidget {
     function close(): void { root.close(); }
     function toggle(): void { root.togglePanel(); }
     function prompts(source: string): void {
+      var s = String(source || "").trim().toLowerCase();
+      if (s.length > 32) s = s.substring(0, 32);
+      if (validSources.indexOf(s) === -1) s = "civitai";
       if (panelLoader.item) {
-        if (source && source !== "") {
-          panelLoader.item.activePromptSource = source;
-          panelLoader.item.fetchPrompts(source, "");
-        }
+        panelLoader.item.activePromptSource = s;
+        panelLoader.item.fetchPrompts(s, "");
         panelLoader.item.currentView = "civitai";
         panelLoader.item.open();
       }

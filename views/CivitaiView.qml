@@ -59,25 +59,7 @@ Item {
   }
 
   function sourceIcon(src) {
-    switch (String(src).toLowerCase()) {
-      case "civitai": return "󰚩";
-      case "midlibrary":
-      case "midlibrary.io": return "📚";
-      case "diffusiondb": return "🗄";
-      case "seaart":
-      case "seaart.ai": return "🌊";
-      case "shakker":
-      case "shakker.ai": return "⚡";
-      case "playground":
-      case "playground.com": return "🎪";
-      case "lexica": return "󰄛";
-      case "prompthero": return "󰓥";
-      case "openart": return "󰏤";
-      case "huggingface": return "🤗";
-      case "krea": return "✦";
-      case "tensorart": return "󰢬";
-      default: return "󰏤";
-    }
+    return "";
   }
 
   function sourcePlaceholder(src) {
@@ -333,6 +315,7 @@ Item {
 
         Text {
           id: label
+          textFormat: Text.PlainText
           anchors.fill: parent
           anchors.leftMargin: Style.spacing.controlPaddingX
           anchors.rightMargin: Style.spacing.controlPaddingX
@@ -511,24 +494,16 @@ Item {
               border.color: showThematicCard ? Qt.rgba(domainColor.r, domainColor.g, domainColor.b, 0.35) : Qt.darker(Color.menu.border, 1.2)
               border.width: 1
 
-              // A. Thematic Visual Card (Option 2: platform badge, icon, domain color, word count, subtitle)
+              // A. Thematic Visual Card (Option 2: platform badge, domain color, word count, subtitle)
               ColumnLayout {
                 anchors.centerIn: parent
-                spacing: Style.spacing.xxs
+                spacing: Style.spacing.xs
                 visible: previewBox.showThematicCard
-
-                Text {
-                  Layout.alignment: Qt.AlignHCenter
-                  text: root.sourceIcon(previewBox.itemSource)
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.title * 1.8
-                  color: previewBox.domainColor
-                }
 
                 Rectangle {
                   Layout.alignment: Qt.AlignHCenter
-                  height: Style.space(18)
-                  implicitWidth: textBadgeText.implicitWidth + Style.spacing.xs * 2
+                  height: Style.space(22)
+                  implicitWidth: textBadgeText.implicitWidth + Style.spacing.sm * 2
                   color: Qt.rgba(previewBox.domainColor.r, previewBox.domainColor.g, previewBox.domainColor.b, 0.16)
                   border.color: previewBox.domainColor
                   border.width: 1
@@ -536,16 +511,18 @@ Item {
 
                   Text {
                     id: textBadgeText
+                    textFormat: Text.PlainText
                     anchors.centerIn: parent
                     text: root.sourceCardBadge(previewBox.itemSource)
                     font.family: Style.font.family
-                    font.pixelSize: 8
+                    font.pixelSize: Style.font.caption
                     font.bold: true
                     color: previewBox.domainColor
                   }
                 }
 
                 Text {
+                  textFormat: Text.PlainText
                   Layout.alignment: Qt.AlignHCenter
                   text: (modelData.prompt ? String(modelData.prompt).trim().split(/\s+/).length : 0) + (panelRoot && panelRoot.currentLang === "cs" ? " SLOV" : " WORDS")
                   font.family: Style.font.family
@@ -555,10 +532,11 @@ Item {
                 }
 
                 Text {
+                  textFormat: Text.PlainText
                   Layout.alignment: Qt.AlignHCenter
                   text: root.sourceCardSubtitle(previewBox.itemSource)
                   font.family: Style.font.family
-                  font.pixelSize: 8
+                  font.pixelSize: Style.font.caption - 1
                   color: Qt.darker(Color.foreground, 1.8)
                 }
               }
@@ -569,10 +547,12 @@ Item {
                 visible: !previewBox.showThematicCard
 
                 Text {
+                  textFormat: Text.PlainText
                   anchors.centerIn: parent
-                  text: root.sourceIcon(previewBox.itemSource)
+                  text: root.sourceCardBadge(previewBox.itemSource)
                   font.family: Style.font.family
-                  font.pixelSize: Style.font.title * 1.5
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
                   color: Qt.darker(Color.foreground, 2.5)
                   visible: previewImg.status !== Image.Ready
                 }
@@ -601,6 +581,7 @@ Item {
 
                   Text {
                     id: nsfwBadgeText
+                    textFormat: Text.PlainText
                     anchors.centerIn: parent
                     text: String(modelData.nsfw).toUpperCase()
                     font.family: Style.font.family
@@ -633,6 +614,7 @@ Item {
 
                   Text {
                     id: srcTagText
+                    textFormat: Text.PlainText
                     anchors.centerIn: parent
                     text: (modelData.source || root.activeSource).toUpperCase()
                     font.family: Style.font.family
@@ -708,32 +690,34 @@ Item {
 
           Rectangle {
             Layout.alignment: Qt.AlignHCenter
-            width: Style.space(48)
-            height: Style.space(48)
+            height: Style.space(24)
+            implicitWidth: loadingText.implicitWidth + Style.spacing.md * 2
             color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.12)
             border.color: Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.45)
             border.width: 1
-            radius: width / 2
+            radius: Style.cornerRadius
 
             Text {
-              id: spinnerIcon
+              id: loadingText
+              textFormat: Text.PlainText
               anchors.centerIn: parent
-              text: "󱫠"
+              text: "LOADING //"
               font.family: Style.font.family
-              font.pixelSize: Style.font.title * 1.5
+              font.pixelSize: Style.font.caption
+              font.bold: true
               color: Color.accent
 
-              RotationAnimation on rotation {
-                running: root.isLoading
+              SequentialAnimation on opacity {
                 loops: Animation.Infinite
-                from: 0
-                to: 360
-                duration: 1200
+                running: root.isLoading
+                PropertyAnimation { to: 0.3; duration: 600 }
+                PropertyAnimation { to: 1.0; duration: 600 }
               }
             }
           }
 
           Text {
+            textFormat: Text.PlainText
             Layout.alignment: Qt.AlignHCenter
             text: panelRoot && panelRoot.currentLang === "cs"
               ? ("Načítám prompty z " + root.sourceDisplayName(root.activeSource) + "...")
@@ -745,6 +729,7 @@ Item {
           }
 
           Text {
+            textFormat: Text.PlainText
             Layout.alignment: Qt.AlignHCenter
             text: panelRoot && panelRoot.currentLang === "cs"
               ? "Dotazuji databázi a stahuji komunitní metadata..."
@@ -757,6 +742,7 @@ Item {
 
         // Empty state
         Text {
+          textFormat: Text.PlainText
           anchors.centerIn: parent
           visible: promptList.count === 0 && !root.isLoading
           text: panelRoot && panelRoot.currentLang === "cs" ? ("Zadej klíčová slova a klikni na VYHLEDAT pro inspiraci z " + root.sourceDisplayName(root.activeSource)) : ("Enter keywords and click FETCH PROMPTS to explore " + root.sourceDisplayName(root.activeSource))
@@ -776,9 +762,11 @@ Item {
 
       // NSFW Switcher matching LANG button design
       Button {
-        text: panelRoot && panelRoot.currentLang === "cs"
-              ? (panelRoot.isNsfwEnabled ? "NSFW: ZAP" : "NSFW: VYP")
-              : (panelRoot.isNsfwEnabled ? "NSFW: ON" : "NSFW: OFF")
+        text: {
+          var isCs = panelRoot && panelRoot.currentLang === "cs";
+          var nsfw = panelRoot && panelRoot.isNsfwEnabled;
+          return isCs ? (nsfw ? "NSFW: ZAP" : "NSFW: VYP") : (nsfw ? "NSFW: ON" : "NSFW: OFF");
+        }
         fontSize: Style.font.caption
         bordered: true
         selected: panelRoot && panelRoot.isNsfwEnabled

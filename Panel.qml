@@ -701,8 +701,10 @@ Panel {
         root.isGenerating = false;
         root.currentScaleFactor = 0.0;
         if (hostWidget) hostWidget.isBusy = false;
+        var str = (text || "").trim();
+        if (str.length === 0 || str.length > 65536) return;
         try {
-          var res = JSON.parse(text || "{}");
+          var res = JSON.parse(str);
           if (res.status === "ok" && res.path) {
             root.previousGeneratedPath = root.generatedPath;
             root.generatedPath = res.path;
@@ -725,8 +727,10 @@ Panel {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        var str = (text || "").trim();
+        if (str.length === 0 || str.length > 65536) return;
         try {
-          var res = JSON.parse(text || "{}");
+          var res = JSON.parse(str);
           if (res.status === "ok") {
             root.generationTelemetry = "WALLPAPER SET";
           }
@@ -755,7 +759,9 @@ Panel {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
-        pickRefImageProc.collectedPath = (text || "").trim();
+        var s = (text || "").trim();
+        if (s.length > 4096) s = s.substring(0, 4096);
+        pickRefImageProc.collectedPath = s;
       }
     }
     onExited: function(exitCode, exitStatus) {
@@ -772,8 +778,10 @@ Panel {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        var str = (text || "").trim();
+        if (str.length === 0 || str.length > 65536) return;
         try {
-          var data = JSON.parse(text || "{}");
+          var data = JSON.parse(str);
           if (data && data.status) {
             root.updateTelemetry(data);
           }
@@ -788,8 +796,10 @@ Panel {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        var str = (text || "").trim();
+        if (str.length === 0 || str.length > 65536) return;
         try {
-          var res = JSON.parse(text || "{}");
+          var res = JSON.parse(str);
           if (res.status === "ok" && res.path) {
             root.setReferenceImage(res.path);
           }
@@ -804,8 +814,10 @@ Panel {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        var str = (text || "").trim();
+        if (str.length === 0 || str.length > 65536) return;
         try {
-          var res = JSON.parse(text || "{}");
+          var res = JSON.parse(str);
           if (res.status === "ok" && res.text && root.activePasteTarget) {
             if (typeof root.activePasteTarget.insert === "function") {
               var pos = root.activePasteTarget.cursorPosition !== undefined ? root.activePasteTarget.cursorPosition : root.activePasteTarget.length;
@@ -825,8 +837,10 @@ Panel {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        var str = (text || "").trim();
+        if (str.length === 0 || str.length > 65536) return;
         try {
-          var res = JSON.parse(text || "{}");
+          var res = JSON.parse(str);
           if (res.status === "ok" && res.path) {
             root.setReferenceImage(res.path);
           }
@@ -841,8 +855,10 @@ Panel {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        var str = (text || "").trim();
+        if (str.length === 0 || str.length > 65536) return;
         try {
-          var res = JSON.parse(text || "{}");
+          var res = JSON.parse(str);
           if (res.status === "ok" && res.path) {
             root.setReferenceImage(res.path);
           }
@@ -857,8 +873,10 @@ Panel {
       waitForEnd: true
       onStreamFinished: {
         root.isInterrogating = false;
+        var str = (text || "").trim();
+        if (str.length === 0 || str.length > 65536) return;
         try {
-          var res = JSON.parse(text || "{}");
+          var res = JSON.parse(str);
           if (res.status === "ok" && res.raw) {
             if (root.promptText.trim() === "") {
               root.promptText = res.raw;
@@ -877,8 +895,10 @@ Panel {
       waitForEnd: true
       onStreamFinished: {
         root.isVisionLoading = false;
+        var str = (text || "").trim();
+        if (str.length === 0 || str.length > 65536) return;
         try {
-          var res = JSON.parse(text || "{}");
+          var res = JSON.parse(str);
           if (res.status === "ok" && res.prompt) {
             root.promptText = res.prompt;
           }
@@ -892,8 +912,10 @@ Panel {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        var str = (text || "").trim();
+        if (str.length === 0 || str.length > 65536) return;
         try {
-          var res = JSON.parse(text || "{}");
+          var res = JSON.parse(str);
           if (res.status === "ok") {
             if (res.prompt) root.promptText = res.prompt;
             if (res.negative_prompt) root.negativePromptText = res.negative_prompt;
@@ -917,8 +939,10 @@ Panel {
       waitForEnd: true
       onStreamFinished: {
         root.isCivitaiLoading = false;
+        var str = (text || "").trim();
+        if (str.length === 0 || str.length > 524288) return;
         try {
-          var res = JSON.parse(text || "{}");
+          var res = JSON.parse(str);
           if (res.status === "ok" && res.items) {
             root.civitaiModel = res.items;
           }
@@ -933,8 +957,10 @@ Panel {
       waitForEnd: true
       onStreamFinished: {
         root.isHistoryLoading = false;
+        var str = (text || "").trim();
+        if (str.length === 0 || str.length > 524288) return;
         try {
-          var res = JSON.parse(text || "{}");
+          var res = JSON.parse(str);
           if (res.status === "ok" && res.items) {
             root.historyModel = res.items;
           }
@@ -953,8 +979,10 @@ Panel {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
+        var str = (text || "").trim();
+        if (str.length === 0 || str.length > 65536) return;
         try {
-          var res = JSON.parse((text || "").trim());
+          var res = JSON.parse(str);
           if (res.lang === "cs" || res.lang === "en") {
             root.currentLang = res.lang;
           }
@@ -995,7 +1023,7 @@ Panel {
       onStreamFinished: {
         root.isOptimizingPrompt = false;
         var raw = (text || "").trim();
-        if (raw === "") return;
+        if (raw === "" || raw.length > 65536) return;
         try {
           var res = JSON.parse(raw);
           if (res.rewritten_prompt && res.rewritten_prompt.trim() !== "") {
@@ -1024,7 +1052,7 @@ Panel {
   KeyboardPanel {
     id: panel
     anchorItem: root.anchorItem
-    owner: root.barIdentity
+    owner: root
     bar: root.bar
     centerOnBar: true
     contentWidth: panel.fittedContentWidth(Style.space(960))
@@ -1083,6 +1111,7 @@ Panel {
             }
 
             Text {
+              textFormat: Text.PlainText
               text: "QIS"
               font.family: Style.font.family
               font.pixelSize: Style.font.body
@@ -1105,12 +1134,14 @@ Panel {
               anchors.centerIn: parent
               spacing: 4
               Text {
-                text: "󱫠"
+                textFormat: Text.PlainText
+                text: "QWEN //"
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
                 color: Color.accent
               }
               Text {
+                textFormat: Text.PlainText
                 text: root.versionQwen
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
@@ -1138,11 +1169,13 @@ Panel {
                 anchors.centerIn: parent
                 spacing: 4
                 Text {
+                  textFormat: Text.PlainText
                   text: "●"
                   font.pixelSize: Style.font.caption
                   color: root.svcComfy ? "#4ade80" : "#f87171"
                 }
                 Text {
+                  textFormat: Text.PlainText
                   text: (root.versionComfy && root.versionComfy !== "Offline" && root.versionComfy !== "Online") ? ("COMFYUI v" + root.versionComfy) : "COMFYUI"
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
@@ -1166,11 +1199,13 @@ Panel {
                 anchors.centerIn: parent
                 spacing: 4
                 Text {
+                  textFormat: Text.PlainText
                   text: "●"
                   font.pixelSize: Style.font.caption
                   color: root.svcOllama ? "#4ade80" : "#f87171"
                 }
                 Text {
+                  textFormat: Text.PlainText
                   text: (root.versionOllama && root.versionOllama !== "Offline" && root.versionOllama !== "Online") ? ("OLLAMA v" + root.versionOllama) : "OLLAMA"
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
@@ -1194,11 +1229,13 @@ Panel {
                 anchors.centerIn: parent
                 spacing: 4
                 Text {
+                  textFormat: Text.PlainText
                   text: "●"
                   font.pixelSize: Style.font.caption
                   color: root.svcWd14 ? "#4ade80" : "#f87171"
                 }
                 Text {
+                  textFormat: Text.PlainText
                   text: "WD14 ONNX"
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
@@ -1212,6 +1249,7 @@ Panel {
           Item { Layout.fillWidth: true }
 
           Text {
+            textFormat: Text.PlainText
             text: "VRAM: " + (root.vramUsed / 1024).toFixed(1) + " / " + (root.vramTotal / 1024).toFixed(1) + " GB (" + root.vramPct + "%)"
             font.family: Style.font.family
             font.features: { "tnum": 1 }
@@ -1239,12 +1277,15 @@ Panel {
             spacing: Style.spacing.xs
 
             Text {
-              text: "󰅚"
+              textFormat: Text.PlainText
+              text: "ERR //"
               color: Color.urgent
-              font.pixelSize: Style.font.body
+              font.pixelSize: Style.font.caption
+              font.bold: true
             }
 
             Text {
+              textFormat: Text.PlainText
               Layout.fillWidth: true
               text: root.currentLang === "cs"
                 ? "CHYBA MŮSTKU: bin/qwen-bridge chybí nebo není spustitelný. Spusť install.sh nebo cargo build --release."
@@ -1317,27 +1358,16 @@ Panel {
             spacing: Style.space(6)
 
             Text {
+              textFormat: Text.PlainText
               text: root.pluginVersion
               font.family: root.bar ? root.bar.fontFamily : Style.font.family
               font.pixelSize: Style.font.caption
               color: Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 1.6)
             }
-            Text {
-              text: "·"
-              font.family: root.bar ? root.bar.fontFamily : Style.font.family
-              font.pixelSize: Style.font.caption
-              color: Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 1.6)
-            }
-            Text {
-              text: "s&A"
-              font.family: root.bar ? root.bar.fontFamily : Style.font.family
-              font.pixelSize: Style.font.caption
-              font.bold: true
-              color: Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 1.4)
-            }
           }
 
           Text {
+            textFormat: Text.PlainText
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             text: "ESC // " + (root.currentLang === "cs" ? "ZAVŘÍT" : "CLOSE")

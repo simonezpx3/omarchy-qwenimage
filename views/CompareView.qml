@@ -35,7 +35,7 @@ Item {
         anchors.fill: parent
         anchors.margins: Style.spacing.xs
         fillMode: Image.PreserveAspectFit
-        source: panelRoot && panelRoot.generatedPath !== "" ? "file://" + panelRoot.generatedPath : ""
+        source: panelRoot && panelRoot.generatedPath !== "" ? ("file://" + encodeURI(panelRoot.generatedPath)) : ""
         cache: false
       }
 
@@ -52,7 +52,7 @@ Item {
           width: viewport.width
           height: viewport.height
           fillMode: Image.PreserveAspectFit
-          source: panelRoot && panelRoot.referencePath !== "" ? "file://" + panelRoot.referencePath : ""
+          source: panelRoot && panelRoot.referencePath !== "" ? ("file://" + encodeURI(panelRoot.referencePath)) : ""
           cache: false
         }
       }
@@ -76,6 +76,7 @@ Item {
           border.width: 2
 
           Text {
+            textFormat: Text.PlainText
             anchors.centerIn: parent
             text: "AB"
             font.family: Style.font.family
@@ -103,6 +104,7 @@ Item {
 
       // Labels inside viewport
       Text {
+        textFormat: Text.PlainText
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.margins: Style.spacing.md
@@ -114,6 +116,7 @@ Item {
       }
 
       Text {
+        textFormat: Text.PlainText
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: Style.spacing.md
@@ -131,6 +134,7 @@ Item {
       spacing: Style.spacing.sm
 
       Text {
+        textFormat: Text.PlainText
         text: (panelRoot && panelRoot.currentLang === "cs" ? "POMĚR ROZDĚLENÍ: " : "SPLIT RATIO: ") + Math.round(root.splitPosition * 100) + "%"
         font.family: Style.font.family
         font.pixelSize: Style.font.caption

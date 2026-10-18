@@ -15,7 +15,6 @@ BIN_DIR="${BIN_DIR:-${HOME}/.local/bin}"
 COMFY_DIR="${COMFY_DIR:-${HOME}/.local/share/comfyui}"
 APPS_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/applications"
 
-# Author algorithmic constant (0x732641 = 7546433)
 AUTH_SEED=$(( 0x732641 % 1000 ))
 
 # Styling & Output helpers (Strict Marci Standard: //, ·, zero emojis, zero brackets)

@@ -267,8 +267,8 @@ Item {
         "en": "PROMPTS: Browse and search thousands of prompts from CivitAI, Lexica, PromptHero, OpenArt, and Hugging Face."
       },
       "help_turbo_lora": {
-        "cs": "TURBO (5s): <font color='#ffd166'>VAROVÁNÍ: Při lidských tělech a anatomii doporučujeme TURBO vypnout.</font>",
-        "en": "TURBO (5s): <font color='#ffd166'>WARNING: For human bodies and anatomy, turning TURBO off is recommended.</font>"
+        "cs": "TURBO (5s): VAROVÁNÍ // Při lidských tělech a anatomii doporučujeme TURBO vypnout.",
+        "en": "TURBO (5s): WARNING // For human bodies and anatomy, turning TURBO off is recommended."
       },
       "help_anime_lora": {
         "cs": "ANIME LORA: Zapne specializovaný styl pro anime a ilustrace (SD_Tutorial).",
@@ -446,6 +446,7 @@ Item {
               Layout.fillWidth: true
 
               Text {
+                textFormat: Text.PlainText
                 text: root.tr("prompt_title")
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
@@ -476,6 +477,7 @@ Item {
               }
 
               Text {
+                textFormat: Text.PlainText
                 visible: promptInput.text.trim() !== ""
                 text: promptInput.text.trim().split(/\s+/).length + " " + root.tr("words")
                 font.family: Style.font.family
@@ -584,6 +586,7 @@ Item {
             spacing: Style.spacing.xxs
 
             Text {
+              textFormat: Text.PlainText
               text: root.tr("negative_title")
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
@@ -788,6 +791,7 @@ Item {
 
           Text {
             id: stepsLabel
+            textFormat: Text.PlainText
             text: root.tr("steps") + (panelRoot ? panelRoot.steps : 25)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
@@ -849,6 +853,7 @@ Item {
 
         // Status & Anatomical Warning Line (Marci aesthetic: čistá typografie, oddělovač //, bez ikon a závorek, žlutá barva pro varování)
         Text {
+          textFormat: Text.PlainText
           visible: panelRoot && !panelRoot.isTurboEnabled && panelRoot.steps < 25
           text: root.tr("warn_low_steps")
           font.family: Style.font.family
@@ -858,6 +863,7 @@ Item {
           wrapMode: Text.WordWrap
         }
         Text {
+          textFormat: Text.PlainText
           visible: panelRoot && panelRoot.isHumanSubjectInPrompt && panelRoot.resMode === "draft"
           text: root.tr("warn_human_draft")
           font.family: Style.font.family
@@ -890,6 +896,7 @@ Item {
               Layout.fillWidth: true
 
               Text {
+                textFormat: Text.PlainText
                 text: root.tr("ref_title")
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
@@ -899,6 +906,7 @@ Item {
               }
 
               Text {
+                textFormat: Text.PlainText
                 text: panelRoot && panelRoot.referencePath !== "" ? (panelRoot.referencePath.indexOf("/tmp/") !== -1 ? root.tr("buffer_ref") : panelRoot.referencePath.split("/").pop()) : ""
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
@@ -951,7 +959,7 @@ Item {
                 anchors.margins: Style.spacing.xxs
                 fillMode: Image.PreserveAspectFit
                 sourceSize: Qt.size(512, 0)
-                source: panelRoot && panelRoot.referencePath !== "" ? "file://" + panelRoot.referencePath + (panelRoot.referenceRevision ? "?v=" + panelRoot.referenceRevision : "") : ""
+                source: panelRoot && panelRoot.referencePath !== "" ? ("file://" + encodeURI(panelRoot.referencePath) + (panelRoot.referenceRevision ? "?v=" + panelRoot.referenceRevision : "")) : ""
                 cache: false
                 asynchronous: true
                 smooth: true
@@ -965,6 +973,7 @@ Item {
                 visible: !panelRoot || panelRoot.referencePath === ""
 
                 Text {
+                  textFormat: Text.PlainText
                   text: root.tr("buffer_empty")
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
@@ -975,6 +984,7 @@ Item {
                 }
 
                 Text {
+                  textFormat: Text.PlainText
                   text: root.tr("drop_hint")
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption - 1
@@ -1052,6 +1062,7 @@ Item {
 
               Text {
                 id: denoiseLabel
+                textFormat: Text.PlainText
                 text: root.tr("denoise") + (panelRoot ? panelRoot.denoise.toFixed(2) : "0.65")
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
@@ -1114,6 +1125,7 @@ Item {
               Layout.fillWidth: true
 
               Text {
+                textFormat: Text.PlainText
                 text: root.tr("canvas_title")
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
@@ -1125,6 +1137,7 @@ Item {
               Item { Layout.fillWidth: true }
 
               Text {
+                textFormat: Text.PlainText
                 text: panelRoot && panelRoot.generationTelemetry !== "" ? panelRoot.generationTelemetry : "1024x1024 | 25 STEPS | RTX 3070 (0 TOKENS)"
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
@@ -1229,11 +1242,13 @@ Item {
                   spacing: Style.spacing.xs
 
                   Text {
+                    textFormat: Text.PlainText
                     Layout.alignment: Qt.AlignHCenter
-                    text: panelRoot && panelRoot.isGenerating ? "󰑮" : "󰢹"
+                    text: panelRoot && panelRoot.isGenerating ? "GENERATING //" : "STANDBY // READY"
                     font.family: Style.font.family
-                    font.pixelSize: Style.font.title * 2
-                    color: panelRoot && panelRoot.isGenerating ? Color.accent : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.3)
+                    font.pixelSize: Style.font.body
+                    font.bold: true
+                    color: panelRoot && panelRoot.isGenerating ? Color.accent : Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.45)
                     SequentialAnimation on opacity {
                       loops: Animation.Infinite
                       running: panelRoot && panelRoot.isGenerating
@@ -1243,6 +1258,7 @@ Item {
                   }
 
                   Text {
+                    textFormat: Text.PlainText
                     Layout.alignment: Qt.AlignHCenter
                     text: panelRoot && panelRoot.isGenerating
                       ? (root.tr("generating_img") + (root.genElapsedSeconds > 0 ? " (" + root.genElapsedSeconds + "s)" : ""))
@@ -1255,6 +1271,7 @@ Item {
                   }
 
                   Text {
+                    textFormat: Text.PlainText
                     Layout.alignment: Qt.AlignHCenter
                     text: panelRoot && panelRoot.isGenerating
                       ? (panelRoot.currentLang === "cs" ? "Inicializace difúzního modelu..." : "Initializing diffusion pipeline...")
@@ -1272,7 +1289,7 @@ Item {
                 anchors.margins: Style.spacing.xxs
                 fillMode: Image.PreserveAspectFit
                 sourceSize: Qt.size(Math.min(Math.max(width * (Screen.devicePixelRatio > 0 ? Screen.devicePixelRatio : 1.0), 1280), 2560), 0)
-                source: panelRoot && panelRoot.generatedPath !== "" ? "file://" + panelRoot.generatedPath : ""
+                source: panelRoot && panelRoot.generatedPath !== "" ? ("file://" + encodeURI(panelRoot.generatedPath)) : ""
                 cache: false
                 asynchronous: true
                 visible: !(panelRoot && panelRoot.isGenerating && panelRoot.livePreviewPath !== "")
@@ -1286,7 +1303,7 @@ Item {
                 fillMode: Image.PreserveAspectFit
                 sourceSize: Qt.size(1280, 0)
                 source: (panelRoot && panelRoot.isGenerating && panelRoot.livePreviewPath !== "")
-                  ? ("file://" + panelRoot.livePreviewPath + "?t=" + (panelRoot.livePreviewTick || 0))
+                  ? ("file://" + encodeURI(panelRoot.livePreviewPath) + "?t=" + (panelRoot.livePreviewTick || 0))
                   : ""
                 cache: false
                 asynchronous: true
@@ -1348,6 +1365,7 @@ Item {
                   }
 
                   Text {
+                    textFormat: Text.PlainText
                     text: root.tr("step") + " " + (panelRoot ? panelRoot.livePreviewStep : 0) + "/" + (panelRoot ? panelRoot.livePreviewMaxSteps : 25) + (root.genElapsedSeconds > 0 ? (" (" + root.genElapsedSeconds + "s)") : "")
                     font.family: Style.font.family
                     font.features: { "tnum": 1 }
@@ -1367,6 +1385,7 @@ Item {
           spacing: Style.spacing.xs
 
           Text {
+            textFormat: Text.PlainText
             text: root.tr("scale")
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
@@ -1515,6 +1534,7 @@ Item {
         spacing: Style.spacing.xs
 
         Text {
+          textFormat: Text.PlainText
           text: "//"
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
@@ -1528,7 +1548,7 @@ Item {
 
         Text {
           Layout.fillWidth: true
-          textFormat: Text.StyledText
+          textFormat: Text.PlainText
           text: root.activeHelpText !== "" ? root.activeHelpText : root.tr("default_tip")
           font.family: Style.font.family
           font.pixelSize: Style.font.caption
