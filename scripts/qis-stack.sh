@@ -315,9 +315,9 @@ install_comfyui() {
     if [[ ! -f "${COMFY_DIR}/main.py" ]]; then
         log_info "Klonuji oficiální ComfyUI repozitář na prověřený commit ${COMFY_PINNED_COMMIT:0:7}..."
         git clone https://github.com/comfyanonymous/ComfyUI.git "${COMFY_DIR}"
-        git -C "${COMFY_DIR}" checkout -q "${COMFY_PINNED_COMMIT}"
+        git -C "${COMFY_DIR}" checkout --detach b53f77a74e21091cbdebfdf7b85fc80326932646
     else
-        git -C "${COMFY_DIR}" checkout -q "${COMFY_PINNED_COMMIT}" 2>/dev/null || true
+        git -C "${COMFY_DIR}" checkout --detach b53f77a74e21091cbdebfdf7b85fc80326932646 2>/dev/null || true
     fi
 
     local actual_comfy
@@ -383,10 +383,10 @@ install_comfyui() {
         if [[ ! -d "$target_node" ]]; then
             log_info "Klonuji uzel ${node_name} na prověřený commit ${node_commit:0:7}..."
             git clone "$node_url" "$target_node"
-            git -C "$target_node" checkout -q "$node_commit"
+            git -C "$target_node" checkout --detach "$node_commit"
             log_ok "Závislosti uzlu ${node_name} jsou zaručeny v hash-verified lockfile."
         else
-            git -C "$target_node" checkout -q "$node_commit" 2>/dev/null || true
+            git -C "$target_node" checkout --detach "$node_commit" 2>/dev/null || true
         fi
 
         local actual_node_commit
@@ -853,7 +853,7 @@ update_comfyui() {
 
     log_info "Ověřuji integritu ComfyUI jádra na prověřený commit ${COMFY_PINNED_COMMIT:0:7}..."
     git -C "${COMFY_DIR}" fetch --tags origin 2>/dev/null || true
-    git -C "${COMFY_DIR}" checkout -q "${COMFY_PINNED_COMMIT}"
+    git -C "${COMFY_DIR}" checkout --detach b53f77a74e21091cbdebfdf7b85fc80326932646
 
     local actual_comfy
     actual_comfy=$(git -C "${COMFY_DIR}" rev-parse HEAD 2>/dev/null || echo "")

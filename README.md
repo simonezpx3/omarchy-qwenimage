@@ -1,6 +1,6 @@
 # QIS (Qwen Image Studio)
 
-[![Version](https://img.shields.io/badge/version-1.2.4-3b82f6.svg)](https://github.com/simonezpx3/omarchy-qwenimage/releases/tag/v1.2.4)
+[![Version](https://img.shields.io/badge/version-1.2.5-3b82f6.svg)](https://github.com/simonezpx3/omarchy-qwenimage/releases/tag/v1.2.5)
 [![QIS CI](https://github.com/simonezpx3/omarchy-qwenimage/actions/workflows/ci.yml/badge.svg)](https://github.com/simonezpx3/omarchy-qwenimage/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Omarchy%20Linux%20%7C%20Hyprland-teal.svg)](#)
@@ -148,6 +148,7 @@ omarchy plugin add https://github.com/simonezpx3/omarchy-qwenimage.git
 ```bash
 git clone https://github.com/simonezpx3/omarchy-qwenimage.git
 cd omarchy-qwenimage
+git checkout --detach a5c4f346e01a1467475d41c9b68ad94d2105c9fc
 chmod +x install.sh
 ./install.sh
 ```

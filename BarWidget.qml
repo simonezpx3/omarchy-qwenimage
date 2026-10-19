@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Effects
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 import qs.Commons as Commons
 import qs.Ui
@@ -15,10 +16,10 @@ BarWidget {
 
   Loader {
     id: localServiceLoader
-    active: root.shellService === null
+    active: root.shellService === null && root.opened
     sourceComponent: Component {
       Service {
-        activePolling: true
+        activePolling: false
       }
     }
   }
@@ -209,42 +210,35 @@ BarWidget {
     }
   }
 
-  IpcHandler {
-    target: "simonez.qwenimage"
+  function isTargetScreen(): bool {
+    if (!root.bar || !root.bar.screen) return true;
+    try {
+      if (typeof Hyprland !== "undefined" && Hyprland && Hyprland.focusedMonitor) {
+        const m = Hyprland.monitorFor(root.bar.screen);
+        if (m && Hyprland.focusedMonitor && m.name !== Hyprland.focusedMonitor.name) {
+          return false;
+        }
+      }
+    } catch (e) {}
+    return true;
+  }
 
-    function refresh(): void { root.refresh(); }
-    function open(): void {
-      if (root.svc) {
-        root.svc.currentView = "studio";
-      }
+  Connections {
+    target: root.svc
+    ignoreUnknownSignals: true
+
+    function onOpenRequested(view) {
+      if (!root.isTargetScreen()) return;
       root.open();
     }
-    function close(): void { root.close(); }
-    function toggle(): void { root.togglePanel(); }
-    function prompts(source: string): void {
-      var s = String(source || "").trim().toLowerCase();
-      if (s.length > 32) s = s.substring(0, 32);
-      var validSources = ["civitai", "lexica", "prompthero", "openart", "huggingface", "midlibrary", "diffusiondb", "seaart", "shakker", "playground", "krea", "tensorart", "all"];
-      if (validSources.indexOf(s) === -1) s = "civitai";
-      if (root.svc) {
-        root.svc.activePromptSource = s;
-        root.svc.fetchPrompts(s, "");
-        root.svc.currentView = "civitai";
-      }
-      root.open();
+
+    function onCloseRequested() {
+      root.close();
     }
-    function history(): void {
-      if (root.svc) {
-        root.svc.currentView = "history";
-        root.svc.fetchHistory();
-      }
-      root.open();
-    }
-    function paste(): void {
-      if (root.svc) {
-        root.svc.pasteFromClipboard();
-      }
-      root.open();
+
+    function onToggleRequested() {
+      if (!root.isTargetScreen()) return;
+      root.togglePanel();
     }
   }
 

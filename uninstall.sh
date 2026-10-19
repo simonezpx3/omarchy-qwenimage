@@ -19,12 +19,12 @@ log_warn() { echo -e "\033[1;33m· WARN //\033[0m ${1}"; }
 log_err()  { echo -e "\033[0;31m· ERR //\033[0m ${1}" >&2; }
 
 if (( EUID == 0 )); then
-  log_err "Odinstalace nesmí být spuštěna pod účtem root (EUID 0)."
+  log_err "Uninstallation must not be executed as root (EUID 0). Please run the script as a regular user."
   exit 1
 fi
 
 if [[ -z "${HOME:-}" || "${HOME}" == "/" ]]; then
-  log_err "Proměnná HOME není validně nastavena."
+  log_err "Environment variable HOME is not validly set (${HOME:-unset})."
   exit 1
 fi
 
@@ -45,14 +45,14 @@ for arg in "$@"; do
       NO_RESTART=1
       ;;
     *)
-      log_err "Neznámý parametr: ${arg}. Povolené volby: --purge-settings, --purge-all, --no-restart"
+      log_err "Unknown argument: ${arg}. Allowed options: --purge-settings, --purge-all, --no-restart"
       exit 1
       ;;
   esac
 done
 
 echo ""
-echo "=== QIS (Qwen Image Studio) // Odinstalace systému ==="
+echo "=== QIS (Qwen Image Studio) // Uninstallation ==="
 echo ""
 
 # ---------------------------------------------------------
@@ -62,9 +62,9 @@ STACK_SCRIPT="${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
 [[ ! -x "$STACK_SCRIPT" && -x "${SCRIPT_DIR}/scripts/qis-stack.sh" ]] && STACK_SCRIPT="${SCRIPT_DIR}/scripts/qis-stack.sh"
 
 if [[ -x "$STACK_SCRIPT" ]]; then
-  log_info "Zastavuji běžící procesy QIS backendu..."
+  log_info "Stopping running QIS backend processes..."
   "$STACK_SCRIPT" stop >/dev/null 2>&1 || true
-  log_ok "Procesy backendu zastaveny."
+  log_ok "Backend processes stopped."
 fi
 
 # ---------------------------------------------------------
@@ -78,9 +78,9 @@ if [[ -L "$CLI_LINK" ]]; then
 
   if [[ "$link_target" == "$expected_target" || "$link_target" == "$alt_target" || "$link_target" == *"simonez.qwenimage"* ]]; then
     rm -f "$CLI_LINK"
-    log_ok "Odstraněn CLI symlink: ${CLI_LINK}"
+    log_ok "Removed CLI symlink: ${CLI_LINK}"
   else
-    log_warn "Symlink ${CLI_LINK} ukazuje na jiný cíl (${link_target}) // Ponechán beze změny."
+    log_warn "Symlink ${CLI_LINK} points to another target (${link_target}) // Left unchanged."
   fi
 fi
 
@@ -93,7 +93,7 @@ if [[ -f "$DESKTOP_FILE" && ! -L "$DESKTOP_FILE" ]]; then
   if command -v update-desktop-database >/dev/null 2>&1; then
     update-desktop-database "${APPS_DIR}" >/dev/null 2>&1 || true
   fi
-  log_ok "Odstraněn XDG spouštěč: ${DESKTOP_FILE}"
+  log_ok "Removed XDG desktop entry: ${DESKTOP_FILE}"
 fi
 
 # ---------------------------------------------------------
@@ -147,7 +147,7 @@ with open(out, "w", encoding="utf-8") as f:
     cp --no-dereference "$cfg" "${cfg}.bak" 2>/dev/null || true
     mv -f "$tmp_json" "$cfg"
     chmod 0600 "$cfg"
-    log_ok "Widget simonez.qwenimage odebrán z ${cfg}."
+    log_ok "Widget simonez.qwenimage removed from ${cfg}."
   else
     rm -f "$tmp_json"
   fi
@@ -171,7 +171,7 @@ fi
 VIGGLE_NODE_DIR="${COMFY_DIR}/custom_nodes/ComfyUI-ViggleTurbo"
 if [[ -d "$VIGGLE_NODE_DIR" && ! -L "$VIGGLE_NODE_DIR" && -O "$VIGGLE_NODE_DIR" ]]; then
   rm -rf "$VIGGLE_NODE_DIR"
-  log_ok "Odstraněn custom node: ${VIGGLE_NODE_DIR}"
+  log_ok "Removed custom node: ${VIGGLE_NODE_DIR}"
 fi
 
 # ---------------------------------------------------------
@@ -179,29 +179,29 @@ fi
 # ---------------------------------------------------------
 if [[ -e "$TARGET_PLUGIN_DIR" ]]; then
   if [[ -L "$TARGET_PLUGIN_DIR" || ! -d "$TARGET_PLUGIN_DIR" || ! -O "$TARGET_PLUGIN_DIR" ]]; then
-    log_err "Odmítám smazat ${TARGET_PLUGIN_DIR} (je to symlink nebo není vlastněn aktuálním uživatelem)."
+    log_err "Refusing to remove ${TARGET_PLUGIN_DIR} (it is a symlink or not owned by the current user)."
     exit 1
   fi
 
   if [[ -d "${TARGET_PLUGIN_DIR}/.git" ]]; then
-    log_warn "Detekován Git repozitář v ${TARGET_PLUGIN_DIR} (In-Place vývojový režim)."
-    log_info "Mažu pouze generované artefakty (bin/qwen-bridge), zdrojový kód ponechávám..."
+    log_warn "Git repository detected in ${TARGET_PLUGIN_DIR} (In-Place development mode)."
+    log_info "Removing generated artifacts only (bin/qwen-bridge), preserving source code..."
     rm -f "${TARGET_PLUGIN_DIR}/bin/qwen-bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge.sha256"
     if (( PURGE_SETTINGS == 1 )); then
       rm -f "${TARGET_PLUGIN_DIR}/settings.json"
-      log_ok "Smazán soubor settings.json."
+      log_ok "Removed settings.json."
     fi
   elif [[ -f "${TARGET_PLUGIN_DIR}/manifest.json" || -f "${TARGET_PLUGIN_DIR}/Panel.qml" ]]; then
     if (( PURGE_SETTINGS == 0 )) && [[ -f "${TARGET_PLUGIN_DIR}/settings.json" ]]; then
       BACKUP_SETTINGS="${HOME}/.config/omarchy/qis-settings.json.bak"
       cp --no-dereference "${TARGET_PLUGIN_DIR}/settings.json" "$BACKUP_SETTINGS" 2>/dev/null || true
       chmod 0600 "$BACKUP_SETTINGS" 2>/dev/null || true
-      log_info "Zálohována uživatelská nastavení do: ${BACKUP_SETTINGS}"
+      log_info "User settings backed up to: ${BACKUP_SETTINGS}"
     fi
     rm -rf "$TARGET_PLUGIN_DIR"
-    log_ok "Odstraněn adresář pluginu: ${TARGET_PLUGIN_DIR}"
+    log_ok "Removed plugin directory: ${TARGET_PLUGIN_DIR}"
   else
-    log_err "Adresář ${TARGET_PLUGIN_DIR} neobsahuje manifest.json // Odmítám provést rm -rf z bezpečnostních důvodů."
+    log_err "Directory ${TARGET_PLUGIN_DIR} does not contain manifest.json // Refusing rm -rf for safety."
     exit 1
   fi
 fi
@@ -212,7 +212,7 @@ fi
 if (( PURGE_COMFY == 1 )) && [[ -d "$COMFY_DIR" && ! -L "$COMFY_DIR" && -O "$COMFY_DIR" ]]; then
   if [[ -f "${COMFY_DIR}/main.py" ]]; then
     rm -rf "$COMFY_DIR"
-    log_ok "Kompletně odstraněn ComfyUI backend: ${COMFY_DIR}"
+    log_ok "Completely removed ComfyUI backend: ${COMFY_DIR}"
   fi
 fi
 
@@ -221,9 +221,9 @@ fi
 # ---------------------------------------------------------
 if (( NO_RESTART != 1 )) && command -v omarchy-shell >/dev/null 2>&1; then
   omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
-  log_ok "Omarchy Shell aktualizován."
+  log_ok "Omarchy Shell updated."
 fi
 
 echo ""
-log_ok "Odinstalace QIS byla úspěšně dokončena."
+log_ok "QIS uninstallation completed successfully."
 echo ""

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "simonez.qwenimage",
   "name": "QIS",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "author": "simonez & Arci",
   "license": "MIT",
   "description": "Local-first generative AI studio // Text-to-Image · Image-to-Image · ViggleTurbo DMD · SageAttention 2 · WD14 Danbooru Interrogator · Qwen3-VL Vision Reverse-Engineering · Civitai Explorer · SIMD Lanczos Resizer · ComfyUI v0.41.2 Backend.",
@@ -27,7 +27,7 @@
     "schema": [
       {
         "key": "refreshIntervalSec",
-        "type": "number",
+        "type": "integer",
         "label": "Auto-refresh Interval (s)",
         "description": "Scan frequency for status updates in seconds.",
         "defaultValue": 3,

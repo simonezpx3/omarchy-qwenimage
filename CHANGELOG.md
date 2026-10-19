@@ -2,6 +2,31 @@
 
 Všechny významné změny, audity a bezpečnostní opravy projektu jsou zaznamenávány v tomto souboru. Formát vychází z [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) a dodržuje [Semantic Versioning](https://semver.org/).
 
+## [1.2.5] — 2026-10-19
+
+### Marketplace Alignment & Security Hardening
+- **Manifest Schema Fix (`manifest.json`):**
+  - Corrected `refreshIntervalSec` setting type definition from `number` to `integer` to strictly adhere to Omarchy Quattro manifest specifications.
+- **Remote Git Execution Hardening (`scripts/qis-stack.sh`, `README.md`):**
+  - Pinned all git checkouts in installation scripts and documentation to explicit 40-character commit hashes using `git checkout --detach <sha>`, fully resolving marketplace `remote-git-execution-unpinned` warnings.
+- **GitHub Actions CI Hardening (`.github/workflows/ci.yml`):**
+  - Added explicit least-privilege `permissions: contents: read` block and pinned third-party actions (`actions/checkout`, `dtolnay/rust-toolchain`, `Swatinem/rust-cache`) to immutable full commit SHAs.
+- **Installer & Uninstaller Localization (`install.sh`, `uninstall.sh`):**
+  - Localized all installer and uninstaller prompts, error messages, and shell registration feedback into clean technical English for international users.
+- **QML Singleton Qualification & Syntax Audit (`*.qml`, `views/*.qml`):**
+  - Fully qualified QML singletons and component references across all UI views and service layers; validated syntax against Qt 6 `qmllint` with zero errors.
+- **Quattro Service-Singleton IPC & Multi-Monitor Dispatch (`Service.qml`, `BarWidget.qml`):**
+  - Relocated `IpcHandler` into `Service.qml` singleton to prevent duplicate IPC target registration across multi-monitor setups in `omarchy-shell`.
+  - Wired `openRequested`, `closeRequested`, and `toggleRequested` signals from `Service.qml` to `BarWidget.qml` with active monitor resolution via `Hyprland.focusedMonitor`.
+  - Hardened per-monitor widget fallback loader to avoid redundant background pollers when running without the shell service daemon.
+
+### Core & Native Bridge
+- **Version Synchronization & Binary Release:**
+  - Synchronized version string across `manifest.json`, `Service.qml`, and `rust-bridge/Cargo.toml` to `1.2.5`.
+  - Recompiled native bridge release binary `bin/qwen-bridge` with LTO and generated updated SHA-256 integrity checksum.
+
+---
+
 ## [1.2.4] — 2026-10-18
 
 ### Architecture & Features
