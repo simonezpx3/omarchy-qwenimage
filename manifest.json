@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "simonez.qwenimage",
   "name": "QIS",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "author": "simonez & Arci",
   "license": "MIT",
-  "description": "Local-first generative AI studio // Text-to-Image · Image-to-Image · ViggleTurbo DMD · SageAttention 2 · WD14 Danbooru Interrogator · Qwen3-VL Vision Reverse-Engineering · Civitai Explorer · SIMD Lanczos Resizer · ComfyUI v0.41.2 Backend.",
+  "description": "Local-first generative AI studio // Text-to-Image · Image-to-Image · ViggleTurbo DMD · SDPA Tensor Acceleration · WD14 Danbooru Interrogator · Qwen3-VL Vision Reverse-Engineering · Civitai Explorer · SIMD Lanczos Resizer · ComfyUI v0.41.2 Backend.",
   "kinds": [
     "service",
     "bar-widget"

@@ -1,6 +1,6 @@
 # QIS (Qwen Image Studio)
 
-[![Version](https://img.shields.io/badge/version-1.2.5-3b82f6.svg)](https://github.com/simonezpx3/omarchy-qwenimage/releases/tag/v1.2.5)
+[![Version](https://img.shields.io/badge/version-1.2.6-3b82f6.svg)](https://github.com/simonezpx3/omarchy-qwenimage/releases/tag/v1.2.6)
 [![QIS CI](https://github.com/simonezpx3/omarchy-qwenimage/actions/workflows/ci.yml/badge.svg)](https://github.com/simonezpx3/omarchy-qwenimage/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Omarchy%20Linux%20%7C%20Hyprland-teal.svg)](#)
@@ -61,7 +61,7 @@ graph LR
 
 - **Text-to-Image (DiT Diffusion):** Native high-resolution generation via a local ComfyUI backend.
 - **Quattro Service Singleton & Lazy Panel Lifecycle:** Persistent background state orchestration (`Service.qml`) paired with lazy panel loading (`active: root.opened` in `BarWidget.qml`), unmounting the `Panel.qml` QML tree when closed to minimize resident shell memory while keeping active diffusion jobs and telemetry alive.
-- **SageAttention 2 Acceleration:** Hardware-accelerated INT8 Tensor Core matrix operations (`sm_86` Ampere and newer) reducing attention memory footprint and delivering 25–35% faster sampling without altering GGUF model weights.
+- **Hardware Attention Acceleration:** Native PyTorch 2.x SDPA (`scaled_dot_product_attention`) using FlashAttention and memory-efficient kernels directly on Tensor Cores, with optional SageAttention 2 support when installed by the user.
 - **POSIX Shared Memory Previews (`/dev/shm`):** Live step previews written directly to an isolated RAM disk (`/dev/shm/qis_preview_${UID}/`) with atomic file replacement, eliminating disk I/O latency and micro-stutter on high-refresh-rate Wayland compositors.
 - **Process Lifecycle Hardening & Zombie Protection:** Kernel-level process tracking via `libc::prctl(PR_SET_PDEATHSIG, SIGKILL)`, 8-second status process watchdogs, and transient systemd scopes (`systemd-run --user --scope`), ensuring immediate GPU VRAM eviction and zero orphan processes if the parent bridge terminates.
 - **Complete Bilingual Parity (EN // CS):** Dynamic language switcher with full localization across UI labels, tooltips, bridge error messages, and desktop notifications.

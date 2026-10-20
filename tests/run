@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# 1. Validate manifest JSON
+if command -v jq >/dev/null 2>&1; then
+  jq empty "$root/manifest.json"
+else
+  python3 -m json.tool "$root/manifest.json" >/dev/null
+fi
+
+# 2. Syntax check shell scripts
+bash -n "$root/install.sh"
+bash -n "$root/uninstall.sh"
+bash -n "$root/scripts/qis-stack.sh"
+
+# 3. Lint shell scripts if shellcheck is available
+if command -v shellcheck >/dev/null 2>&1; then
+  shellcheck "$root/install.sh" "$root/uninstall.sh" "$root/scripts/qis-stack.sh"
+fi
+
+# 4. Check Rust bridge unit tests if cargo is available
+if command -v cargo >/dev/null 2>&1; then
+  cargo test --manifest-path "$root/rust-bridge/Cargo.toml" --quiet
+fi
+
+# 5. Check executable permissions
+test -x "$root/install.sh"
+test -x "$root/uninstall.sh"
+test -x "$root/scripts/qis-stack.sh"
+
+# 6. Omarchy CLI plugin validation if installed
+if command -v omarchy >/dev/null 2>&1; then
+  omarchy plugin validate "$root"
+fi
+
+printf 'All portable plugin checks passed.\n'

@@ -357,16 +357,6 @@ install_comfyui() {
             return 1
         fi
         log_ok "Všechny Python závislosti byly úspěšně ověřeny a nainstalovány z immutable hash lockfile."
-
-        # SageAttention 2 pro hardwarovou INT8 akceleraci na Ampere a novějších GPU
-        if [[ "$GPU_VENDOR" == "nvidia" ]]; then
-            log_info "Instaluji SageAttention 2 pro hardwarovou INT8 akceleraci na Ampere..."
-            if command -v uv >/dev/null 2>&1; then
-                uv pip install --python "${COMFY_VENV}/bin/python" sageattention >/dev/null 2>&1 || true
-            else
-                "${COMFY_VENV}/bin/pip" install sageattention >/dev/null 2>&1 || true
-            fi
-        fi
     fi
 
     # Clone required custom nodes (pinned to verified immutable commit hashes)
