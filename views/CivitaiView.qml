@@ -491,7 +491,7 @@ Item {
             anchors.margins: Commons.Style.spacing.sm
             spacing: Commons.Style.spacing.md
 
-            // 1. Asynchronous Web Thumbnail OR Thematic Visual Prompt Card (144px width)
+            // 1. Thematic Visual Prompt Card (144px width) — zero-network memory safe
             Rectangle {
               id: previewBox
               Layout.preferredWidth: Commons.Style.space(144)
@@ -500,20 +500,17 @@ Item {
 
               readonly property string itemSource: String(modelData.source || root.activeSource).toLowerCase()
               readonly property color domainColor: root.sourceColor(itemSource)
-              readonly property bool hasGenuineLiveImage: /^https:\/\/image\.civitai\.com\//.test(String(modelData.preview_url || ""))
-              readonly property bool showThematicCard: !hasGenuineLiveImage || (previewImg.status === Image.Error)
 
-              color: showThematicCard ? Qt.rgba(domainColor.r, domainColor.g, domainColor.b, 0.07) : Commons.Color.background
+              color: Qt.rgba(domainColor.r, domainColor.g, domainColor.b, 0.07)
               radius: Commons.Style.cornerRadius
               clip: true
-              border.color: showThematicCard ? Commons.Util.alpha(domainColor, 0.35) : Commons.Util.alpha(Commons.Color.menu.border, 0.6)
+              border.color: Commons.Util.alpha(domainColor, 0.35)
               border.width: 1
 
-              // A. Thematic Visual Card (Option 2: platform badge, domain color, word count, subtitle)
+              // Thematic Visual Card (platform badge, domain color, word count, subtitle)
               ColumnLayout {
                 anchors.centerIn: parent
                 spacing: Commons.Style.spacing.xs
-                visible: previewBox.showThematicCard
 
                 Rectangle {
                   Layout.alignment: Qt.AlignHCenter
@@ -556,57 +553,29 @@ Item {
                 }
               }
 
-              // B. Visual Live Image Preview (Option 3: genuine live images from CivitAI live CDN)
-              Item {
-                anchors.fill: parent
-                visible: !previewBox.showThematicCard
+              // NSFW Badge
+              Rectangle {
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.margins: Commons.Style.spacing.xxs
+                width: nsfwBadgeText.implicitWidth + Commons.Style.spacing.xs
+                height: nsfwBadgeText.implicitHeight + 2
+                radius: Commons.Style.cornerRadius
+                color: Commons.Color.urgent
+                visible: {
+                  var n = String(modelData.nsfw || "none").toLowerCase();
+                  return n !== "none" && n !== "1" && n !== "false" && n !== "0" && n !== "";
+                }
 
                 Text {
+                  id: nsfwBadgeText
                   textFormat: Text.PlainText
                   anchors.centerIn: parent
-                  text: root.sourceCardBadge(previewBox.itemSource)
+                  text: String(modelData.nsfw).toUpperCase()
                   font.family: Commons.Style.font.family
-                  font.pixelSize: Commons.Style.font.caption
+                  font.pixelSize: 10
                   font.bold: true
-                  color: Commons.Util.alpha(Commons.Color.foreground, 0.35)
-                  visible: previewImg.status !== Image.Ready
-                }
-
-                Image {
-                  id: previewImg
-                  anchors.fill: parent
-                  fillMode: Image.PreserveAspectCrop
-                  source: previewBox.hasGenuineLiveImage ? modelData.preview_url : ""
-                  sourceSize.width: Commons.Style.space(260) * 2
-                  sourceSize.height: Commons.Style.space(160) * 2
-                  cache: true
-                  asynchronous: true
-                  smooth: true
-                }
-
-                Rectangle {
-                  anchors.top: parent.top
-                  anchors.right: parent.right
-                  anchors.margins: Commons.Style.spacing.xxs
-                  width: nsfwBadgeText.implicitWidth + Commons.Style.spacing.xs
-                  height: nsfwBadgeText.implicitHeight + 2
-                  radius: Commons.Style.cornerRadius
-                  color: Commons.Color.urgent
-                  visible: {
-                    var n = String(modelData.nsfw || "none").toLowerCase();
-                    return n !== "none" && n !== "1" && n !== "false" && n !== "0" && n !== "";
-                  }
-
-                  Text {
-                    id: nsfwBadgeText
-                    textFormat: Text.PlainText
-                    anchors.centerIn: parent
-                    text: String(modelData.nsfw).toUpperCase()
-                    font.family: Commons.Style.font.family
-                    font.pixelSize: 10
-                    font.bold: true
-                    color: Commons.Color.foreground
-                  }
+                  color: Commons.Color.foreground
                 }
               }
             }
