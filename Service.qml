@@ -333,6 +333,25 @@ Item {
     root.generationTelemetry = "1024x1024 | 25 STEPS | LOCAL GPU (0 TOKENS)";
   }
 
+  function sanitizePromptText(text) {
+    if (!text) return "";
+    var s = String(text);
+    // 1. Remove U+FFF9..U+FFFB (Interlinear Annotation Anchors) & U+FFFD (Replacement Character)
+    s = s.replace(/[\uFFF9-\uFFFB\uFFFD]/g, "");
+    // 2. Remove Zero-width, BOM, Word Joiners & Soft Hyphen
+    s = s.replace(/[\uFEFF\u200B-\u200D\u2060\u00AD]/g, "");
+    // 3. Remove Bidi overrides and isolates
+    s = s.replace(/[\u202A-\u202E\u2066-\u2069\u200E\u200F]/g, "");
+    // 4. Remove Private Use Area (Nerd Font / PUA glyphs)
+    s = s.replace(/[\uE000-\uF8FF]/g, "");
+    // 5. Remove C0/C1 control characters except newline and tab
+    s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "");
+    // 6. Normalize multiple spaces and repeated commas
+    s = s.replace(/[ \t]+/g, " ");
+    s = s.replace(/,\s*,+/g, ", ");
+    return s.trim();
+  }
+
   function recallPrompt(delta) {
     if (promptHistory.length === 0) return;
     var newIdx = promptHistoryIndex + delta;
@@ -350,7 +369,9 @@ Item {
       return;
     }
     if (isGenerating || isGameLocked) return;
-    var trimmed = promptText.trim();
+    root.promptText = root.sanitizePromptText(root.promptText);
+    root.negativePromptText = root.sanitizePromptText(root.negativePromptText);
+    var trimmed = root.promptText;
     if (trimmed === "") return;
 
     if (promptHistory.indexOf(trimmed) === -1) {
@@ -833,11 +854,12 @@ Item {
         try {
           var res = JSON.parse(str);
           if (res.status === "ok" && res.text && root.activePasteTarget) {
+            var cleanText = root.sanitizePromptText(res.text);
             if (typeof root.activePasteTarget.insert === "function") {
               var pos = root.activePasteTarget.cursorPosition !== undefined ? root.activePasteTarget.cursorPosition : root.activePasteTarget.length;
-              root.activePasteTarget.insert(pos, res.text);
+              root.activePasteTarget.insert(pos, cleanText);
             } else if (root.activePasteTarget.text !== undefined) {
-              root.activePasteTarget.text = (root.activePasteTarget.text || "") + res.text;
+              root.activePasteTarget.text = (root.activePasteTarget.text || "") + cleanText;
             }
           }
         } catch (e) {}

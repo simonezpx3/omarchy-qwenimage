@@ -1001,11 +1001,8 @@ fn cmd_paste_text() {
     let timeout = Duration::from_millis(CLIPBOARD_TIMEOUT_MS);
     if let Some(bytes) = bounded_cmd("wl-paste", &["-n", "-t", "text/plain"], MAX_TXT_BYTES, timeout) {
         let text = String::from_utf8_lossy(&bytes);
-        // Sanitizace: odstranění ANSI a řídicích znaků kromě \n, \r a \t
-        let sanitized: String = text
-            .chars()
-            .filter(|c| !c.is_control() || *c == '\n' || *c == '\r' || *c == '\t')
-            .collect();
+        // Sanitizace: odstranění skrytých TUI kotev, PUA, zero-width a nevalidních řídicích znaků
+        let sanitized = sanitize_diffusion_prompt(&text);
 
         println!(
             "{}",
@@ -2522,6 +2519,91 @@ fn unpack_json_prompt_if_present(s: &str) -> String {
     s.to_string()
 }
 
+/// Two-layer defensive prompt sanitization against invisible TUI anchors, format characters,
+/// zero-width sequences, PUA icons, Bidi overrides, and C0/C1 control codes.
+/// Preserves legitimate multilingual text (Czech, European accents, CJK) and standard punctuation.
+pub fn sanitize_diffusion_prompt(input: &str) -> String {
+    if input.is_empty() {
+        return String::new();
+    }
+
+    let mut filtered = String::with_capacity(input.len());
+    for c in input.chars() {
+        // 1. TUI anchors (Interlinear Annotation Anchors U+FFF9..U+FFFB) & replacement char U+FFFD
+        if ('\u{FFF9}'..='\u{FFFB}').contains(&c) || c == '\u{FFFD}' {
+            continue;
+        }
+
+        // 2. Zero-width, BOM, Word Joiners & Soft Hyphen
+        if c == '\u{FEFF}' || c == '\u{200B}' || c == '\u{200C}' || c == '\u{200D}' || c == '\u{2060}' || c == '\u{00AD}' {
+            continue;
+        }
+
+        // 3. Bidi directional overrides and isolates
+        if ('\u{202A}'..='\u{202E}').contains(&c) || ('\u{2066}'..='\u{2069}').contains(&c) || c == '\u{200E}' || c == '\u{200F}' {
+            continue;
+        }
+
+        // 4. Private Use Area (PUA icons, Nerd Font glyphs)
+        if ('\u{E000}'..='\u{F8FF}').contains(&c) {
+            continue;
+        }
+
+        // 5. C0 / C1 control characters (strip all except \n, \t, and \r)
+        if c.is_control() && c != '\n' && c != '\r' && c != '\t' {
+            continue;
+        }
+
+        // Convert carriage return to space
+        if c == '\r' {
+            filtered.push(' ');
+            continue;
+        }
+
+        filtered.push(c);
+    }
+
+    // 6. Normalization: collapse repeated spaces, collapse repeated commas, normalize comma spacing
+    let mut normalized = String::with_capacity(filtered.len());
+    let mut last_was_space = false;
+    let mut last_was_comma = false;
+
+    for c in filtered.chars() {
+        if c == ' ' || c == '\t' {
+            if !last_was_space && !last_was_comma && !normalized.is_empty() {
+                normalized.push(' ');
+                last_was_space = true;
+            }
+        } else if c == '\n' {
+            if normalized.ends_with(' ') {
+                normalized.pop();
+            }
+            if !normalized.ends_with('\n') && !normalized.is_empty() {
+                normalized.push('\n');
+                last_was_space = true;
+                last_was_comma = false;
+            }
+        } else if c == ',' {
+            if !last_was_comma && !normalized.is_empty() {
+                if last_was_space && normalized.ends_with(' ') {
+                    normalized.pop();
+                }
+                normalized.push(',');
+                normalized.push(' ');
+                last_was_comma = true;
+                last_was_space = true;
+            }
+        } else {
+            normalized.push(c);
+            last_was_space = false;
+            last_was_comma = false;
+        }
+    }
+
+    let trimmed = normalized.trim().trim_matches(',').trim();
+    trimmed.to_string()
+}
+
 #[allow(clippy::too_many_arguments)]
 fn cmd_generate(
     prompt: &str,
@@ -2613,13 +2695,13 @@ fn cmd_generate(
     let gallery_out = get_gallery_dir().join(format!("{}_{}.png", ts, clean_slug));
 
     // Dynamic background translation if Czech input detected
-    let mut final_prompt = prompt.to_string();
-    let mut final_negative = negative.to_string();
+    let mut final_prompt = sanitize_diffusion_prompt(prompt);
+    let mut final_negative = sanitize_diffusion_prompt(negative);
 
-    if is_czech_text(prompt) {
-        if let Ok(translated) = cmd_translate_internal(prompt) {
+    if is_czech_text(&final_prompt) {
+        if let Ok(translated) = cmd_translate_internal(&final_prompt) {
             if translated.len() > 3 {
-                final_prompt = translated;
+                final_prompt = sanitize_diffusion_prompt(&translated);
             }
         }
     }
@@ -2630,9 +2712,9 @@ fn cmd_generate(
         match optimize_prompt_internal(&final_prompt) {
             Ok((expanded_prompt, expanded_neg, _expanded_ratio)) => {
                 if !expanded_prompt.trim().is_empty() {
-                    final_prompt = expanded_prompt;
+                    final_prompt = sanitize_diffusion_prompt(&expanded_prompt);
                     if final_negative.trim().is_empty() && !expanded_neg.trim().is_empty() {
-                        final_negative = expanded_neg;
+                        final_negative = sanitize_diffusion_prompt(&expanded_neg);
                     }
                     eprintln!("\x1b[38;2;97;213;248mPROMPT EXPANDER // Hotovo -> prompt rozvinut\x1b[0m");
                 }
@@ -2651,6 +2733,12 @@ fn cmd_generate(
 
     // Unpack accidental raw JSON prompt envelope from prompt optimizer / LLM
     final_prompt = unpack_json_prompt_if_present(&final_prompt);
+
+    // Final defensive sanitization pass
+    final_prompt = sanitize_diffusion_prompt(&final_prompt);
+    if !final_negative.trim().is_empty() {
+        final_negative = sanitize_diffusion_prompt(&final_negative);
+    }
 
     // Hardening: Zastropovat délku promptu (prevence buffer a memory exhaustion)
     const MAX_PROMPT_CHARS: usize = 4096;
@@ -3300,6 +3388,10 @@ mod tests {
         assert!(graph.get("4").is_some());
         assert!(graph.get("6").is_some());
         assert!(graph.get("8").is_some());
+        // Verify EasyCache node is attached to model pipeline in standard mode
+        assert!(graph.get("10").is_some());
+        assert_eq!(graph["10"]["class_type"], "EasyCache");
+        assert_eq!(graph["6"]["inputs"]["model"], serde_json::json!(["10", 0]));
     }
 
     #[test]
@@ -3523,5 +3615,52 @@ mod tests {
 
         let _ = fs::remove_file(&base);
         let _ = fs::remove_file(&upscaled);
+    }
+
+    #[test]
+    fn test_sanitize_diffusion_prompt_tui_anchors() {
+        let input = "\u{FFF9}post, \u{FFF9}margins, \u{FFFA}annotation\u{FFFB} strong";
+        let out = sanitize_diffusion_prompt(input);
+        assert_eq!(out, "post, margins, annotation strong");
+
+        let replacement_test = "broken\u{FFFD}token";
+        assert_eq!(sanitize_diffusion_prompt(replacement_test), "brokentoken");
+    }
+
+    #[test]
+    fn test_sanitize_diffusion_prompt_zero_width_and_bom() {
+        let input = "\u{FEFF}cyberpunk\u{200B} warrior\u{200C} in\u{200D} rain\u{2060} city\u{00AD}";
+        let out = sanitize_diffusion_prompt(input);
+        assert_eq!(out, "cyberpunk warrior in rain city");
+    }
+
+    #[test]
+    fn test_sanitize_diffusion_prompt_pua_and_bidi() {
+        let input = "\u{E0A0} beautiful girl, \u{202A}portrait\u{202C}, 8k";
+        let out = sanitize_diffusion_prompt(input);
+        assert_eq!(out, "beautiful girl, portrait, 8k");
+    }
+
+    #[test]
+    fn test_sanitize_diffusion_prompt_preserves_accents_and_cjk() {
+        let czech = "Žluťoučký kůň pěl ďábelské ódy, 16:10, ostré detaily";
+        assert_eq!(sanitize_diffusion_prompt(czech), czech);
+
+        let european = "Mädchen mit grünen Augen, naïve art, über-quality";
+        assert_eq!(sanitize_diffusion_prompt(european), european);
+
+        let cjk = "サイバーパンクの戦士, anime style";
+        assert_eq!(sanitize_diffusion_prompt(cjk), cjk);
+    }
+
+    #[test]
+    fn test_sanitize_diffusion_prompt_spacing_and_commas() {
+        let messy = ",,  sword,,,   shield, , , armor ,,";
+        let out = sanitize_diffusion_prompt(messy);
+        assert_eq!(out, "sword, shield, armor");
+
+        let multiline = "first line\n\n   second line, \nthird line";
+        let out_ml = sanitize_diffusion_prompt(multiline);
+        assert_eq!(out_ml, "first line\nsecond line,\nthird line");
     }
 }

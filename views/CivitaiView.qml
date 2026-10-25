@@ -453,8 +453,10 @@ Item {
 
           function applyPrompt(autoGenerate) {
             if (panelRoot) {
-              panelRoot.promptText = modelData.prompt || "";
-              if (modelData.negative_prompt) panelRoot.negativePromptText = modelData.negative_prompt;
+              panelRoot.promptText = panelRoot.sanitizePromptText ? panelRoot.sanitizePromptText(modelData.prompt || "") : (modelData.prompt || "");
+              if (modelData.negative_prompt) {
+                panelRoot.negativePromptText = panelRoot.sanitizePromptText ? panelRoot.sanitizePromptText(modelData.negative_prompt) : modelData.negative_prompt;
+              }
               if (modelData.seed && modelData.seed > 0) {
                 panelRoot.seedVal = modelData.seed;
                 panelRoot.seedLocked = true;
