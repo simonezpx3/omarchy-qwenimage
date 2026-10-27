@@ -7,3 +7,5 @@ bin/*.sha256
 .installed_hashes
 __pycache__/
 *.pyc
+.beads/
+
