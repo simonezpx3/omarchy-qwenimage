@@ -25,7 +25,7 @@ Item {
 
   // Centralized bilingual localization dictionary (CZ / EN)
   function tr(key) {
-    var lang = panelRoot ? panelRoot.currentLang : "cs";
+    var lang = "en";
     var strings = {
       // Prompt Box
       "prompt_title": {
@@ -1280,8 +1280,8 @@ Item {
                     textFormat: Text.PlainText
                     Layout.alignment: Qt.AlignHCenter
                     text: panelRoot && panelRoot.isGenerating
-                      ? (panelRoot.currentLang === "cs" ? "Inicializace difúzního modelu..." : "Initializing diffusion pipeline...")
-                      : (panelRoot && panelRoot.currentLang === "cs" ? "Zadejte prompt a stiskněte Ctrl+Enter" : "Enter prompt and press Ctrl+Enter")
+                      ? "Initializing diffusion pipeline..."
+                      : "Enter prompt and press Ctrl+Enter"
                     font.family: Commons.Style.font.family
                     font.pixelSize: Commons.Style.font.caption
                     color: Commons.Util.alpha(Commons.Color.foreground, 0.35)
@@ -1583,9 +1583,7 @@ Item {
 
       // Turbo Viggle LoRA Switcher (Marci standard: čistá typografie, informativní stav bez ikon)
       Button {
-        text: panelRoot && panelRoot.currentLang === "cs"
-              ? (panelRoot.isTurboEnabled ? "TURBO: ZAP" : "TURBO: VYP")
-              : (panelRoot.isTurboEnabled ? "TURBO: ON" : "TURBO: OFF")
+        text: panelRoot && panelRoot.isTurboEnabled ? "TURBO: ON" : "TURBO: OFF"
         fontSize: Commons.Style.font.caption
         bordered: true
         selected: panelRoot && panelRoot.isTurboEnabled
@@ -1595,9 +1593,7 @@ Item {
 
       // Anime Style LoRA Switcher
       Button {
-        text: panelRoot && panelRoot.currentLang === "cs"
-              ? (panelRoot.isAnimeLoRAEnabled ? "ANIME: ZAP" : "ANIME: VYP")
-              : (panelRoot.isAnimeLoRAEnabled ? "ANIME: ON" : "ANIME: OFF")
+        text: panelRoot && panelRoot.isAnimeLoRAEnabled ? "ANIME: ON" : "ANIME: OFF"
         fontSize: Commons.Style.font.caption
         bordered: true
         selected: panelRoot && panelRoot.isAnimeLoRAEnabled
@@ -1607,9 +1603,7 @@ Item {
 
       // Uncensored Latent LoRA Switcher
       Button {
-        text: panelRoot && panelRoot.currentLang === "cs"
-              ? (panelRoot.isUncensoredEnabled ? "HERETIC: ZAP" : "HERETIC: VYP")
-              : (panelRoot.isUncensoredEnabled ? "HERETIC: ON" : "HERETIC: OFF")
+        text: panelRoot && panelRoot.isUncensoredEnabled ? "HERETIC: ON" : "HERETIC: OFF"
         fontSize: Commons.Style.font.caption
         bordered: true
         selected: panelRoot && panelRoot.isUncensoredEnabled
@@ -1619,9 +1613,7 @@ Item {
 
       // Anatomy Body LoRA Switcher
       Button {
-        text: panelRoot && panelRoot.currentLang === "cs"
-              ? (panelRoot.isAnatomyLoRAEnabled ? "ANATOMY: ZAP" : "ANATOMY: VYP")
-              : (panelRoot.isAnatomyLoRAEnabled ? "ANATOMY: ON" : "ANATOMY: OFF")
+        text: panelRoot && panelRoot.isAnatomyLoRAEnabled ? "ANATOMY: ON" : "ANATOMY: OFF"
         fontSize: Commons.Style.font.caption
         bordered: true
         selected: panelRoot && panelRoot.isAnatomyLoRAEnabled
@@ -1646,23 +1638,13 @@ Item {
         }
       }
 
-      // Language Switcher (CZ <-> EN)
-      Button {
-        text: panelRoot && panelRoot.currentLang === "cs" ? "LANG: CZ" : "LANG: EN"
-        fontSize: Commons.Style.font.caption
-        bordered: true
-        selected: panelRoot && panelRoot.currentLang === "cs"
-        onHotChanged: root.setHelp(root.tr("help_lang"), hot)
-        onClicked: if (panelRoot) panelRoot.toggleLanguage()
-      }
-
       Item { Layout.fillWidth: true }
 
       Button {
         readonly property bool isBusy: panelRoot && (panelRoot.isGenerating || panelRoot.isCancelling)
         text: {
           if (panelRoot && panelRoot.isCancelling) {
-            return panelRoot.currentLang === "cs" ? "PŘERUŠUJI..." : "CANCELLING...";
+            return "CANCELLING...";
           }
           if (panelRoot && panelRoot.isGenerating) {
             return root.tr("cancel") + " // " + root.genElapsedSeconds + "s";

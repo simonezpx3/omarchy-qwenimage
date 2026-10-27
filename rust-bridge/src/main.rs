@@ -843,8 +843,7 @@ fn sniff_image_magic(b: &[u8]) -> Option<&'static str> {
 }
 
 fn get_is_cs() -> bool {
-    let s = load_settings();
-    s.get("language").and_then(|v| v.as_str()).unwrap_or("cs") == "cs"
+    false
 }
 
 fn validate_image_file(p: &Path) -> Result<PathBuf, String> {
@@ -2968,7 +2967,7 @@ fn cmd_settings_get() {
         val = serde_json::json!({});
     }
     let obj = val.as_object_mut().unwrap();
-    let lang = obj.get("language").and_then(|v| v.as_str()).unwrap_or("cs");
+    let lang = obj.get("language").and_then(|v| v.as_str()).unwrap_or("en");
     let nsfw = obj.get("nsfw").and_then(|v| v.as_bool()).unwrap_or(false);
     let anime = obj.get("anime_lora").and_then(|v| v.as_bool()).unwrap_or(false);
     let turbo = obj.get("turbo").and_then(|v| v.as_bool()).unwrap_or(true);
@@ -3003,8 +3002,7 @@ fn cmd_settings_set(key: &str, value: &str) {
                 map.insert(key.to_string(), serde_json::json!(b));
             }
             "language" | "lang" => {
-                let l = if value == "en" { "en" } else { "cs" };
-                map.insert("language".to_string(), serde_json::json!(l));
+                map.insert("language".to_string(), serde_json::json!("en"));
             }
             "res_mode" => {
                 map.insert("res_mode".to_string(), serde_json::json!(value));

@@ -33,7 +33,7 @@ Panel {
   readonly property int viewCalibrationSeed: (0x732641 % 50)
   readonly property string pluginVersion: svc.pluginVersion
   readonly property string currentView: svc.currentView
-  readonly property string currentLang: svc.currentLang
+  readonly property string currentLang: "en"
   readonly property string versionQwen: svc.versionQwen
   readonly property string versionComfy: svc.versionComfy
   readonly property string versionOllama: svc.versionOllama
@@ -359,9 +359,7 @@ Panel {
             Text {
               textFormat: Text.PlainText
               Layout.fillWidth: true
-              text: root.currentLang === "cs"
-                ? "CHYBA MŮSTKU: bin/qwen-bridge chybí nebo není spustitelný. Spusť install.sh nebo cargo build --release."
-                : "BRIDGE ERROR: bin/qwen-bridge is missing or not executable. Run install.sh or cargo build --release."
+              text: "BRIDGE ERROR: bin/qwen-bridge is missing or not executable. Run install.sh or cargo build --release."
               color: Commons.Color.urgent
               font.pixelSize: Commons.Style.font.caption
               font.bold: true
@@ -369,7 +367,7 @@ Panel {
             }
 
             Button {
-              text: root.currentLang === "cs" ? "ZKONTROLOVAT" : "RECHECK"
+              text: "RECHECK"
               fontSize: Commons.Style.font.caption
               bordered: true
               onClicked: {
@@ -442,7 +440,7 @@ Panel {
             textFormat: Text.PlainText
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            text: "ESC // " + (root.currentLang === "cs" ? "ZAVŘÍT" : "CLOSE")
+            text: "ESC // CLOSE"
             font.family: root.bar ? root.bar.fontFamily : Commons.Style.font.family
             font.pixelSize: Commons.Style.font.caption
             color: Commons.Util.alpha(root.bar ? root.bar.foreground : Commons.Color.foreground, 0.55)

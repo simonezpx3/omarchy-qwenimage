@@ -114,7 +114,7 @@ Item {
   property bool isOptimizingPrompt: false
 
   // User Preferences
-  property string currentLang: "cs"
+  property string currentLang: "en"
   property bool isNsfwEnabled: false
   property bool isAnimeLoRAEnabled: false
   property bool isTurboEnabled: true
@@ -168,8 +168,8 @@ Item {
   }
 
   function toggleLanguage() {
-    currentLang = (currentLang === "cs" ? "en" : "cs");
-    saveSetting("language", root.currentLang);
+    currentLang = "en";
+    saveSetting("language", "en");
   }
 
   function toggleNsfw() {
@@ -311,9 +311,7 @@ Item {
     root.isGenerating = false;
     root.currentScaleFactor = 0.0;
     root.livePreviewPath = "";
-    root.generationTelemetry = root.currentLang === "cs"
-      ? "GENEROVÁNÍ PŘERUŠENO"
-      : "GENERATION INTERRUPTED";
+    root.generationTelemetry = "GENERATION INTERRUPTED";
   }
 
   function resetForm() {
@@ -369,9 +367,7 @@ Item {
 
   function startGeneration() {
     if (!root.isBridgeAvailable) {
-      root.generationTelemetry = root.currentLang === "cs"
-        ? "CHYBA: bin/qwen-bridge chybí! Spusť install.sh"
-        : "ERROR: bin/qwen-bridge is missing! Run install.sh";
+      root.generationTelemetry = "ERROR: bin/qwen-bridge is missing! Run install.sh";
       return;
     }
     if (isGenerating || isGameLocked) return;
@@ -583,8 +579,8 @@ Item {
       "zenity",
       "--file-selection",
       "--filename=" + picDir,
-      "--file-filter=" + (root.currentLang === "cs" ? "Obrázky" : "Images") + " (*.png *.jpg *.jpeg *.webp *.avif) | *.png *.jpg *.jpeg *.webp *.avif *.PNG *.JPG *.JPEG *.WEBP *.AVIF",
-      "--title=" + (root.currentLang === "cs" ? "Vybrat referenční obrázek" : "Select reference image")
+      "--file-filter=Images (*.png *.jpg *.jpeg *.webp *.avif) | *.png *.jpg *.jpeg *.webp *.avif *.PNG *.JPG *.JPEG *.WEBP *.AVIF",
+      "--title=Select reference image"
     ];
     pickRefImageProc.running = true;
   }
@@ -660,7 +656,7 @@ Item {
         root.isGenerating = false;
         root.currentScaleFactor = 0.0;
         root.livePreviewPath = "";
-        root.generationTelemetry = (root.currentLang === "cs" ? "CHYBA: " : "ERROR: ") + (res.message || (root.currentLang === "cs" ? "Generování selhalo" : "Generation failed"));
+        root.generationTelemetry = "ERROR: " + (res.message || "Generation failed");
       }
     } catch (e) {}
   }
@@ -746,9 +742,7 @@ Item {
         root.currentScaleFactor = 0.0;
         root.livePreviewPath = "";
         if (exitCode !== 0) {
-          root.generationTelemetry = root.currentLang === "cs"
-            ? "CHYBA: Proces byl ukončen (" + exitCode + ")"
-            : "ERROR: Process exited (" + exitCode + ")";
+          root.generationTelemetry = "ERROR: Process exited (" + exitCode + ")";
         }
       }
     }
@@ -1027,9 +1021,7 @@ Item {
         if (str.length === 0 || str.length > 65536) return;
         try {
           var res = JSON.parse(str);
-          if (res.lang === "cs" || res.lang === "en") {
-            root.currentLang = res.lang;
-          }
+          root.currentLang = "en";
           if (typeof res.nsfw === "boolean") {
             root.isNsfwEnabled = res.nsfw;
           }

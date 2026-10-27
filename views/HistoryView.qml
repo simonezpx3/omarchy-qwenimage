@@ -21,7 +21,7 @@ Item {
     spacing: Commons.Style.spacing.md
 
     PanelSectionHeader {
-      text: panelRoot && panelRoot.currentLang === "cs" ? "HISTORIE GENEROVÁNÍ & ARCHIV (~/Pictures/Qwen-Image/)" : "GENERATION HISTORY & SAVED ARCHIVE (~/Pictures/Qwen-Image/)"
+      text: "GENERATION HISTORY & SAVED ARCHIVE (~/Pictures/Qwen-Image/)"
     }
 
     // List of saved images
@@ -141,7 +141,7 @@ Item {
                 spacing: Commons.Style.spacing.xxs
 
                 Button {
-                  text: panelRoot && panelRoot.currentLang === "cs" ? "OBNOVIT PARAMETRY" : "RESTORE PARAMS"
+                  text: "RESTORE PARAMS"
                   fontSize: Commons.Style.font.caption
                   bordered: true
                   selected: true
@@ -156,7 +156,7 @@ Item {
                 }
 
                 Button {
-                  text: panelRoot && panelRoot.currentLang === "cs" ? "DO BUFFERU" : "COPY TO BUFFER"
+                  text: "COPY TO BUFFER"
                   fontSize: Commons.Style.font.caption
                   bordered: true
                   Layout.preferredWidth: 0
@@ -175,7 +175,7 @@ Item {
                 spacing: Commons.Style.spacing.xxs
 
                 Button {
-                  text: panelRoot && panelRoot.currentLang === "cs" ? "TAPETA" : "WALLPAPER"
+                  text: "WALLPAPER"
                   fontSize: Commons.Style.font.caption
                   bordered: true
                   Layout.preferredWidth: 0
@@ -184,7 +184,7 @@ Item {
                 }
 
                 Button {
-                  text: panelRoot && panelRoot.currentLang === "cs" ? "ZOBRAZIT" : "VIEW"
+                  text: "VIEW"
                   fontSize: Commons.Style.font.caption
                   bordered: true
                   Layout.preferredWidth: 0
@@ -233,9 +233,7 @@ Item {
           Text {
             textFormat: Text.PlainText
             Layout.alignment: Qt.AlignHCenter
-            text: panelRoot && panelRoot.currentLang === "cs"
-              ? "Prohledávám galerii ~/Pictures/Qwen-Image/..."
-              : "Scanning ~/Pictures/Qwen-Image/ gallery..."
+            text: "Scanning ~/Pictures/Qwen-Image/ gallery..."
             font.family: Commons.Style.font.family
             font.pixelSize: Commons.Style.font.body
             font.bold: true
@@ -245,9 +243,7 @@ Item {
           Text {
             textFormat: Text.PlainText
             Layout.alignment: Qt.AlignHCenter
-            text: panelRoot && panelRoot.currentLang === "cs"
-              ? "Načítám metadata, prompty a náhledy..."
-              : "Loading metadata, prompts and previews..."
+            text: "Loading metadata, prompts and previews..."
             font.family: Commons.Style.font.family
             font.pixelSize: Commons.Style.font.caption
             color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
@@ -259,7 +255,7 @@ Item {
           textFormat: Text.PlainText
           anchors.centerIn: parent
           visible: historyList.count === 0 && !(panelRoot && panelRoot.isHistoryLoading)
-          text: panelRoot && panelRoot.currentLang === "cs" ? "Žádné vygenerované obrázky v ~/Pictures/Qwen-Image/" : "No generated images found in ~/Pictures/Qwen-Image/"
+          text: "No generated images found in ~/Pictures/Qwen-Image/"
           font.family: Commons.Style.font.family
           font.pixelSize: Commons.Style.font.body
           color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
@@ -275,7 +271,7 @@ Item {
       spacing: Commons.Style.spacing.sm
 
       Button {
-        text: panelRoot && panelRoot.currentLang === "cs" ? "OTEVŘÍT SLOŽKU" : "OPEN PICTURES FOLDER"
+        text: "OPEN PICTURES FOLDER"
         bordered: true
         onClicked: {
           if (panelRoot) panelRoot.openPicturesFolder();
@@ -283,7 +279,7 @@ Item {
       }
 
       Button {
-        text: panelRoot && panelRoot.currentLang === "cs" ? "OBNOVIT" : "REFRESH"
+        text: "REFRESH"
         bordered: true
         onClicked: root.refreshHistory()
       }
@@ -291,7 +287,7 @@ Item {
       Item { Layout.fillWidth: true }
 
       Button {
-        text: panelRoot && panelRoot.currentLang === "cs" ? "ZPĚT DO STUDIA (ESC)" : "BACK TO STUDIO (ESC)"
+        text: "BACK TO STUDIO (ESC)"
         bordered: true
         active: true
         onClicked: {

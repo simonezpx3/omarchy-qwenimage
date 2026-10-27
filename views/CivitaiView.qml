@@ -54,7 +54,7 @@ Item {
           var s = String(src).trim();
           return s.charAt(0).toUpperCase() + s.slice(1);
         }
-        return (panelRoot && panelRoot.currentLang === "cs") ? "Neznámý zdroj" : "Unknown Source";
+        return "Unknown Source";
     }
   }
 
@@ -63,7 +63,7 @@ Item {
   }
 
   function sourcePlaceholder(src) {
-    var isCs = panelRoot && panelRoot.currentLang === "cs";
+    var isCs = false;
     switch (String(src).toLowerCase()) {
       case "civitai":
         return isCs ? "Hledat v CivitAI (např. cyberpunk girl, fantasy portrét, noc)..." : "Search Civitai (e.g. cyberpunk girl, fantasy portrait, night)...";
@@ -128,7 +128,7 @@ Item {
   }
 
   function sourceCardBadge(src) {
-    var isCs = panelRoot && panelRoot.currentLang === "cs";
+    var isCs = false;
     switch (String(src).toLowerCase()) {
       case "civitai": return isCs ? "CIVITAI KARTA" : "CIVITAI CARD";
       case "midlibrary":
@@ -151,7 +151,7 @@ Item {
   }
 
   function sourceCardSubtitle(src) {
-    var isCs = panelRoot && panelRoot.currentLang === "cs";
+    var isCs = false;
     switch (String(src).toLowerCase()) {
       case "civitai": return isCs ? "KOMUNITNÍ LORA & SD" : "COMMUNITY LORA / SD";
       case "midlibrary":
@@ -179,7 +179,7 @@ Item {
 
     // Header with current source indicator
     PanelSectionHeader {
-      text: (panelRoot && panelRoot.currentLang === "cs" ? "PROMPTY A INSPIRACE — " : "PROMPT DISCOVERY & INSPIRATION — ") + root.sourceDisplayName(root.activeSource)
+      text: "PROMPT DISCOVERY & INSPIRATION — " + root.sourceDisplayName(root.activeSource)
     }
 
     // Source Selector Tabs
@@ -411,7 +411,7 @@ Item {
       }
 
       Button {
-        text: root.isLoading ? (panelRoot && panelRoot.currentLang === "cs" ? "NAČÍTÁM..." : "FETCHING...") : (panelRoot && panelRoot.currentLang === "cs" ? "VYHLEDAT" : "FETCH PROMPTS")
+        text: root.isLoading ? "FETCHING..." : "FETCH PROMPTS"
         bordered: true
         active: true
         enabled: !root.isLoading
@@ -538,7 +538,7 @@ Item {
                 Text {
                   textFormat: Text.PlainText
                   Layout.alignment: Qt.AlignHCenter
-                  text: (modelData.prompt ? String(modelData.prompt).trim().split(/\s+/).length : 0) + (panelRoot && panelRoot.currentLang === "cs" ? " SLOV" : " WORDS")
+                  text: (modelData.prompt ? String(modelData.prompt).trim().split(/\s+/).length : 0) + " WORDS"
                   font.family: Commons.Style.font.family
                   font.pixelSize: Commons.Style.font.caption
                   font.bold: true
@@ -625,7 +625,7 @@ Item {
                 }
 
                 Button {
-                  text: panelRoot && panelRoot.currentLang === "cs" ? "POUŽÍT PROMPT" : "USE PROMPT"
+                  text: "USE PROMPT"
                   fontSize: Commons.Style.font.caption
                   bordered: true
                   selected: true
@@ -633,7 +633,7 @@ Item {
                 }
 
                 Button {
-                  text: panelRoot && panelRoot.currentLang === "cs" ? "KOPÍROVAT" : "COPY RAW"
+                  text: "COPY RAW"
                   fontSize: Commons.Style.font.caption
                   bordered: true
                   onClicked: {
@@ -645,7 +645,7 @@ Item {
               Text {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                text: modelData.prompt || (panelRoot && panelRoot.currentLang === "cs" ? "Bez popisu promptu" : "No prompt description")
+                text: modelData.prompt || "No prompt description"
                 textFormat: Text.PlainText
                 wrapMode: Text.Wrap
                 maximumLineCount: 4
@@ -657,7 +657,7 @@ Item {
 
               Text {
                 Layout.fillWidth: true
-                text: "NEG: " + (modelData.negative_prompt || (panelRoot && panelRoot.currentLang === "cs" ? "Žádný" : "None"))
+                text: "NEG: " + (modelData.negative_prompt || "None")
                 textFormat: Text.PlainText
                 wrapMode: Text.Wrap
                 maximumLineCount: 1
@@ -708,9 +708,7 @@ Item {
           Text {
             textFormat: Text.PlainText
             Layout.alignment: Qt.AlignHCenter
-            text: panelRoot && panelRoot.currentLang === "cs"
-              ? ("Načítám prompty z " + root.sourceDisplayName(root.activeSource) + "...")
-              : ("Fetching prompts from " + root.sourceDisplayName(root.activeSource) + "...")
+            text: "Fetching prompts from " + root.sourceDisplayName(root.activeSource) + "..."
             font.family: Commons.Style.font.family
             font.pixelSize: Commons.Style.font.body
             font.bold: true
@@ -720,9 +718,7 @@ Item {
           Text {
             textFormat: Text.PlainText
             Layout.alignment: Qt.AlignHCenter
-            text: panelRoot && panelRoot.currentLang === "cs"
-              ? "Dotazuji databázi a stahuji komunitní metadata..."
-              : "Querying database and retrieving community metadata..."
+            text: "Querying database and retrieving community metadata..."
             font.family: Commons.Style.font.family
             font.pixelSize: Commons.Style.font.caption
             color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
@@ -734,7 +730,7 @@ Item {
           textFormat: Text.PlainText
           anchors.centerIn: parent
           visible: promptList.count === 0 && !root.isLoading
-          text: panelRoot && panelRoot.currentLang === "cs" ? ("Zadej klíčová slova a klikni na VYHLEDAT pro inspiraci z " + root.sourceDisplayName(root.activeSource)) : ("Enter keywords and click FETCH PROMPTS to explore " + root.sourceDisplayName(root.activeSource))
+          text: "Enter keywords and click FETCH PROMPTS to explore " + root.sourceDisplayName(root.activeSource)
           font.family: Commons.Style.font.family
           font.pixelSize: Commons.Style.font.body
           color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
@@ -749,13 +745,9 @@ Item {
       Layout.fillWidth: true
       spacing: Commons.Style.spacing.sm
 
-      // NSFW Switcher matching LANG button design
+      // NSFW Switcher
       Button {
-        text: {
-          var isCs = panelRoot && panelRoot.currentLang === "cs";
-          var nsfw = panelRoot && panelRoot.isNsfwEnabled;
-          return isCs ? (nsfw ? "NSFW: ZAP" : "NSFW: VYP") : (nsfw ? "NSFW: ON" : "NSFW: OFF");
-        }
+        text: panelRoot && panelRoot.isNsfwEnabled ? "NSFW: ON" : "NSFW: OFF"
         fontSize: Commons.Style.font.caption
         bordered: true
         selected: panelRoot && panelRoot.isNsfwEnabled
@@ -765,7 +757,7 @@ Item {
       Item { Layout.fillWidth: true }
 
       Button {
-        text: panelRoot && panelRoot.currentLang === "cs" ? "ZPĚT DO STUDIA (ESC)" : "BACK TO STUDIO (ESC)"
+        text: "BACK TO STUDIO (ESC)"
         bordered: true
         active: true
         onClicked: {

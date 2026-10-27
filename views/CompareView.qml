@@ -15,7 +15,7 @@ Item {
     spacing: Commons.Style.spacing.md
 
     PanelSectionHeader {
-      text: panelRoot && panelRoot.currentLang === "cs" ? "INTERAKTIVNÍ ROZDĚLENÉ SROVNÁNÍ A/B" : "INTERACTIVE A/B SPLIT COMPARISON"
+      text: "INTERACTIVE A/B SPLIT COMPARISON"
     }
 
     // Split Viewport Frame
@@ -104,7 +104,7 @@ Item {
 
         Text {
           textFormat: Text.PlainText
-          text: panelRoot && panelRoot.currentLang === "cs" ? "NAČÍTÁM NÁHLED..." : "LOADING PREVIEW..."
+          text: "LOADING PREVIEW..."
           font.family: Commons.Style.font.family
           font.pixelSize: Commons.Style.font.caption
           font.bold: true
@@ -163,7 +163,7 @@ Item {
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.margins: Commons.Style.spacing.md
-        text: panelRoot && panelRoot.currentLang === "cs" ? "PŘEDTÍM (ORIGINÁL)" : "BEFORE (ORIGINAL)"
+        text: "BEFORE (ORIGINAL)"
         font.family: Commons.Style.font.family
         font.pixelSize: Commons.Style.font.caption
         font.bold: true
@@ -175,7 +175,7 @@ Item {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: Commons.Style.spacing.md
-        text: panelRoot && panelRoot.currentLang === "cs" ? "POTOM (VARIACE)" : "AFTER (VARIATION)"
+        text: "AFTER (VARIATION)"
         font.family: Commons.Style.font.family
         font.pixelSize: Commons.Style.font.caption
         font.bold: true
@@ -190,7 +190,7 @@ Item {
 
       Text {
         textFormat: Text.PlainText
-        text: (panelRoot && panelRoot.currentLang === "cs" ? "POMĚR ROZDĚLENÍ: " : "SPLIT RATIO: ") + Math.round(root.splitPosition * 100) + "%"
+        text: "SPLIT RATIO: " + Math.round(root.splitPosition * 100) + "%"
         font.family: Commons.Style.font.family
         font.pixelSize: Commons.Style.font.caption
         color: Commons.Color.foreground
@@ -217,7 +217,7 @@ Item {
       spacing: Commons.Style.spacing.sm
 
       Button {
-        text: panelRoot && panelRoot.currentLang === "cs" ? "POUŽÍT JAKO FINÁLNÍ" : "APPLY AS FINAL"
+        text: "APPLY AS FINAL"
         bordered: true
         selected: true
         onClicked: {
@@ -229,7 +229,7 @@ Item {
       }
 
       Button {
-        text: panelRoot && panelRoot.currentLang === "cs" ? "ZAHODIT VARIACI" : "DISCARD VARIATION"
+        text: "DISCARD VARIATION"
         bordered: true
         onClicked: {
           if (panelRoot) panelRoot.currentView = "studio";
@@ -237,7 +237,7 @@ Item {
       }
 
       Button {
-        text: panelRoot && panelRoot.currentLang === "cs" ? "NASTAVIT JAKO TAPETU" : "SET AS WALLPAPER"
+        text: "SET AS WALLPAPER"
         bordered: true
         enabled: panelRoot && panelRoot.generatedPath !== ""
         onClicked: {
@@ -248,7 +248,7 @@ Item {
       Item { Layout.fillWidth: true }
 
       Button {
-        text: panelRoot && panelRoot.currentLang === "cs" ? "ZPĚT DO STUDIA (ESC)" : "BACK TO STUDIO (ESC)"
+        text: "BACK TO STUDIO (ESC)"
         bordered: true
         active: true
         onClicked: {
