@@ -257,9 +257,9 @@ check_status() {
     if [[ -f "$anatomy_lora" ]]; then
         local sz_anatomy
         sz_anatomy=$(du -h "$anatomy_lora" | awk '{print $1}')
-        echo -e "  [✔] Anatomy Fidelity: ${GREEN}Genitalia-Anatomy-2.1-v1.safetensors (${sz_anatomy})${RESET}"
+        echo -e "  OK // Anatomy Fidelity: ${GREEN}Genitalia-Anatomy-2.1-v1.safetensors (${sz_anatomy})${RESET}"
     else
-        echo -e "  [✖] Anatomy Fidelity: ${RED}Chybí (${anatomy_lora})${RESET}"
+        echo -e "  ERR // Anatomy Fidelity: ${RED}Chybí (${anatomy_lora})${RESET}"
     fi
 
     echo -e "\n${BOLD}Neural AI Upscalers (4X Super-Resolution):${RESET}"
