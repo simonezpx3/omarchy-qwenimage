@@ -119,6 +119,7 @@ Item {
   property bool isAnimeLoRAEnabled: false
   property bool isTurboEnabled: true
   property bool isUncensoredEnabled: false
+  property bool isAnatomyLoRAEnabled: false
   property bool isAutoExpandEnabled: false
 
   readonly property bool isHumanSubjectInPrompt: {
@@ -197,6 +198,11 @@ Item {
   function toggleUncensored() {
     isUncensoredEnabled = !isUncensoredEnabled;
     saveSetting("uncensored", root.isUncensoredEnabled ? "true" : "false");
+  }
+
+  function toggleAnatomyLoRA() {
+    isAnatomyLoRAEnabled = !isAnatomyLoRAEnabled;
+    saveSetting("anatomy_lora", root.isAnatomyLoRAEnabled ? "true" : "false");
   }
 
   function toggleAutoExpand() {
@@ -415,6 +421,10 @@ Item {
 
     if (root.isUncensoredEnabled) {
       args.push("--uncensored");
+    }
+
+    if (root.isAnatomyLoRAEnabled) {
+      args.push("--anatomy");
     }
 
     if (root.isAutoExpandEnabled) {
@@ -1031,6 +1041,11 @@ Item {
           }
           if (typeof res.uncensored === "boolean") {
             root.isUncensoredEnabled = res.uncensored;
+          }
+          if (typeof res.anatomy === "boolean") {
+            root.isAnatomyLoRAEnabled = res.anatomy;
+          } else if (typeof res.anatomy_lora === "boolean") {
+            root.isAnatomyLoRAEnabled = res.anatomy_lora;
           }
           if (typeof res.auto_expand === "boolean") {
             root.isAutoExpandEnabled = res.auto_expand;

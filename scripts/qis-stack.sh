@@ -228,6 +228,7 @@ check_status() {
     local turbo_lora="${COMFY_DIR}/models/loras/qwen-image-2.1-viggle-turbo.safetensors"
     local uncensored_lora="${COMFY_DIR}/models/loras/qwen-image-2.1-uncensored-lora.safetensors"
     local anime_lora="${COMFY_DIR}/models/loras/qwen-image-2.1-anime-lora.safetensors"
+    local anatomy_lora="${COMFY_DIR}/models/loras/Genitalia-Anatomy-2.1-v1.safetensors"
 
     if [[ -f "$turbo_lora" || -L "$turbo_lora" ]]; then
         local sz_turbo
@@ -251,6 +252,14 @@ check_status() {
         echo -e "  [✔] Anime Consistency: ${GREEN}qwen-image-2.1-anime-lora.safetensors (${sz_anime})${RESET}"
     else
         echo -e "  [✖] Anime Consistency: ${RED}Chybí (${anime_lora})${RESET}"
+    fi
+
+    if [[ -f "$anatomy_lora" ]]; then
+        local sz_anatomy
+        sz_anatomy=$(du -h "$anatomy_lora" | awk '{print $1}')
+        echo -e "  [✔] Anatomy Fidelity: ${GREEN}Genitalia-Anatomy-2.1-v1.safetensors (${sz_anatomy})${RESET}"
+    else
+        echo -e "  [✖] Anatomy Fidelity: ${RED}Chybí (${anatomy_lora})${RESET}"
     fi
 
     echo -e "\n${BOLD}Neural AI Upscalers (4X Super-Resolution):${RESET}"

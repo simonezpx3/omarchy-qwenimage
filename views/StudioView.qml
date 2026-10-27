@@ -278,6 +278,10 @@ Item {
         "cs": "HERETIC LORA: Abliterovaný necenzurovaný difuzní LoRA adaptér pro latent.",
         "en": "HERETIC LORA: Abliterated uncensored diffusion LoRA adapter for latent."
       },
+      "help_anatomy_lora": {
+        "cs": "ANATOMY LORA: Specializovaný adaptér pro detailní anatomickou fidelitu těla a figurální akty.",
+        "en": "ANATOMY LORA: Specialized adapter for detailed anatomical body fidelity and figurative nudes."
+      },
       "help_history": {
         "cs": "HISTORY: Otevře archiv dříve vygenerovaných děl v ~/Pictures/Qwen-Image/ s obnovením parametrů.",
         "en": "HISTORY: Displays archive of previously generated artworks in ~/Pictures/Qwen-Image with parameter restore."
@@ -1611,6 +1615,18 @@ Item {
         selected: panelRoot && panelRoot.isUncensoredEnabled
         onHotChanged: root.setHelp(root.tr("help_uncensored_lora"), hot)
         onClicked: if (panelRoot) panelRoot.toggleUncensored()
+      }
+
+      // Anatomy Body LoRA Switcher
+      Button {
+        text: panelRoot && panelRoot.currentLang === "cs"
+              ? (panelRoot.isAnatomyLoRAEnabled ? "ANATOMY: ZAP" : "ANATOMY: VYP")
+              : (panelRoot.isAnatomyLoRAEnabled ? "ANATOMY: ON" : "ANATOMY: OFF")
+        fontSize: Commons.Style.font.caption
+        bordered: true
+        selected: panelRoot && panelRoot.isAnatomyLoRAEnabled
+        onHotChanged: root.setHelp(root.tr("help_anatomy_lora"), hot)
+        onClicked: if (panelRoot) panelRoot.toggleAnatomyLoRA()
       }
 
       Button {

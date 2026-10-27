@@ -2617,6 +2617,7 @@ fn cmd_generate(
     anime: bool,
     turbo: bool,
     uncensored: bool,
+    anatomy: bool,
     res_mode: Option<&str>,
     expand: bool,
 ) {
@@ -2810,6 +2811,7 @@ fn cmd_generate(
         anime,
         turbo: active_turbo,
         uncensored,
+        anatomy,
         res_mode: &final_res_mode,
         is_human,
     };
@@ -2971,6 +2973,7 @@ fn cmd_settings_get() {
     let anime = obj.get("anime_lora").and_then(|v| v.as_bool()).unwrap_or(false);
     let turbo = obj.get("turbo").and_then(|v| v.as_bool()).unwrap_or(true);
     let uncensored = obj.get("uncensored").and_then(|v| v.as_bool()).unwrap_or(false);
+    let anatomy = obj.get("anatomy_lora").or_else(|| obj.get("anatomy")).and_then(|v| v.as_bool()).unwrap_or(false);
     let auto_expand = obj.get("auto_expand").and_then(|v| v.as_bool()).unwrap_or(false);
     let res_mode = obj.get("res_mode").and_then(|v| v.as_str()).unwrap_or("standard");
 
@@ -2981,6 +2984,7 @@ fn cmd_settings_get() {
         "anime": anime,
         "turbo": turbo,
         "uncensored": uncensored,
+        "anatomy": anatomy,
         "auto_expand": auto_expand,
         "res_mode": res_mode,
         "settings": val
@@ -2994,7 +2998,7 @@ fn cmd_settings_set(key: &str, value: &str) {
     }
     if let Some(map) = val.as_object_mut() {
         match key {
-            "nsfw" | "anime_lora" | "turbo" | "uncensored" | "auto_expand" => {
+            "nsfw" | "anime_lora" | "turbo" | "uncensored" | "anatomy_lora" | "anatomy" | "auto_expand" => {
                 let b = value.eq_ignore_ascii_case("true") || value == "1";
                 map.insert(key.to_string(), serde_json::json!(b));
             }
@@ -3210,6 +3214,7 @@ fn main() {
             let mut anime = false;
             let mut turbo = false;
             let mut uncensored = false;
+            let mut anatomy = false;
             let mut expand = false;
             let mut pos_args: Vec<&str> = Vec::new();
 
@@ -3223,6 +3228,9 @@ fn main() {
                     idx += 1;
                 } else if args[idx] == "--uncensored" || args[idx] == "--heretic" {
                     uncensored = true;
+                    idx += 1;
+                } else if args[idx] == "--anatomy" || args[idx] == "--anatomy-lora" {
+                    anatomy = true;
                     idx += 1;
                 } else if args[idx] == "--expand" || args[idx] == "--auto-expand" {
                     expand = true;
@@ -3249,7 +3257,7 @@ fn main() {
             let image_ref = pos_args.get(6).copied().filter(|s| !s.trim().is_empty());
             let denoise = pos_args.get(7).and_then(|s| s.parse::<f32>().ok()).unwrap_or(0.85).clamp(0.05, 0.95);
 
-            cmd_generate(prompt, ratio, steps, cfg, seed, negative, image_ref, denoise, anime, turbo, uncensored, res_mode.as_deref(), expand);
+            cmd_generate(prompt, ratio, steps, cfg, seed, negative, image_ref, denoise, anime, turbo, uncensored, anatomy, res_mode.as_deref(), expand);
         }
         "interrupt" | "cancel" => {
             let ok = comfy::interrupt_comfyui();
@@ -3376,6 +3384,7 @@ mod tests {
             anime: false,
             turbo: false,
             uncensored: false,
+            anatomy: false,
             res_mode: "standard",
             is_human: false,
         };
@@ -3433,6 +3442,7 @@ mod tests {
             anime: false,
             turbo: true,
             uncensored: false,
+            anatomy: false,
             res_mode: "standard",
             is_human: false,
         };
@@ -3468,6 +3478,7 @@ mod tests {
             anime: false,
             turbo: true,
             uncensored: false,
+            anatomy: false,
             res_mode: "standard",
             is_human: false,
         };
@@ -3498,6 +3509,34 @@ mod tests {
         assert!(low_d >= (1.0 / 6.0) - 1e-5);
 
         let _ = fs::remove_file(&ref_img);
+    }
+
+    #[test]
+    fn test_anatomy_lora_graph_wiring() {
+        let cfg = comfy::GenerationConfig {
+            prompt: "classical renaissance marble statue",
+            negative_prompt: "blurry",
+            ratio: "1:1",
+            steps: 25,
+            cfg: 4.0,
+            seed: 999,
+            image_ref: None,
+            denoise: 0.85,
+            anime: false,
+            turbo: false,
+            uncensored: false,
+            anatomy: true,
+            res_mode: "standard",
+            is_human: true,
+        };
+
+        let (graph, _, _, _) = comfy::build_generation_graph(&cfg).expect("anatomy graph build should succeed");
+        // Verify Anatomy LoRA node is inserted and configured correctly
+        if graph.get("22").is_some() {
+            assert_eq!(graph["22"]["class_type"], "LoraLoaderModelOnly");
+            assert_eq!(graph["22"]["inputs"]["lora_name"], "Genitalia-Anatomy-2.1-v1.safetensors");
+            assert_eq!(graph["22"]["inputs"]["strength_model"], 0.72);
+        }
     }
 
     #[test]

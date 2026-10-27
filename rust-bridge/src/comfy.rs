@@ -439,6 +439,7 @@ pub struct GenerationConfig<'a> {
     pub anime: bool,
     pub turbo: bool,
     pub uncensored: bool,
+    pub anatomy: bool,
     pub res_mode: &'a str,
     pub is_human: bool,
 }
@@ -467,9 +468,11 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     let has_turbo = resolved_turbo_name.is_some();
     let uncensored_lora_file = loras_dir.join("qwen-image-2.1-uncensored-lora.safetensors");
     let anime_lora_file = loras_dir.join("qwen-image-2.1-anime-lora.safetensors");
+    let anatomy_lora_file = loras_dir.join("Genitalia-Anatomy-2.1-v1.safetensors");
 
     let has_uncensored = cfg.uncensored && uncensored_lora_file.exists();
     let has_anime = cfg.anime && anime_lora_file.exists();
+    let has_anatomy = cfg.anatomy && anatomy_lora_file.exists();
 
     let final_seed = if cfg.seed >= 0 {
         cfg.seed
@@ -575,6 +578,20 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
             }
         });
         current_model = json!(["15", 0]);
+    }
+
+    if has_anatomy {
+        // Anatomy LoRA: calibrated at 0.72 (standard) and 0.60 (turbo) for high fidelity without texture saturation
+        let weight = if has_turbo { 0.60 } else { 0.72 };
+        graph["22"] = json!({
+            "class_type": "LoraLoaderModelOnly",
+            "inputs": {
+                "lora_name": "Genitalia-Anatomy-2.1-v1.safetensors",
+                "strength_model": weight,
+                "model": current_model
+            }
+        });
+        current_model = json!(["22", 0]);
     }
 
     // EasyCache integration for standard DiT sampling:
