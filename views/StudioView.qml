@@ -226,6 +226,10 @@ Item {
         "cs": "DENOISE: Míra přepracování referenčního obrázku (0.10 = jemná úprava, 0.65 = vyvážená změna, 0.95 = maximální transformace při zachování předlohy).",
         "en": "DENOISE: Modification strength of reference image (0.10 = subtle edit, 0.65 = balanced redesign, 0.95 = max transformation preserving reference)."
       },
+      "help_scale_sana": {
+        "cs": "2K SANA: Generativní rekonstrukce detailů a 2K upscaling pomocí Nvidia Sana DiT s minimální VRAM stopou.",
+        "en": "2K SANA: Generative detail reconstruction and 2K upscaling via Nvidia Sana DiT with minimal VRAM footprint."
+      },
       "help_scale_esrgan": {
         "cs": "4X ESRGAN: Neuronový 4X upscaling pomocí RealESRGAN_x4plus (silné potlačení šumu a artefaktů, nulová mřížka).",
         "en": "4X ESRGAN: Neural 4X upscaling via RealESRGAN_x4plus (strong noise and artifact suppression, zero grid pattern)."
@@ -1390,13 +1394,18 @@ Item {
           Layout.fillWidth: true
           spacing: Commons.Style.spacing.xs
 
-          Text {
-            textFormat: Text.PlainText
-            text: root.tr("scale")
-            font.family: Commons.Style.font.family
-            font.pixelSize: Commons.Style.font.caption
-            color: Commons.Color.foreground
-            Layout.preferredWidth: Commons.Style.space(46)
+          Button {
+            readonly property bool isBusy: (panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale_sana")
+            text: isBusy ? ("SANA " + root.genElapsedSeconds + "s") : "2K SANA"
+            fontSize: Commons.Style.font.caption
+            bordered: true
+            Layout.fillWidth: true
+            active: isBusy
+            selected: isBusy
+            foreground: isBusy ? Commons.Color.accent : Commons.Color.foreground
+            enabled: panelRoot && ((panelRoot.referencePath !== "") || (panelRoot.generatedPath !== "")) && !panelRoot.isGenerating
+            onHotChanged: root.setHelp(root.tr("help_scale_sana"), hot)
+            onClicked: if (panelRoot) panelRoot.aiUpscale("sana")
           }
 
           Button {

@@ -322,16 +322,24 @@ else
     if [[ -f "${SCRIPT_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py" ]]; then
       copy_safe "${SCRIPT_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py" "${TARGET_PLUGIN_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py" 0644
     fi
+    ensure_safe_dir "${TARGET_PLUGIN_DIR}/custom_nodes/comfyui_sana_upscaler"
+    if [[ -f "${SCRIPT_DIR}/custom_nodes/comfyui_sana_upscaler/__init__.py" ]]; then
+      copy_safe "${SCRIPT_DIR}/custom_nodes/comfyui_sana_upscaler/__init__.py" "${TARGET_PLUGIN_DIR}/custom_nodes/comfyui_sana_upscaler/__init__.py" 0644
+    fi
   fi
 fi
 
 chmod 0755 "${TARGET_PLUGIN_DIR}/scripts/qis-stack.sh"
 [[ -f "${TARGET_PLUGIN_DIR}/uninstall.sh" ]] && chmod 0755 "${TARGET_PLUGIN_DIR}/uninstall.sh"
 
-# Synchronize ComfyUI-ViggleTurbo custom node into ComfyUI directory
+# Synchronize ComfyUI-ViggleTurbo & comfyui_sana_upscaler custom nodes into ComfyUI directory
 if [[ -d "${COMFY_DIR}/custom_nodes" && -f "${SCRIPT_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py" ]]; then
   ensure_safe_dir "${COMFY_DIR}/custom_nodes/ComfyUI-ViggleTurbo"
   copy_safe "${SCRIPT_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py" "${COMFY_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py" 0644
+fi
+if [[ -d "${COMFY_DIR}/custom_nodes" && -f "${SCRIPT_DIR}/custom_nodes/comfyui_sana_upscaler/__init__.py" ]]; then
+  ensure_safe_dir "${COMFY_DIR}/custom_nodes/comfyui_sana_upscaler"
+  copy_safe "${SCRIPT_DIR}/custom_nodes/comfyui_sana_upscaler/__init__.py" "${COMFY_DIR}/custom_nodes/comfyui_sana_upscaler/__init__.py" 0644
 fi
 
 # ---------------------------------------------------------

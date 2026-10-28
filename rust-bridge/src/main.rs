@@ -1425,6 +1425,7 @@ fn cmd_upscale_ai(input_path: &str, model_choice: &str, is_anime: bool) {
                 "esrgan" | "realesrgan" => "RealESRGAN 4X",
                 "ultra" | "ultrasharp" => "UltraSharp 4X",
                 "anime" | "animesharp" => "AnimeSharp 4X",
+                "sana" | "sana2k" => "Sana 2K",
                 _ => "4X",
             };
             let is_cs = get_is_cs();
@@ -3855,5 +3856,22 @@ mod tests {
         assert!(is_vram_friendly("minicpm-v:4.7-1b"));
         assert!(!is_vram_friendly("heretic-v:latest"));
         assert!(!is_vram_friendly("mimo-v:latest"));
+    }
+
+    #[test]
+    fn test_sana_upscale_choice_recognition() {
+        let choices = ["sana", "SANA", "Sana2k", "sana2k"];
+        for choice in &choices {
+            let is_sana = matches!(choice.to_lowercase().as_str(), "sana" | "sana2k");
+            assert!(is_sana, "Failed to match {}", choice);
+            let model_title = match choice.to_lowercase().as_str() {
+                "esrgan" | "realesrgan" => "RealESRGAN 4X",
+                "ultra" | "ultrasharp" => "UltraSharp 4X",
+                "anime" | "animesharp" => "AnimeSharp 4X",
+                "sana" | "sana2k" => "Sana 2K",
+                _ => "4X",
+            };
+            assert_eq!(model_title, "Sana 2K");
+        }
     }
 }

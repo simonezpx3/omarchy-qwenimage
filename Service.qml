@@ -469,7 +469,7 @@ Item {
 
     isGenerating = true;
     generatingMode = "scale_" + modelChoice;
-    currentScaleFactor = 4.0;
+    currentScaleFactor = (modelChoice === "sana") ? 2.0 : 4.0;
 
     var args = [
       root.bridgeBin,

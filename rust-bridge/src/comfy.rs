@@ -1128,64 +1128,104 @@ pub fn run_neural_upscale(
         Err(e) => return Err(format!("Failed to read input image dimensions: {}", e)),
     };
 
-    let target_w = src_w * 4;
-    let target_h = src_h * 4;
+    let is_sana = matches!(model_choice.to_lowercase().as_str(), "sana" | "sana2k");
 
-    let models_dir = get_comfy_dir().join("models/upscale_models");
-    let (preferred_file, model_tag) = match model_choice.to_lowercase().as_str() {
-        "esrgan" | "realesrgan" => ("RealESRGAN_x4plus.safetensors", "esrgan"),
-        "ultra" | "ultrasharp" => ("4x-UltraSharp.safetensors", "ultra"),
-        "anime" | "animesharp" => ("4x-AnimeSharp.safetensors", "anime"),
-        _ => {
-            if is_anime {
-                ("4x-AnimeSharp.safetensors", "anime")
-            } else {
-                ("4x-UltraSharp.safetensors", "ultra")
+    let (target_w, target_h, factor_label, _prefix, selected_model, graph) = if is_sana {
+        let tw = src_w * 2;
+        let th = src_h * 2;
+        let pfx = format!("QIS_2K_SANA_{}x{}", tw, th);
+        let g = json!({
+            "1": {
+                "class_type": "LoadImage",
+                "inputs": {
+                    "image": dest_name
+                }
+            },
+            "2": {
+                "class_type": "Sana2KUpscaler",
+                "inputs": {
+                    "image": ["1", 0],
+                    "model_id": "Efficient-Large-Model/Sana_1600M_2Kpx_BF16_diffusers",
+                    "prompt": "high quality, highly detailed, sharp 2k, ultra realistic",
+                    "negative_prompt": "blurry, lowres, artifacts, distortion, noise",
+                    "upscale_factor": 2.0,
+                    "strength": 0.35,
+                    "steps": 20,
+                    "guidance_scale": 4.5,
+                    "offload_mode": "sequential_cpu_offload",
+                    "seed": 42
+                }
+            },
+            "3": {
+                "class_type": "SaveImage",
+                "inputs": {
+                    "filename_prefix": pfx,
+                    "images": ["2", 0]
+                }
+            }
+        });
+        (tw, th, "2K", pfx, "Sana 2K".to_string(), g)
+    } else {
+        let tw = src_w * 4;
+        let th = src_h * 4;
+
+        let models_dir = get_comfy_dir().join("models/upscale_models");
+        let (preferred_file, model_tag) = match model_choice.to_lowercase().as_str() {
+            "esrgan" | "realesrgan" => ("RealESRGAN_x4plus.safetensors", "esrgan"),
+            "ultra" | "ultrasharp" => ("4x-UltraSharp.safetensors", "ultra"),
+            "anime" | "animesharp" => ("4x-AnimeSharp.safetensors", "anime"),
+            _ => {
+                if is_anime {
+                    ("4x-AnimeSharp.safetensors", "anime")
+                } else {
+                    ("4x-UltraSharp.safetensors", "ultra")
+                }
+            }
+        };
+
+        let mut sel = preferred_file.to_string();
+        if !models_dir.join(&sel).exists() {
+            // Fallback search
+            for fallback in &["RealESRGAN_x4plus.safetensors", "4x-UltraSharp.safetensors", "4x-AnimeSharp.safetensors"] {
+                if models_dir.join(fallback).exists() {
+                    sel = fallback.to_string();
+                    break;
+                }
             }
         }
+
+        let pfx = format!("QIS_4X_{}_{}x{}", model_tag.to_uppercase(), tw, th);
+
+        let g = json!({
+            "1": {
+                "class_type": "LoadImage",
+                "inputs": {
+                    "image": dest_name
+                }
+            },
+            "2": {
+                "class_type": "UpscaleModelLoader",
+                "inputs": {
+                    "model_name": sel
+                }
+            },
+            "3": {
+                "class_type": "ImageUpscaleWithModel",
+                "inputs": {
+                    "upscale_model": ["2", 0],
+                    "image": ["1", 0]
+                }
+            },
+            "4": {
+                "class_type": "SaveImage",
+                "inputs": {
+                    "filename_prefix": pfx,
+                    "images": ["3", 0]
+                }
+            }
+        });
+        (tw, th, "4X", pfx, sel, g)
     };
-
-    let mut selected_model = preferred_file.to_string();
-    if !models_dir.join(&selected_model).exists() {
-        // Fallback search
-        for fallback in &["RealESRGAN_x4plus.safetensors", "4x-UltraSharp.safetensors", "4x-AnimeSharp.safetensors"] {
-            if models_dir.join(fallback).exists() {
-                selected_model = fallback.to_string();
-                break;
-            }
-        }
-    }
-
-    let prefix = format!("QIS_4X_{}_{}x{}", model_tag.to_uppercase(), target_w, target_h);
-
-    let graph = json!({
-        "1": {
-            "class_type": "LoadImage",
-            "inputs": {
-                "image": dest_name
-            }
-        },
-        "2": {
-            "class_type": "UpscaleModelLoader",
-            "inputs": {
-                "model_name": selected_model
-            }
-        },
-        "3": {
-            "class_type": "ImageUpscaleWithModel",
-            "inputs": {
-                "upscale_model": ["2", 0],
-                "image": ["1", 0]
-            }
-        },
-        "4": {
-            "class_type": "SaveImage",
-            "inputs": {
-                "filename_prefix": prefix,
-                "images": ["3", 0]
-            }
-        }
-    });
 
     let agent = ureq::Agent::config_builder()
         .timeout_global(Some(Duration::from_secs(60)))
@@ -1204,13 +1244,22 @@ pub fn run_neural_upscale(
     let poll_start = Instant::now();
     let hist_url = format!("http://127.0.0.1:8188/history/{}", prompt_id);
 
-    while poll_start.elapsed() < Duration::from_secs(90) {
+    while poll_start.elapsed() < Duration::from_secs(180) {
         if let Ok(mut h_resp) = agent.get(&hist_url).call() {
             if let Ok(h_val) = h_resp.body_mut().read_json::<Value>() {
                 if let Some(p_info) = h_val.get(prompt_id) {
                     if let Some(outputs) = p_info.get("outputs").and_then(|o| o.as_object()) {
-                        if let Some(n4) = outputs.get("4") {
-                            if let Some(images) = n4.get("images").and_then(|i| i.as_array()) {
+                        let save_node_out = if is_sana {
+                            outputs.get("3").or_else(|| outputs.get("4"))
+                        } else {
+                            outputs.get("4").or_else(|| outputs.get("3"))
+                        };
+                        let save_node_out = save_node_out.or_else(|| {
+                            outputs.values().find(|n| n.get("images").is_some())
+                        });
+
+                        if let Some(node_data) = save_node_out {
+                            if let Some(images) = node_data.get("images").and_then(|i| i.as_array()) {
                                 if let Some(first) = images.first() {
                                     if let Some(fn_str) = first.get("filename").and_then(|f| f.as_str()) {
                                         let subfolder = first.get("subfolder").and_then(|s| s.as_str()).unwrap_or("");
@@ -1232,10 +1281,31 @@ pub fn run_neural_upscale(
                                                 }
                                             }
 
-                                            let cand_name = format!("{}_4x_{}_{}x{}.png", clean_bname, model_tag, target_w, target_h);
+                                            let cand_name = if is_sana {
+                                                format!("{}_2k_sana_{}x{}.png", clean_bname, target_w, target_h)
+                                            } else {
+                                                let tag = match model_choice.to_lowercase().as_str() {
+                                                    "esrgan" | "realesrgan" => "esrgan",
+                                                    "ultra" | "ultrasharp" => "ultra",
+                                                    "anime" | "animesharp" => "anime",
+                                                    _ => if is_anime { "anime" } else { "ultra" },
+                                                };
+                                                format!("{}_4x_{}_{}x{}.png", clean_bname, tag, target_w, target_h)
+                                            };
+
                                             let final_path = if gallery_dir.join(&cand_name).exists() {
                                                 let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() % 100000;
-                                                gallery_dir.join(format!("{}_4x_{}_{}x{}_{}.png", clean_bname, model_tag, target_w, target_h, ts))
+                                                if is_sana {
+                                                    gallery_dir.join(format!("{}_2k_sana_{}x{}_{}.png", clean_bname, target_w, target_h, ts))
+                                                } else {
+                                                    let tag = match model_choice.to_lowercase().as_str() {
+                                                        "esrgan" | "realesrgan" => "esrgan",
+                                                        "ultra" | "ultrasharp" => "ultra",
+                                                        "anime" | "animesharp" => "anime",
+                                                        _ => if is_anime { "anime" } else { "ultra" },
+                                                    };
+                                                    gallery_dir.join(format!("{}_4x_{}_{}x{}_{}.png", clean_bname, tag, target_w, target_h, ts))
+                                                }
                                             } else {
                                                 gallery_dir.join(&cand_name)
                                             };
@@ -1249,7 +1319,7 @@ pub fn run_neural_upscale(
                                                 "width": target_w,
                                                 "height": target_h,
                                                 "model": selected_model,
-                                                "factor": "4X"
+                                                "factor": factor_label
                                             }));
                                         }
                                     }
