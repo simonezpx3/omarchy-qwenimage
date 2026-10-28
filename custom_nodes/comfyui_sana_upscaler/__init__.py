@@ -1,5 +1,4 @@
 import gc
-import inspect
 import torch
 import numpy as np
 from PIL import Image
@@ -21,7 +20,7 @@ class Sana2KUpscalerNode:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "image": ("IMAGE",),  # ComfyUI standard: [B, H, W, C], float32, 0..1
+                "image": ("IMAGE",),  # ComfyUI standard: (B, H, W, C), float32, 0..1
                 "model_id": ("STRING", {"default": "Efficient-Large-Model/Sana_1600M_2Kpx_BF16_diffusers"}),
                 "prompt": ("STRING", {"default": "high quality, highly detailed, sharp 2k, ultra realistic", "multiline": True}),
                 "negative_prompt": ("STRING", {"default": "blurry, lowres, artifacts, distortion, noise", "multiline": True}),
@@ -47,21 +46,17 @@ class Sana2KUpscalerNode:
         self._unload()
 
         # Načtení přes Modular Diffusers API
-        # Zkoušíme specializované img2img pipeline nebo generickou DiffusionPipeline
-        pipe = None
-        load_kwargs = {"torch_dtype": torch.float16, "use_safetensors": True}
+        # Model vyžaduje bfloat16: ve float16 dochází k overflow attention logitů a vzniku NaN
+        dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float32
+        load_kwargs = {"torch_dtype": dtype, "use_safetensors": True}
         if "bf16" in model_id.lower():
             load_kwargs["variant"] = "bf16"
 
         try:
-            from diffusers import SanaSprintImg2ImgPipeline
-            pipe = SanaSprintImg2ImgPipeline.from_pretrained(model_id, **load_kwargs)
+            pipe = DiffusionPipeline.from_pretrained(model_id, **load_kwargs)
         except Exception:
-            try:
-                pipe = DiffusionPipeline.from_pretrained(model_id, **load_kwargs)
-            except Exception:
-                load_kwargs.pop("variant", None)
-                pipe = DiffusionPipeline.from_pretrained(model_id, **load_kwargs)
+            load_kwargs.pop("variant", None)
+            pipe = DiffusionPipeline.from_pretrained(model_id, **load_kwargs)
 
         # Kritické pro 2K rozlišení na 8GB VRAM: VAE Tiling a Slicing
         if hasattr(pipe, "vae") and pipe.vae is not None:
@@ -125,7 +120,6 @@ class Sana2KUpscalerNode:
 
         pipe = self._ensure_pipeline(model_id, offload_mode)
         out_tensors = []
-        call_params = inspect.signature(pipe.__call__).parameters
 
         # 2. Zpracování po jednotlivých snímcích v batchi (garance B=1 ve VRAM)
         for i in range(image.shape[0]):
@@ -134,54 +128,34 @@ class Sana2KUpscalerNode:
             target_h = int((pil_in.height * upscale_factor) // 32 * 32)
             pil_resized = pil_in.resize((target_w, target_h), Image.Resampling.LANCZOS)
 
-            generator = torch.Generator(device="cpu").manual_seed(seed + i)
-
             with torch.inference_mode():
-                if "image" in call_params:
-                    # Pipeline nativně podporuje img2img (např. SanaSprintImg2ImgPipeline)
-                    kwargs = {
-                        "prompt": prompt,
-                        "image": pil_resized,
-                        "strength": strength,
-                        "num_inference_steps": steps,
-                        "guidance_scale": guidance_scale,
-                        "width": target_w,
-                        "height": target_h,
-                        "generator": generator,
-                    }
-                    if "negative_prompt" in call_params:
-                        kwargs["negative_prompt"] = negative_prompt
-                    res = pipe(**kwargs)
-                    result_pil = res.images[0]
-                else:
-                    # Pipeline je generická text2img (např. standardní SanaPipeline)
-                    # Použijeme VAE encode + latent blending pro zachování struktury předlohy
-                    # Vstup do VAE: BCHW normalizovaný na [-1, 1]
-                    img_np = (np.array(pil_resized.convert("RGB"), dtype=np.float32) / 127.5) - 1.0
-                    img_t = torch.from_numpy(img_np).permute(2, 0, 1).unsqueeze(0).to(dtype=torch.float16)
-                    
-                    # Offload bezpečné kódování
-                    vae_device = getattr(pipe.vae, "device", torch.device("cpu"))
-                    latents = pipe.vae.encode(img_t.to(vae_device)).latent
-                    scaling = getattr(pipe.vae.config, "scaling_factor", 1.0)
-                    latents = latents * scaling
+                # Vstup do VAE: BCHW normalizovaný na (-1, 1), na CUDA v bfloat16
+                img_np = (np.array(pil_resized.convert("RGB"), dtype=np.float32) / 127.5) - 1.0
+                pipe_dtype = getattr(pipe, "dtype", torch.bfloat16)
+                img_t = torch.from_numpy(img_np).permute(2, 0, 1).unsqueeze(0).to(device="cuda", dtype=pipe_dtype)
 
-                    noise = torch.randn(latents.shape, generator=generator, device=latents.device, dtype=latents.dtype)
-                    noisy_latents = (1.0 - strength) * latents + strength * noise
+                latents = pipe.vae.encode(img_t).latent
+                scaling = getattr(pipe.vae.config, "scaling_factor", 1.0)
+                latents = latents * scaling
 
-                    kwargs = {
-                        "prompt": prompt,
-                        "latents": noisy_latents,
-                        "num_inference_steps": steps,
-                        "guidance_scale": guidance_scale,
-                        "width": target_w,
-                        "height": target_h,
-                        "generator": generator,
-                    }
-                    if "negative_prompt" in call_params:
-                        kwargs["negative_prompt"] = negative_prompt
-                    res = pipe(**kwargs)
-                    result_pil = res.images[0]
+                gen_device = latents.device.type
+                generator = torch.Generator(device=gen_device).manual_seed(seed + i)
+                noise = torch.randn(latents.shape, generator=generator, device=latents.device, dtype=latents.dtype)
+                noisy_latents = (1.0 - strength) * latents + strength * noise
+
+                kwargs = {
+                    "prompt": prompt,
+                    "negative_prompt": negative_prompt,
+                    "latents": noisy_latents,
+                    "num_inference_steps": steps,
+                    "guidance_scale": guidance_scale,
+                    "width": target_w,
+                    "height": target_h,
+                    "use_resolution_binning": False,
+                    "generator": generator,
+                }
+                res = pipe(**kwargs)
+                result_pil = res.images[0]
 
             out_tensors.append(self._pil_to_bhwc(result_pil))
 
