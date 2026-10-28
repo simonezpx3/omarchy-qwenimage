@@ -1077,9 +1077,11 @@ start_comfyui() {
     fi
 
     if (( bg == 1 )); then
-        if command -v systemd-run >/dev/null 2>&1 && systemctl --user is-system-running >/dev/null 2>&1; then
-            systemctl --user stop "comfyui.service" 2>/dev/null || true
-            systemd-run --user --unit=comfyui "$py_bin" "${COMFY_DIR}/main.py" "${args[@]}" >/dev/null 2>&1 || true
+        if [[ -f "${HOME}/.config/systemd/user/comfyui.service" ]] && command -v systemctl >/dev/null 2>&1 && systemctl --user is-system-running >/dev/null 2>&1; then
+            systemctl --user restart "comfyui.service" >/dev/null 2>&1 || true
+        elif command -v systemd-run >/dev/null 2>&1 && systemctl --user is-system-running >/dev/null 2>&1; then
+            systemctl --user stop "qis-comfyui-${UID}.service" 2>/dev/null || true
+            systemd-run --user --unit="qis-comfyui-${UID}" "$py_bin" "${COMFY_DIR}/main.py" "${args[@]}" >/dev/null 2>&1 || true
         else
             nohup "$py_bin" "${COMFY_DIR}/main.py" "${args[@]}" > "$log_file" 2>&1 &
             local pid=$!
@@ -1124,7 +1126,7 @@ stop_comfyui() {
     fi
 
     if command -v systemctl >/dev/null 2>&1; then
-        systemctl --user stop "comfyui.service" "qis-comfyui-${UID}.scope" 2>/dev/null || true
+        systemctl --user stop "comfyui.service" "qis-comfyui-${UID}.service" "qis-comfyui-${UID}.scope" 2>/dev/null || true
     fi
 
     if command -v fuser >/dev/null 2>&1; then
