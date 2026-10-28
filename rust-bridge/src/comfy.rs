@@ -1134,6 +1134,32 @@ pub fn run_neural_upscale(
         let tw = src_w * 2;
         let th = src_h * 2;
         let pfx = format!("QIS_2K_SANA_{}x{}", tw, th);
+
+        // Variant A: Extract original prompt & negative prompt from PNG metadata to protect identity & anatomy
+        let chunks = crate::read_png_chunks(p);
+        let raw_prompt = chunks.get("prompt").cloned().unwrap_or_default();
+        let comfy_meta = if raw_prompt.starts_with('{') {
+            crate::parse_comfy_metadata(&raw_prompt)
+        } else if !raw_prompt.is_empty() {
+            let mut m = crate::ComfyExtractedMetadata::default();
+            m.prompt = Some(raw_prompt);
+            m.negative_prompt = chunks.get("negative_prompt").cloned();
+            m
+        } else {
+            crate::ComfyExtractedMetadata::default()
+        };
+
+        let sana_prompt = match comfy_meta.prompt {
+            Some(ref pr) if !pr.trim().is_empty() => format!("{}, highly detailed, sharp 2k, ultra realistic", pr.trim()),
+            _ => "high quality, highly detailed, sharp 2k, ultra realistic".to_string(),
+        };
+
+        let anatomical_negative_guard = "deformed pupils, asymmetrical eyes, bad eyes, bad anatomy, deformed hands, fused fingers, rib flare, blurry, lowres, artifacts, distortion, noise";
+        let sana_negative = match comfy_meta.negative_prompt {
+            Some(ref neg) if !neg.trim().is_empty() => format!("{}, {}", neg.trim(), anatomical_negative_guard),
+            _ => anatomical_negative_guard.to_string(),
+        };
+
         let g = json!({
             "1": {
                 "class_type": "LoadImage",
@@ -1146,14 +1172,14 @@ pub fn run_neural_upscale(
                 "inputs": {
                     "image": ["1", 0],
                     "model_id": "Efficient-Large-Model/Sana_1600M_2Kpx_BF16_diffusers",
-                    "prompt": "high quality, highly detailed, sharp 2k, ultra realistic",
-                    "negative_prompt": "blurry, lowres, artifacts, distortion, noise",
+                    "prompt": sana_prompt,
+                    "negative_prompt": sana_negative,
                     "upscale_factor": 2.0,
-                    "strength": 0.35,
+                    "strength": 0.16,
                     "steps": 20,
                     "guidance_scale": 4.5,
                     "offload_mode": "sequential_cpu_offload",
-                    "seed": 42
+                    "seed": comfy_meta.seed.unwrap_or(42)
                 }
             },
             "3": {

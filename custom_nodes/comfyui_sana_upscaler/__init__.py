@@ -26,7 +26,7 @@ class Sana2KUpscalerNode:
                 "prompt": ("STRING", {"default": "high quality, highly detailed, sharp 2k, ultra realistic", "multiline": True}),
                 "negative_prompt": ("STRING", {"default": "blurry, lowres, artifacts, distortion, noise", "multiline": True}),
                 "upscale_factor": ("FLOAT", {"default": 2.0, "min": 1.0, "max": 4.0, "step": 0.25}),
-                "strength": ("FLOAT", {"default": 0.35, "min": 0.05, "max": 1.0, "step": 0.05}),
+                "strength": ("FLOAT", {"default": 0.16, "min": 0.05, "max": 1.0, "step": 0.01}),
                 "steps": ("INT", {"default": 20, "min": 1, "max": 50}),
                 "guidance_scale": ("FLOAT", {"default": 4.5, "min": 1.0, "max": 15.0, "step": 0.1}),
                 "offload_mode": (["sequential_cpu_offload", "model_cpu_offload"], {"default": "sequential_cpu_offload"}),

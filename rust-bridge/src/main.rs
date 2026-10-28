@@ -439,7 +439,7 @@ fn embed_png_metadata<P: AsRef<Path>>(
     Ok(())
 }
 
-fn read_png_chunks<P: AsRef<Path>>(path: P) -> HashMap<String, String> {
+pub(crate) fn read_png_chunks<P: AsRef<Path>>(path: P) -> HashMap<String, String> {
     let mut map = HashMap::new();
     let Ok(mut f) = File::open(path) else { return map; };
 
@@ -509,15 +509,15 @@ fn read_png_chunks<P: AsRef<Path>>(path: P) -> HashMap<String, String> {
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]
-struct ComfyExtractedMetadata {
-    prompt: Option<String>,
-    negative_prompt: Option<String>,
-    seed: Option<i64>,
-    steps: Option<u32>,
-    cfg: Option<f64>,
+pub(crate) struct ComfyExtractedMetadata {
+    pub(crate) prompt: Option<String>,
+    pub(crate) negative_prompt: Option<String>,
+    pub(crate) seed: Option<i64>,
+    pub(crate) steps: Option<u32>,
+    pub(crate) cfg: Option<f64>,
 }
 
-fn parse_comfy_metadata(raw_json: &str) -> ComfyExtractedMetadata {
+pub(crate) fn parse_comfy_metadata(raw_json: &str) -> ComfyExtractedMetadata {
     let mut meta = ComfyExtractedMetadata::default();
     let Ok(v) = serde_json::from_str::<serde_json::Value>(raw_json) else {
         return meta;
