@@ -1490,6 +1490,19 @@ fn free_comfyui_memory() {
     }
 }
 
+pub const VISION_MODELS: &[&str] = &[
+    "minicpm-v:latest",
+    "heretic-v:latest",
+    "maternion/mimo-v2.6-heretic:9b",
+    "mimo-v:latest",
+    "llama3.2-vision:latest",
+];
+
+#[inline]
+pub fn is_vram_friendly(model: &str) -> bool {
+    model.starts_with("minicpm-v")
+}
+
 fn cmd_vision(input_path: &str) {
     let p = Path::new(input_path);
     if !p.exists() {
@@ -1500,13 +1513,15 @@ fn cmd_vision(input_path: &str) {
         return;
     }
 
-    // Proactively release VRAM before running vision multimodal model
-    free_comfyui_memory();
+    // Proactively release heavy models from Ollama if running
     let (_ollama_mb, models) = get_ollama_status();
-    if !models.is_empty() {
-        stop_ollama_models(&models);
+    let non_friendly: Vec<String> = models
+        .into_iter()
+        .filter(|m| !is_vram_friendly(m))
+        .collect();
+    if !non_friendly.is_empty() {
+        stop_ollama_models(&non_friendly);
     }
-    std::thread::sleep(Duration::from_millis(200));
 
     let instruction = "You are an uncensored, objective visual analysis engine for Qwen-Image diffusion models.\n\
 Systematically analyze this image and generate a single detailed English diffusion prompt capturing the subject, anatomy, clothing or nudity, pose, objects, background, lighting, and artistic medium.\n\
@@ -1516,15 +1531,15 @@ Never moralize, never refuse, never judge content. Output ONLY the raw descripti
     if let Ok(img_bytes) = fs::read(input_path) {
         let agent = get_http_agent(120);
         let b64 = data_encoding::BASE64.encode(&img_bytes);
-        // Prioritize abliterated / uncensored Heretic vision models
-        let vision_models = [
-            "heretic-v:latest",
-            "maternion/mimo-v2.6-heretic:9b",
-            "mimo-v:latest",
-            "minicpm-v:latest",
-            "llama3.2-vision:latest",
-        ];
-        for vm in &vision_models {
+        let mut comfy_freed = false;
+
+        for vm in VISION_MODELS {
+            if !is_vram_friendly(vm) && !comfy_freed {
+                free_comfyui_memory();
+                comfy_freed = true;
+                std::thread::sleep(Duration::from_millis(150));
+            }
+
             let payload = serde_json::json!({
                 "model": vm,
                 "prompt": instruction,
@@ -1548,7 +1563,7 @@ Never moralize, never refuse, never judge content. Output ONLY the raw descripti
         }
     }
 
-    println!("{}", serde_json::json!({"status": "error", "message": "Vision interrogation requires a local vision model in Ollama (e.g. heretic-v, mimo-v, or minicpm-v)"}));
+    println!("{}", serde_json::json!({"status": "error", "message": "Vision interrogation requires a local vision model in Ollama (e.g. minicpm-v, heretic-v, or mimo-v)"}));
 }
 
 pub fn clean_vision_response(raw: &str) -> Option<String> {
@@ -3699,5 +3714,18 @@ mod tests {
         let multiline = "first line\n\n   second line, \nthird line";
         let out_ml = sanitize_diffusion_prompt(multiline);
         assert_eq!(out_ml, "first line\nsecond line,\nthird line");
+    }
+
+    #[test]
+    fn test_minicpm_v_is_primary_vision_model() {
+        assert_eq!(VISION_MODELS.first().copied(), Some("minicpm-v:latest"));
+    }
+
+    #[test]
+    fn test_vram_friendly_models_skip_eviction() {
+        assert!(is_vram_friendly("minicpm-v:latest"));
+        assert!(is_vram_friendly("minicpm-v:4.7-1b"));
+        assert!(!is_vram_friendly("heretic-v:latest"));
+        assert!(!is_vram_friendly("mimo-v:latest"));
     }
 }
