@@ -116,11 +116,16 @@ Item {
   // User Preferences
   property string currentLang: "en"
   property bool isNsfwEnabled: false
-  property bool isAnimeLoRAEnabled: false
+  property string animeMode: "off"      // "off" | "soft" | "full"
   property bool isTurboEnabled: true
-  property bool isUncensoredEnabled: false
-  property bool isAnatomyLoRAEnabled: false
+  property string hereticMode: "off"    // "off" | "soft" | "full"
+  property string anatomyMode: "off"    // "off" | "soft" | "full"
   property bool isAutoExpandEnabled: false
+
+  // Backward compatibility properties for bindings and external widgets
+  readonly property bool isAnimeLoRAEnabled: animeMode !== "off"
+  readonly property bool isUncensoredEnabled: hereticMode !== "off"
+  readonly property bool isAnatomyLoRAEnabled: anatomyMode !== "off"
 
   readonly property bool isHumanSubjectInPrompt: {
     var p = promptText.toLowerCase();
@@ -178,9 +183,15 @@ Item {
     root.fetchPrompts(root.activePromptSource, "");
   }
 
+  function cycleAnimeMode() {
+    if (animeMode === "off") animeMode = "soft";
+    else if (animeMode === "soft") animeMode = "full";
+    else animeMode = "off";
+    saveSetting("anime_mode", animeMode);
+  }
+
   function toggleAnimeLoRA() {
-    isAnimeLoRAEnabled = !isAnimeLoRAEnabled;
-    saveSetting("anime_lora", root.isAnimeLoRAEnabled ? "true" : "false");
+    cycleAnimeMode();
   }
 
   function toggleTurbo() {
@@ -195,14 +206,26 @@ Item {
     saveSetting("turbo", root.isTurboEnabled ? "true" : "false");
   }
 
+  function cycleHereticMode() {
+    if (hereticMode === "off") hereticMode = "soft";
+    else if (hereticMode === "soft") hereticMode = "full";
+    else hereticMode = "off";
+    saveSetting("heretic_mode", hereticMode);
+  }
+
   function toggleUncensored() {
-    isUncensoredEnabled = !isUncensoredEnabled;
-    saveSetting("uncensored", root.isUncensoredEnabled ? "true" : "false");
+    cycleHereticMode();
+  }
+
+  function cycleAnatomyMode() {
+    if (anatomyMode === "off") anatomyMode = "soft";
+    else if (anatomyMode === "soft") anatomyMode = "full";
+    else anatomyMode = "off";
+    saveSetting("anatomy_mode", anatomyMode);
   }
 
   function toggleAnatomyLoRA() {
-    isAnatomyLoRAEnabled = !isAnatomyLoRAEnabled;
-    saveSetting("anatomy_lora", root.isAnatomyLoRAEnabled ? "true" : "false");
+    cycleAnatomyMode();
   }
 
   function toggleAutoExpand() {
@@ -407,20 +430,23 @@ Item {
       args.push(String(clampedDenoise));
     }
 
-    if (root.isAnimeLoRAEnabled) {
+    if (root.animeMode === "soft" || root.animeMode === "full") {
       args.push("--anime");
+      args.push(root.animeMode);
     }
 
     if (root.isTurboEnabled) {
       args.push("--turbo");
     }
 
-    if (root.isUncensoredEnabled) {
-      args.push("--uncensored");
+    if (root.hereticMode === "soft" || root.hereticMode === "full") {
+      args.push("--heretic");
+      args.push(root.hereticMode);
     }
 
-    if (root.isAnatomyLoRAEnabled) {
+    if (root.anatomyMode === "soft" || root.anatomyMode === "full") {
       args.push("--anatomy");
+      args.push(root.anatomyMode);
     }
 
     if (root.isAutoExpandEnabled) {
@@ -1025,19 +1051,27 @@ Item {
           if (typeof res.nsfw === "boolean") {
             root.isNsfwEnabled = res.nsfw;
           }
-          if (typeof res.anime === "boolean") {
-            root.isAnimeLoRAEnabled = res.anime;
+          if (res.anime_mode) {
+            root.animeMode = res.anime_mode;
+          } else if (typeof res.anime === "boolean") {
+            root.animeMode = res.anime ? "full" : "off";
           }
           if (typeof res.turbo === "boolean") {
             root.isTurboEnabled = res.turbo;
           }
-          if (typeof res.uncensored === "boolean") {
-            root.isUncensoredEnabled = res.uncensored;
+          if (res.heretic_mode) {
+            root.hereticMode = res.heretic_mode;
+          } else if (res.uncensored_mode) {
+            root.hereticMode = res.uncensored_mode;
+          } else if (typeof res.uncensored === "boolean") {
+            root.hereticMode = res.uncensored ? "full" : "off";
           }
-          if (typeof res.anatomy === "boolean") {
-            root.isAnatomyLoRAEnabled = res.anatomy;
+          if (res.anatomy_mode) {
+            root.anatomyMode = res.anatomy_mode;
+          } else if (typeof res.anatomy === "boolean") {
+            root.anatomyMode = res.anatomy ? "full" : "off";
           } else if (typeof res.anatomy_lora === "boolean") {
-            root.isAnatomyLoRAEnabled = res.anatomy_lora;
+            root.anatomyMode = res.anatomy_lora ? "full" : "off";
           }
           if (typeof res.auto_expand === "boolean") {
             root.isAutoExpandEnabled = res.auto_expand;

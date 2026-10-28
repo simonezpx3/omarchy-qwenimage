@@ -427,6 +427,28 @@ pub fn calculate_dimensions(
     (w, h)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum LoraLevel {
+    #[default]
+    Off,
+    Soft,
+    Full,
+}
+
+impl LoraLevel {
+    pub fn is_active(&self) -> bool {
+        matches!(self, LoraLevel::Soft | LoraLevel::Full)
+    }
+
+    pub fn from_str_opt(s: &str) -> Self {
+        match s.trim().to_lowercase().as_str() {
+            "soft" | "low" | "1" => LoraLevel::Soft,
+            "full" | "high" | "hard" | "true" | "on" | "2" => LoraLevel::Full,
+            _ => LoraLevel::Off,
+        }
+    }
+}
+
 pub struct GenerationConfig<'a> {
     pub prompt: &'a str,
     pub negative_prompt: &'a str,
@@ -436,10 +458,10 @@ pub struct GenerationConfig<'a> {
     pub seed: i64,
     pub image_ref: Option<&'a str>,
     pub denoise: f32,
-    pub anime: bool,
+    pub anime: LoraLevel,
     pub turbo: bool,
-    pub uncensored: bool,
-    pub anatomy: bool,
+    pub uncensored: LoraLevel,
+    pub anatomy: LoraLevel,
     pub res_mode: &'a str,
     pub is_human: bool,
 }
@@ -470,9 +492,9 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     let anime_lora_file = loras_dir.join("qwen-image-2.1-anime-lora.safetensors");
     let anatomy_lora_file = loras_dir.join("Genitalia-Anatomy-2.1-v1.safetensors");
 
-    let has_uncensored = cfg.uncensored && uncensored_lora_file.exists();
-    let has_anime = cfg.anime && anime_lora_file.exists();
-    let has_anatomy = cfg.anatomy && anatomy_lora_file.exists();
+    let has_uncensored = cfg.uncensored.is_active() && uncensored_lora_file.exists();
+    let has_anime = cfg.anime.is_active() && anime_lora_file.exists();
+    let has_anatomy = cfg.anatomy.is_active() && anatomy_lora_file.exists();
 
     let final_seed = if cfg.seed >= 0 {
         cfg.seed
@@ -482,7 +504,11 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
 
     let mut prompt_text = cfg.prompt.to_string();
     if has_anime && !prompt_text.to_lowercase().contains("anime") {
-        prompt_text = format!("masterpiece, detailed anime visual novel illustration, cel shading, {}", prompt_text);
+        if cfg.anime == LoraLevel::Full {
+            prompt_text = format!("masterpiece, detailed anime visual novel illustration, cel shading, {}", prompt_text);
+        } else {
+            prompt_text = format!("masterpiece, clean stylized illustration, expressive anime aesthetic, {}", prompt_text);
+        }
     }
 
     let mut graph: Value = if let Some(ref_path) = cfg.image_ref.filter(|s| !s.trim().is_empty()) {
@@ -552,9 +578,12 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     let mut current_model = json!(["1", 0]);
 
     if has_uncensored {
-        // Uncensored LoRA: 0.85 causes heavy overweight/chubby distortion from Civitai dataset bias.
-        // Capped at 0.50 (standard) and 0.45 (turbo) to preserve anatomical fidelity without puritanical censorship.
-        let weight = if has_turbo { 0.45 } else { 0.50 };
+        // Heretic / Uncensored LoRA: calibrated for Soft (0.35/0.30) and Full (0.50/0.45)
+        let weight = match cfg.uncensored {
+            LoraLevel::Soft => if has_turbo { 0.30 } else { 0.35 },
+            LoraLevel::Full => if has_turbo { 0.45 } else { 0.50 },
+            LoraLevel::Off => 0.0,
+        };
         graph["14"] = json!({
             "class_type": "LoraLoaderModelOnly",
             "inputs": {
@@ -567,8 +596,12 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     }
 
     if has_anime {
-        // Anime LoRA: capped at 0.65 (standard) and 0.55 (turbo) to avoid anatomy warping
-        let weight = if has_turbo { 0.55 } else { 0.65 };
+        // Anime LoRA: Soft (0.40/0.35) for subtle illustration aesthetic, Full (0.65/0.55) for 2D cel-shading
+        let weight = match cfg.anime {
+            LoraLevel::Soft => if has_turbo { 0.35 } else { 0.40 },
+            LoraLevel::Full => if has_turbo { 0.55 } else { 0.65 },
+            LoraLevel::Off => 0.0,
+        };
         graph["15"] = json!({
             "class_type": "LoraLoaderModelOnly",
             "inputs": {
@@ -581,8 +614,12 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     }
 
     if has_anatomy {
-        // Anatomy LoRA: calibrated at 0.72 (standard) and 0.60 (turbo) for high fidelity without texture saturation
-        let weight = if has_turbo { 0.60 } else { 0.72 };
+        // Anatomy LoRA: Soft (0.35/0.30) preserves natural body proportions without warping props/armor, Full (0.60/0.55) for explicit nudes
+        let weight = match cfg.anatomy {
+            LoraLevel::Soft => if has_turbo { 0.30 } else { 0.35 },
+            LoraLevel::Full => if has_turbo { 0.55 } else { 0.60 },
+            LoraLevel::Off => 0.0,
+        };
         graph["22"] = json!({
             "class_type": "LoraLoaderModelOnly",
             "inputs": {

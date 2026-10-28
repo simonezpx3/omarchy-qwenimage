@@ -271,16 +271,16 @@ Item {
         "en": "TURBO (5s): WARNING // For human bodies and anatomy, turning TURBO off is recommended."
       },
       "help_anime_lora": {
-        "cs": "ANIME LORA: Zapne specializovaný styl pro anime a ilustrace (SD_Tutorial).",
-        "en": "ANIME LORA: Toggles specialized anime & illustration style model (SD_Tutorial)."
+        "cs": "ANIME LORA: Třístavový adaptér stylu (OFF = fotorealismus, SOFT = jemná ilustrace 0.40, FULL = 2D anime cel-shading 0.65).",
+        "en": "ANIME LORA: Tri-state style adapter (OFF = photorealism, SOFT = subtle illustration 0.40, FULL = 2D anime cel-shading 0.65)."
       },
       "help_uncensored_lora": {
-        "cs": "HERETIC LORA: Abliterovaný necenzurovaný difuzní LoRA adaptér pro latent.",
-        "en": "HERETIC LORA: Abliterated uncensored diffusion LoRA adapter for latent."
+        "cs": "HERETIC LORA: Třístavový necenzurovaný adaptér (OFF = výchozí filtry, SOFT = uvolněné oděvy a dekolt 0.35, FULL = plně necenzurovaný latent 0.50).",
+        "en": "HERETIC LORA: Tri-state uncensored adapter (OFF = default filters, SOFT = relaxed clothing 0.35, FULL = fully uncensored latent 0.50)."
       },
       "help_anatomy_lora": {
-        "cs": "ANATOMY LORA: Specializovaný adaptér pro detailní anatomickou fidelitu těla a figurální akty.",
-        "en": "ANATOMY LORA: Specialized adapter for detailed anatomical body fidelity and figurative nudes."
+        "cs": "ANATOMY LORA: Třístavová anatomická fidelita (OFF = výchozí, SOFT = přirozené tělo 0.35 bez mutace okolí, FULL = plný explicitní akt 0.60).",
+        "en": "ANATOMY LORA: Tri-state body anatomy fidelity (OFF = default, SOFT = natural body proportions 0.35 without environment warping, FULL = explicit nude anatomy 0.60)."
       },
       "help_history": {
         "cs": "HISTORY: Otevře archiv dříve vygenerovaných děl v ~/Pictures/Qwen-Image/ s obnovením parametrů.",
@@ -1591,34 +1591,43 @@ Item {
         onClicked: if (panelRoot) panelRoot.toggleTurbo()
       }
 
-      // Anime Style LoRA Switcher
+      // Anime Style LoRA Switcher (Tri-State: OFF -> SOFT -> FULL)
       Button {
-        text: panelRoot && panelRoot.isAnimeLoRAEnabled ? "ANIME: ON" : "ANIME: OFF"
+        text: {
+          var mode = panelRoot ? panelRoot.animeMode : "off";
+          return mode === "full" ? "ANIME: FULL" : (mode === "soft" ? "ANIME: SOFT" : "ANIME: OFF");
+        }
         fontSize: Commons.Style.font.caption
         bordered: true
-        selected: panelRoot && panelRoot.isAnimeLoRAEnabled
+        selected: panelRoot && panelRoot.animeMode !== "off"
         onHotChanged: root.setHelp(root.tr("help_anime_lora"), hot)
-        onClicked: if (panelRoot) panelRoot.toggleAnimeLoRA()
+        onClicked: if (panelRoot) panelRoot.cycleAnimeMode()
       }
 
-      // Uncensored Latent LoRA Switcher
+      // Uncensored Latent LoRA Switcher (Tri-State: OFF -> SOFT -> FULL)
       Button {
-        text: panelRoot && panelRoot.isUncensoredEnabled ? "HERETIC: ON" : "HERETIC: OFF"
+        text: {
+          var mode = panelRoot ? panelRoot.hereticMode : "off";
+          return mode === "full" ? "HERETIC: FULL" : (mode === "soft" ? "HERETIC: SOFT" : "HERETIC: OFF");
+        }
         fontSize: Commons.Style.font.caption
         bordered: true
-        selected: panelRoot && panelRoot.isUncensoredEnabled
+        selected: panelRoot && panelRoot.hereticMode !== "off"
         onHotChanged: root.setHelp(root.tr("help_uncensored_lora"), hot)
-        onClicked: if (panelRoot) panelRoot.toggleUncensored()
+        onClicked: if (panelRoot) panelRoot.cycleHereticMode()
       }
 
-      // Anatomy Body LoRA Switcher
+      // Anatomy Body LoRA Switcher (Tri-State: OFF -> SOFT -> FULL)
       Button {
-        text: panelRoot && panelRoot.isAnatomyLoRAEnabled ? "ANATOMY: ON" : "ANATOMY: OFF"
+        text: {
+          var mode = panelRoot ? panelRoot.anatomyMode : "off";
+          return mode === "full" ? "ANATOMY: FULL" : (mode === "soft" ? "ANATOMY: SOFT" : "ANATOMY: OFF");
+        }
         fontSize: Commons.Style.font.caption
         bordered: true
-        selected: panelRoot && panelRoot.isAnatomyLoRAEnabled
+        selected: panelRoot && panelRoot.anatomyMode !== "off"
         onHotChanged: root.setHelp(root.tr("help_anatomy_lora"), hot)
-        onClicked: if (panelRoot) panelRoot.toggleAnatomyLoRA()
+        onClicked: if (panelRoot) panelRoot.cycleAnatomyMode()
       }
 
       Button {

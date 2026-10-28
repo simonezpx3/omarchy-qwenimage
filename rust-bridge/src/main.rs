@@ -2628,10 +2628,10 @@ fn cmd_generate(
     negative: &str,
     image_ref: Option<&str>,
     denoise: f32,
-    anime: bool,
+    anime: comfy::LoraLevel,
     turbo: bool,
-    uncensored: bool,
-    anatomy: bool,
+    uncensored: comfy::LoraLevel,
+    anatomy: comfy::LoraLevel,
     res_mode: Option<&str>,
     expand: bool,
 ) {
@@ -2984,10 +2984,29 @@ fn cmd_settings_get() {
     let obj = val.as_object_mut().unwrap();
     let lang = obj.get("language").and_then(|v| v.as_str()).unwrap_or("en");
     let nsfw = obj.get("nsfw").and_then(|v| v.as_bool()).unwrap_or(false);
-    let anime = obj.get("anime_lora").and_then(|v| v.as_bool()).unwrap_or(false);
+
+    let parse_level = |v: Option<&serde_json::Value>| -> String {
+        match v {
+            Some(serde_json::Value::String(s)) => {
+                let sl = s.to_lowercase();
+                if sl == "soft" || sl == "full" { sl } else { "off".to_string() }
+            }
+            Some(serde_json::Value::Bool(b)) => {
+                if *b { "full".to_string() } else { "off".to_string() }
+            }
+            _ => "off".to_string(),
+        }
+    };
+
+    let anime_mode = parse_level(obj.get("anime_mode").or_else(|| obj.get("anime_lora")).or_else(|| obj.get("anime")));
+    let uncensored_mode = parse_level(obj.get("uncensored_mode").or_else(|| obj.get("heretic_mode")).or_else(|| obj.get("uncensored")).or_else(|| obj.get("heretic")));
+    let anatomy_mode = parse_level(obj.get("anatomy_mode").or_else(|| obj.get("anatomy_lora")).or_else(|| obj.get("anatomy")));
+
+    let anime_bool = anime_mode != "off";
+    let uncensored_bool = uncensored_mode != "off";
+    let anatomy_bool = anatomy_mode != "off";
+
     let turbo = obj.get("turbo").and_then(|v| v.as_bool()).unwrap_or(true);
-    let uncensored = obj.get("uncensored").and_then(|v| v.as_bool()).unwrap_or(false);
-    let anatomy = obj.get("anatomy_lora").or_else(|| obj.get("anatomy")).and_then(|v| v.as_bool()).unwrap_or(false);
     let auto_expand = obj.get("auto_expand").and_then(|v| v.as_bool()).unwrap_or(false);
     let res_mode = obj.get("res_mode").and_then(|v| v.as_str()).unwrap_or("standard");
 
@@ -2995,10 +3014,14 @@ fn cmd_settings_get() {
         "status": "ok",
         "lang": lang,
         "nsfw": nsfw,
-        "anime": anime,
+        "anime": anime_bool,
+        "anime_mode": anime_mode,
         "turbo": turbo,
-        "uncensored": uncensored,
-        "anatomy": anatomy,
+        "uncensored": uncensored_bool,
+        "uncensored_mode": uncensored_mode,
+        "heretic_mode": uncensored_mode,
+        "anatomy": anatomy_bool,
+        "anatomy_mode": anatomy_mode,
         "auto_expand": auto_expand,
         "res_mode": res_mode,
         "settings": val
@@ -3012,7 +3035,35 @@ fn cmd_settings_set(key: &str, value: &str) {
     }
     if let Some(map) = val.as_object_mut() {
         match key {
-            "nsfw" | "anime_lora" | "turbo" | "uncensored" | "anatomy_lora" | "anatomy" | "auto_expand" => {
+            "anime_mode" | "anime_lora" | "anime" => {
+                let norm = match value.to_lowercase().as_str() {
+                    "soft" | "low" | "1" => "soft",
+                    "full" | "high" | "hard" | "true" | "2" => "full",
+                    _ => "off",
+                };
+                map.insert("anime_mode".to_string(), serde_json::json!(norm));
+                map.insert("anime_lora".to_string(), serde_json::json!(norm != "off"));
+            }
+            "uncensored_mode" | "heretic_mode" | "uncensored" | "heretic" => {
+                let norm = match value.to_lowercase().as_str() {
+                    "soft" | "low" | "1" => "soft",
+                    "full" | "high" | "hard" | "true" | "2" => "full",
+                    _ => "off",
+                };
+                map.insert("uncensored_mode".to_string(), serde_json::json!(norm));
+                map.insert("heretic_mode".to_string(), serde_json::json!(norm));
+                map.insert("uncensored".to_string(), serde_json::json!(norm != "off"));
+            }
+            "anatomy_mode" | "anatomy_lora" | "anatomy" => {
+                let norm = match value.to_lowercase().as_str() {
+                    "soft" | "low" | "1" => "soft",
+                    "full" | "high" | "hard" | "true" | "2" => "full",
+                    _ => "off",
+                };
+                map.insert("anatomy_mode".to_string(), serde_json::json!(norm));
+                map.insert("anatomy_lora".to_string(), serde_json::json!(norm != "off"));
+            }
+            "nsfw" | "turbo" | "auto_expand" => {
                 let b = value.eq_ignore_ascii_case("true") || value == "1";
                 map.insert(key.to_string(), serde_json::json!(b));
             }
@@ -3224,26 +3275,59 @@ fn main() {
         }
         "generate" => {
             let mut res_mode: Option<String> = None;
-            let mut anime = false;
+            let mut anime = comfy::LoraLevel::Off;
             let mut turbo = false;
-            let mut uncensored = false;
-            let mut anatomy = false;
+            let mut uncensored = comfy::LoraLevel::Off;
+            let mut anatomy = comfy::LoraLevel::Off;
             let mut expand = false;
             let mut pos_args: Vec<&str> = Vec::new();
 
             let mut idx = 2;
             while idx < args.len() {
-                if args[idx] == "--anime" {
-                    anime = true;
+                if let Some(val) = args[idx].strip_prefix("--anime=") {
+                    anime = comfy::LoraLevel::from_str_opt(val);
+                    idx += 1;
+                } else if args[idx] == "--anime" {
+                    if let Some(next) = args.get(idx + 1) {
+                        let next_lower = next.to_lowercase();
+                        if next_lower == "soft" || next_lower == "full" || next_lower == "off" {
+                            anime = comfy::LoraLevel::from_str_opt(&next_lower);
+                            idx += 2;
+                            continue;
+                        }
+                    }
+                    anime = comfy::LoraLevel::Full;
                     idx += 1;
                 } else if args[idx] == "--turbo" {
                     turbo = true;
                     idx += 1;
+                } else if let Some(val) = args[idx].strip_prefix("--uncensored=").or_else(|| args[idx].strip_prefix("--heretic=")) {
+                    uncensored = comfy::LoraLevel::from_str_opt(val);
+                    idx += 1;
                 } else if args[idx] == "--uncensored" || args[idx] == "--heretic" {
-                    uncensored = true;
+                    if let Some(next) = args.get(idx + 1) {
+                        let next_lower = next.to_lowercase();
+                        if next_lower == "soft" || next_lower == "full" || next_lower == "off" {
+                            uncensored = comfy::LoraLevel::from_str_opt(&next_lower);
+                            idx += 2;
+                            continue;
+                        }
+                    }
+                    uncensored = comfy::LoraLevel::Full;
+                    idx += 1;
+                } else if let Some(val) = args[idx].strip_prefix("--anatomy=").or_else(|| args[idx].strip_prefix("--anatomy-lora=")) {
+                    anatomy = comfy::LoraLevel::from_str_opt(val);
                     idx += 1;
                 } else if args[idx] == "--anatomy" || args[idx] == "--anatomy-lora" {
-                    anatomy = true;
+                    if let Some(next) = args.get(idx + 1) {
+                        let next_lower = next.to_lowercase();
+                        if next_lower == "soft" || next_lower == "full" || next_lower == "off" {
+                            anatomy = comfy::LoraLevel::from_str_opt(&next_lower);
+                            idx += 2;
+                            continue;
+                        }
+                    }
+                    anatomy = comfy::LoraLevel::Full;
                     idx += 1;
                 } else if args[idx] == "--expand" || args[idx] == "--auto-expand" {
                     expand = true;
@@ -3394,10 +3478,10 @@ mod tests {
             seed: 42,
             image_ref: None,
             denoise: 0.85,
-            anime: false,
+            anime: comfy::LoraLevel::Off,
             turbo: false,
-            uncensored: false,
-            anatomy: false,
+            uncensored: comfy::LoraLevel::Off,
+            anatomy: comfy::LoraLevel::Off,
             res_mode: "standard",
             is_human: false,
         };
@@ -3452,10 +3536,10 @@ mod tests {
             seed: 12345,
             image_ref: None,
             denoise: 0.85,
-            anime: false,
+            anime: comfy::LoraLevel::Off,
             turbo: true,
-            uncensored: false,
-            anatomy: false,
+            uncensored: comfy::LoraLevel::Off,
+            anatomy: comfy::LoraLevel::Off,
             res_mode: "standard",
             is_human: false,
         };
@@ -3488,10 +3572,10 @@ mod tests {
             seed: 777,
             image_ref: Some(&ref_str),
             denoise: 0.65,
-            anime: false,
+            anime: comfy::LoraLevel::Off,
             turbo: true,
-            uncensored: false,
-            anatomy: false,
+            uncensored: comfy::LoraLevel::Off,
+            anatomy: comfy::LoraLevel::Off,
             res_mode: "standard",
             is_human: false,
         };
@@ -3526,7 +3610,7 @@ mod tests {
 
     #[test]
     fn test_anatomy_lora_graph_wiring() {
-        let cfg = comfy::GenerationConfig {
+        let mut cfg = comfy::GenerationConfig {
             prompt: "classical renaissance marble statue",
             negative_prompt: "blurry",
             ratio: "1:1",
@@ -3535,20 +3619,64 @@ mod tests {
             seed: 999,
             image_ref: None,
             denoise: 0.85,
-            anime: false,
+            anime: comfy::LoraLevel::Off,
             turbo: false,
-            uncensored: false,
-            anatomy: true,
+            uncensored: comfy::LoraLevel::Off,
+            anatomy: comfy::LoraLevel::Soft,
             res_mode: "standard",
             is_human: true,
         };
 
-        let (graph, _, _, _) = comfy::build_generation_graph(&cfg).expect("anatomy graph build should succeed");
-        // Verify Anatomy LoRA node is inserted and configured correctly
-        if graph.get("22").is_some() {
-            assert_eq!(graph["22"]["class_type"], "LoraLoaderModelOnly");
-            assert_eq!(graph["22"]["inputs"]["lora_name"], "Genitalia-Anatomy-2.1-v1.safetensors");
-            assert_eq!(graph["22"]["inputs"]["strength_model"], 0.72);
+        let (graph_soft, _, _, _) = comfy::build_generation_graph(&cfg).expect("anatomy graph build should succeed");
+        if graph_soft.get("22").is_some() {
+            assert_eq!(graph_soft["22"]["class_type"], "LoraLoaderModelOnly");
+            assert_eq!(graph_soft["22"]["inputs"]["lora_name"], "Genitalia-Anatomy-2.1-v1.safetensors");
+            assert_eq!(graph_soft["22"]["inputs"]["strength_model"], 0.35);
+        }
+
+        // Test Full mode (0.60)
+        cfg.anatomy = comfy::LoraLevel::Full;
+        let (graph_full, _, _, _) = comfy::build_generation_graph(&cfg).expect("anatomy graph build should succeed");
+        if graph_full.get("22").is_some() {
+            assert_eq!(graph_full["22"]["inputs"]["strength_model"], 0.60);
+        }
+    }
+
+    #[test]
+    fn test_anime_and_heretic_tri_state_levels() {
+        let mut cfg = comfy::GenerationConfig {
+            prompt: "cyberpunk warrior girl",
+            negative_prompt: "blurry",
+            ratio: "1:1",
+            steps: 25,
+            cfg: 4.0,
+            seed: 101,
+            image_ref: None,
+            denoise: 0.85,
+            anime: comfy::LoraLevel::Soft,
+            turbo: false,
+            uncensored: comfy::LoraLevel::Soft,
+            anatomy: comfy::LoraLevel::Off,
+            res_mode: "standard",
+            is_human: true,
+        };
+
+        let (graph_soft, _, _, _) = comfy::build_generation_graph(&cfg).expect("graph soft should succeed");
+        if graph_soft.get("15").is_some() {
+            assert_eq!(graph_soft["15"]["inputs"]["strength_model"], 0.40);
+        }
+        if graph_soft.get("14").is_some() {
+            assert_eq!(graph_soft["14"]["inputs"]["strength_model"], 0.35);
+        }
+
+        cfg.anime = comfy::LoraLevel::Full;
+        cfg.uncensored = comfy::LoraLevel::Full;
+        let (graph_full, _, _, _) = comfy::build_generation_graph(&cfg).expect("graph full should succeed");
+        if graph_full.get("15").is_some() {
+            assert_eq!(graph_full["15"]["inputs"]["strength_model"], 0.65);
+        }
+        if graph_full.get("14").is_some() {
+            assert_eq!(graph_full["14"]["inputs"]["strength_model"], 0.50);
         }
     }
 
