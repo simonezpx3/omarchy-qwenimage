@@ -1244,7 +1244,8 @@ pub fn run_neural_upscale(
     let poll_start = Instant::now();
     let hist_url = format!("http://127.0.0.1:8188/history/{}", prompt_id);
 
-    while poll_start.elapsed() < Duration::from_secs(180) {
+    let poll_limit = if is_sana { Duration::from_secs(1200) } else { Duration::from_secs(90) };
+    while poll_start.elapsed() < poll_limit {
         if let Ok(mut h_resp) = agent.get(&hist_url).call() {
             if let Ok(h_val) = h_resp.body_mut().read_json::<Value>() {
                 if let Some(p_info) = h_val.get(prompt_id) {

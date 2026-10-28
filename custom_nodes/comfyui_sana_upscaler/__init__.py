@@ -49,19 +49,19 @@ class Sana2KUpscalerNode:
         # Načtení přes Modular Diffusers API
         # Zkoušíme specializované img2img pipeline nebo generickou DiffusionPipeline
         pipe = None
+        load_kwargs = {"torch_dtype": torch.float16, "use_safetensors": True}
+        if "bf16" in model_id.lower():
+            load_kwargs["variant"] = "bf16"
+
         try:
             from diffusers import SanaSprintImg2ImgPipeline
-            pipe = SanaSprintImg2ImgPipeline.from_pretrained(
-                model_id,
-                torch_dtype=torch.float16,
-                use_safetensors=True,
-            )
+            pipe = SanaSprintImg2ImgPipeline.from_pretrained(model_id, **load_kwargs)
         except Exception:
-            pipe = DiffusionPipeline.from_pretrained(
-                model_id,
-                torch_dtype=torch.float16,
-                use_safetensors=True,
-            )
+            try:
+                pipe = DiffusionPipeline.from_pretrained(model_id, **load_kwargs)
+            except Exception:
+                load_kwargs.pop("variant", None)
+                pipe = DiffusionPipeline.from_pretrained(model_id, **load_kwargs)
 
         # Kritické pro 2K rozlišení na 8GB VRAM: VAE Tiling a Slicing
         if hasattr(pipe, "vae") and pipe.vae is not None:
