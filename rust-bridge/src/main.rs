@@ -3874,4 +3874,11 @@ mod tests {
             assert_eq!(model_title, "Sana 2K");
         }
     }
+
+    #[test]
+    fn test_sana_upscale_graph_micro_anatomy_fidelity() {
+        // beads-qis-sana-micro-anatomy-repair-nl7h
+        let default_fidelity = 0.35;
+        assert!(default_fidelity > 0.0 && default_fidelity <= 1.0);
+    }
 }

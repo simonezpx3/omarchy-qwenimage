@@ -1,7 +1,7 @@
 import gc
 import torch
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 from diffusers import DiffusionPipeline
 import comfy.model_management as mm
 
@@ -31,6 +31,9 @@ class Sana2KUpscalerNode:
                 "guidance_scale": ("FLOAT", {"default": 4.5, "min": 1.0, "max": 15.0, "step": 0.1}),
                 "offload_mode": (["sequential_cpu_offload", "model_cpu_offload"], {"default": "sequential_cpu_offload"}),
                 "seed": ("INT", {"default": 42, "min": 0, "max": 0xffffffffffffffff}),
+            },
+            "optional": {
+                "anatomy_fidelity": ("FLOAT", {"default": 0.35, "min": 0.0, "max": 1.0, "step": 0.05}),
             }
         }
 
@@ -99,6 +102,42 @@ class Sana2KUpscalerNode:
         arr = np.array(pil_img.convert("RGB"), dtype=np.float32) / 255.0
         return torch.from_numpy(arr)
 
+    @staticmethod
+    def _blend_micro_anatomy(pil_base: Image.Image, pil_sana: Image.Image, fidelity: float) -> Image.Image:
+        """
+        Hybrid High-Frequency Detail Blending (beads-qis-sana-micro-anatomy-repair-nl7h).
+        DC-AE autoencoder (32x downsampling) destroys sub-token micro-anatomy (pupils, irises, ear cartilage, fingers).
+        This isolates the high-frequency structural luminance edges from the Lanczos-upscaled original
+        and injects them into Sana's luminance (Y) channel in YCbCr color space.
+        Zero chromatic aberration, locks micro-anatomy contours, 0 MB GPU VRAM overhead.
+        """
+        try:
+            base_rgb = pil_base.convert("RGB")
+            sana_rgb = pil_sana.convert("RGB")
+
+            if base_rgb.size != sana_rgb.size:
+                base_rgb = base_rgb.resize(sana_rgb.size, Image.Resampling.LANCZOS)
+
+            sana_ycbcr = sana_rgb.convert("YCbCr")
+            base_ycbcr = base_rgb.convert("YCbCr")
+
+            y_base_img = base_ycbcr.getchannel("Y")
+            y_sana_img = sana_ycbcr.getchannel("Y")
+
+            y_base_low = y_base_img.filter(ImageFilter.GaussianBlur(radius=2.0))
+            y_base_arr = np.array(y_base_img, dtype=np.float32)
+            y_base_low_arr = np.array(y_base_low, dtype=np.float32)
+            y_base_high = y_base_arr - y_base_low_arr
+
+            y_sana_arr = np.array(y_sana_img, dtype=np.float32)
+            y_fused = np.clip(y_sana_arr + (y_base_high * fidelity), 0.0, 255.0).astype(np.uint8)
+
+            fused_y = Image.fromarray(y_fused, mode="L")
+            return Image.merge("YCbCr", (fused_y, sana_ycbcr.getchannel("Cb"), sana_ycbcr.getchannel("Cr"))).convert("RGB")
+        except Exception as e:
+            print(f"Sana2KUpscaler // Warning: micro-anatomy blending fallback: {e}")
+            return pil_sana
+
     def upscale(
         self,
         image: torch.Tensor,
@@ -111,6 +150,7 @@ class Sana2KUpscalerNode:
         guidance_scale: float,
         offload_mode: str,
         seed: int,
+        anatomy_fidelity: float = 0.35,
     ):
         # 1. Uvolnění VRAM držené samotným ComfyUI (prevence kolize s předchozími uzly)
         mm.unload_all_models()
@@ -202,6 +242,12 @@ class Sana2KUpscalerNode:
 
                 if hasattr(pipe, "maybe_free_model_hooks"):
                     pipe.maybe_free_model_hooks()
+
+                # Hybrid High-Frequency Detail Blending (beads-qis-sana-micro-anatomy-repair-nl7h)
+                # DC-AE 32x downsampling destroys sub-token micro-anatomy (eyes, pupils, fingers).
+                # Re-inject high-frequency luminance edge details from Lanczos-scaled input.
+                if anatomy_fidelity > 0.0:
+                    result_pil = self._blend_micro_anatomy(pil_resized, result_pil, anatomy_fidelity)
 
             out_tensors.append(self._pil_to_bhwc(result_pil))
 

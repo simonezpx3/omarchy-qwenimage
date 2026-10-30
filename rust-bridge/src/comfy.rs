@@ -1179,7 +1179,8 @@ pub fn run_neural_upscale(
                     "steps": 20,
                     "guidance_scale": 4.5,
                     "offload_mode": "sequential_cpu_offload",
-                    "seed": comfy_meta.seed.unwrap_or(42)
+                    "seed": comfy_meta.seed.unwrap_or(42),
+                    "anatomy_fidelity": 0.35
                 }
             },
             "3": {
