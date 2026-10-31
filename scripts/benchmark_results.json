@@ -1,0 +1,52 @@
+{
+  "modular_auto_offload_2gb": {
+    "steps": [
+      {
+        "step": "text_encoder",
+        "stats": {
+          "allocated_mb": 2208.13,
+          "peak_mb": 2208.13,
+          "reserved_mb": 2222.0
+        },
+        "latency_ms": 173.11
+      },
+      {
+        "step": "transformer",
+        "stats": {
+          "allocated_mb": 3408.13,
+          "peak_mb": 3408.13,
+          "reserved_mb": 3422.0
+        },
+        "latency_ms": 392.86
+      },
+      {
+        "step": "vae",
+        "stats": {
+          "allocated_mb": 808.13,
+          "peak_mb": 3408.13,
+          "reserved_mb": 822.0
+        },
+        "latency_ms": 438.28
+      }
+    ],
+    "max_peak_vram_mb": 3408.13,
+    "total_weight_footprint_mb": 6400
+  },
+  "margin_sensitivity": {
+    "1.5GB": {
+      "allocated_mb": 1608.13,
+      "peak_mb": 4208.13,
+      "reserved_mb": 1622.0
+    },
+    "2.5GB": {
+      "allocated_mb": 2408.13,
+      "peak_mb": 5008.13,
+      "reserved_mb": 2422.0
+    },
+    "3.5GB": {
+      "allocated_mb": 2408.13,
+      "peak_mb": 5008.13,
+      "reserved_mb": 2422.0
+    }
+  }
+}

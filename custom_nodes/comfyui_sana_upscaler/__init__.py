@@ -29,7 +29,7 @@ class Sana2KUpscalerNode:
                 "strength": ("FLOAT", {"default": 0.16, "min": 0.05, "max": 1.0, "step": 0.01}),
                 "steps": ("INT", {"default": 20, "min": 1, "max": 50}),
                 "guidance_scale": ("FLOAT", {"default": 4.5, "min": 1.0, "max": 15.0, "step": 0.1}),
-                "offload_mode": (["sequential_cpu_offload", "model_cpu_offload"], {"default": "sequential_cpu_offload"}),
+                "offload_mode": (["modular_cpu_offload", "sequential_cpu_offload", "model_cpu_offload"], {"default": "modular_cpu_offload"}),
                 "seed": ("INT", {"default": 42, "min": 0, "max": 0xffffffffffffffff}),
             },
             "optional": {
@@ -74,7 +74,15 @@ class Sana2KUpscalerNode:
             pipe.enable_attention_slicing("max")
 
         # Offload strategie: Nikdy nevolat pipe.to("cuda") před offloadem!
-        if offload_mode == "sequential_cpu_offload":
+        if offload_mode == "modular_cpu_offload":
+            from diffusers.modular_pipelines.components_manager import ComponentsManager
+            cm = ComponentsManager()
+            for name, comp in pipe.components.items():
+                if isinstance(comp, torch.nn.Module):
+                    cm.add(name, comp)
+            cm.enable_auto_cpu_offload(device="cuda:0", memory_reserve_margin="2.0GB")
+            pipe._components_manager = cm
+        elif offload_mode == "sequential_cpu_offload":
             pipe.enable_sequential_cpu_offload()
         else:
             pipe.enable_model_cpu_offload()
@@ -85,6 +93,12 @@ class Sana2KUpscalerNode:
 
     def _unload(self):
         if self.pipe is not None:
+            if hasattr(self.pipe, "_components_manager"):
+                try:
+                    self.pipe._components_manager.disable_auto_cpu_offload()
+                except Exception:
+                    pass
+                del self.pipe._components_manager
             del self.pipe
             self.pipe = None
             self.current_config = None
