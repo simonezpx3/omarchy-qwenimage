@@ -44,15 +44,24 @@ class TestDiffusersModularVram(unittest.TestCase):
         if not torch.cuda.is_available():
             self.skipTest("CUDA not available for VRAM test")
 
+        free_bytes = torch.cuda.mem_get_info()[0]
+        if free_bytes < 250 * 1024 * 1024:
+            self.skipTest("Insufficient free VRAM for testing (<250MB)")
+
         cm = ComponentsManager()
-        # 2.5GB each with 4.5GB margin exceeds 8GB total capacity, forcing eviction
-        mod_a = DummyBlock(2500)
-        mod_b = DummyBlock(2500)
+        # Use compact 40MB blocks to test eviction logic reliably without OOM
+        block_mb = 40
+        mod_a = DummyBlock(block_mb)
+        mod_b = DummyBlock(block_mb)
 
         cm.add("text_encoder", mod_a)
         cm.add("transformer", mod_b)
 
-        cm.enable_auto_cpu_offload(device="cuda:0", memory_reserve_margin="4.5GB")
+        # Set reserve margin equal to current free memory so any active model
+        # is evicted to CPU when a new model requires GPU headroom
+        margin_str = f"{free_bytes // (1024 * 1024)}MB"
+
+        cm.enable_auto_cpu_offload(device="cuda:0", memory_reserve_margin=margin_str)
 
         # Models start on CPU
         self.assertEqual(mod_a.device.type, "cpu")

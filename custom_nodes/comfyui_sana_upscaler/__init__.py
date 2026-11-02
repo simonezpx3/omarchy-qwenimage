@@ -2,8 +2,16 @@ import gc
 import torch
 import numpy as np
 from PIL import Image, ImageFilter
-from diffusers import DiffusionPipeline
-import comfy.model_management as mm
+try:
+    from diffusers import DiffusionPipeline
+    DIFFUSERS_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    DIFFUSERS_AVAILABLE = False
+    DiffusionPipeline = None
+try:
+    import comfy.model_management as mm
+except (ImportError, ModuleNotFoundError):
+    mm = None
 
 
 class Sana2KUpscalerNode:
@@ -51,9 +59,15 @@ class Sana2KUpscalerNode:
 
         # Načtení přes Modular Diffusers API
         # Model vyžaduje bfloat16: ve float16 dochází k overflow attention logitů a vzniku NaN
-        dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float32
+        if torch.cuda.is_available():
+            target_device = "cuda:0"
+            dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float32
+        else:
+            target_device = "cpu"
+            dtype = torch.float32
+
         load_kwargs = {"torch_dtype": dtype, "use_safetensors": True}
-        if "bf16" in model_id.lower():
+        if "bf16" in model_id.lower() and dtype == torch.bfloat16:
             load_kwargs["variant"] = "bf16"
 
         try:
@@ -75,17 +89,33 @@ class Sana2KUpscalerNode:
 
         # Offload strategie: Nikdy nevolat pipe.to("cuda") před offloadem!
         if offload_mode == "modular_cpu_offload":
-            from diffusers.modular_pipelines.components_manager import ComponentsManager
-            cm = ComponentsManager()
-            for name, comp in pipe.components.items():
-                if isinstance(comp, torch.nn.Module):
-                    cm.add(name, comp)
-            cm.enable_auto_cpu_offload(device="cuda:0", memory_reserve_margin="2.0GB")
-            pipe._components_manager = cm
+            modular_ok = False
+            if target_device.startswith("cuda"):
+                try:
+                    from diffusers.modular_pipelines.components_manager import ComponentsManager
+                    cm = ComponentsManager()
+                    for name, comp in pipe.components.items():
+                        if isinstance(comp, torch.nn.Module):
+                            cm.add(name, comp)
+                    cm.enable_auto_cpu_offload(device=target_device, memory_reserve_margin="2.0GB")
+                    pipe._components_manager = cm
+                    modular_ok = True
+                except Exception as e:
+                    print(f"Sana2KUpscaler // Warning: modular offload init failed ({e}), falling back to sequential offload")
+
+            if not modular_ok:
+                if hasattr(pipe, "enable_sequential_cpu_offload"):
+                    pipe.enable_sequential_cpu_offload()
+                elif hasattr(pipe, "enable_model_cpu_offload"):
+                    pipe.enable_model_cpu_offload()
         elif offload_mode == "sequential_cpu_offload":
-            pipe.enable_sequential_cpu_offload()
+            if hasattr(pipe, "enable_sequential_cpu_offload"):
+                pipe.enable_sequential_cpu_offload()
+            elif hasattr(pipe, "enable_model_cpu_offload"):
+                pipe.enable_model_cpu_offload()
         else:
-            pipe.enable_model_cpu_offload()
+            if hasattr(pipe, "enable_model_cpu_offload"):
+                pipe.enable_model_cpu_offload()
 
         self.pipe = pipe
         self.current_config = config_key
@@ -166,9 +196,15 @@ class Sana2KUpscalerNode:
         seed: int,
         anatomy_fidelity: float = 0.35,
     ):
+        if not DIFFUSERS_AVAILABLE or DiffusionPipeline is None:
+            raise RuntimeError(
+                "Sana 2K Upscaler requires 'diffusers>=0.40.0', which is not installed in the ComfyUI environment."
+            )
+
         # 1. Uvolnění VRAM držené samotným ComfyUI (prevence kolize s předchozími uzly)
-        mm.unload_all_models()
-        mm.soft_empty_cache()
+        if mm is not None:
+            mm.unload_all_models()
+            mm.soft_empty_cache()
 
         if torch.cuda.is_available():
             torch.cuda.reset_peak_memory_stats()
@@ -274,5 +310,10 @@ class Sana2KUpscalerNode:
         return (torch.stack(out_tensors, dim=0),)
 
 
-NODE_CLASS_MAPPINGS = {"Sana2KUpscaler": Sana2KUpscalerNode}
-NODE_DISPLAY_NAME_MAPPINGS = {"Sana2KUpscaler": "Sana 2K Upscaler (Diffusers 0.40)"}
+if DIFFUSERS_AVAILABLE:
+    NODE_CLASS_MAPPINGS = {"Sana2KUpscaler": Sana2KUpscalerNode}
+    NODE_DISPLAY_NAME_MAPPINGS = {"Sana2KUpscaler": "Sana 2K Upscaler (Diffusers 0.40)"}
+else:
+    NODE_CLASS_MAPPINGS = {}
+    NODE_DISPLAY_NAME_MAPPINGS = {}
+    print("Sana2KUpscaler // Notice: 'diffusers' package is not installed. Sana 2K Upscaler node skipped gracefully.")
