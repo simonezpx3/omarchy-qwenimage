@@ -1035,7 +1035,12 @@ start_comfyui() {
     elif [[ "$HW_TIER" == "C" ]]; then
         args+=("--cpu")
     else
-        local reserve_val="0.5"
+        local reserve_val="1.2"
+        if (( VRAM_MB >= 14000 )); then
+            reserve_val="0.5"
+        elif (( VRAM_MB >= 10000 )); then
+            reserve_val="0.8"
+        fi
         if [[ -n "${QIS_VRAM_RESERVE_GB:-}" ]]; then
             reserve_val="${QIS_VRAM_RESERVE_GB}"
         fi

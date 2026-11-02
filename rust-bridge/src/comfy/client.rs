@@ -96,7 +96,16 @@ pub fn ensure_comfyui_running() -> bool {
             let reserve_str = std::env::var("QIS_VRAM_RESERVE_GB")
                 .ok()
                 .or_else(|| conf.get("QIS_VRAM_RESERVE_GB").cloned())
-                .unwrap_or_else(|| "0.5".to_string());
+                .unwrap_or_else(|| {
+                    let vram = crate::vram::get_vram_info();
+                    if vram.total_mb >= 14000 {
+                        "0.5".to_string()
+                    } else if vram.total_mb >= 10000 {
+                        "0.8".to_string()
+                    } else {
+                        "1.2".to_string()
+                    }
+                });
 
             let mut py_args = vec!["--listen", "127.0.0.1", "--port", "8188", "--preview-method", "auto"];
             if tier == "B" {
@@ -469,4 +478,32 @@ pub fn execute_comfy_workflow(prompt_graph: &Value) -> Result<String, String> {
 
     Err("ComfyUI timeout: no output image returned".to_string())
 }
+
+pub fn is_qis_budget_node_available() -> bool {
+    static AVAILABLE: std::sync::atomic::AtomicI8 = std::sync::atomic::AtomicI8::new(-1);
+    let cached = AVAILABLE.load(std::sync::atomic::Ordering::Relaxed);
+    if cached >= 0 {
+        return cached == 1;
+    }
+
+    if cfg!(test) {
+        return true;
+    }
+
+    let url = "http://127.0.0.1:8188/object_info/QISVramBudget";
+    let agent = crate::common::get_http_agent(1);
+    let found = if let Ok(mut resp) = agent.get(url).call() {
+        if let Ok(json) = resp.body_mut().read_json::<serde_json::Value>() {
+            json.get("QISVramBudget").is_some()
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+
+    AVAILABLE.store(if found { 1 } else { 0 }, std::sync::atomic::Ordering::Relaxed);
+    found
+}
+
 

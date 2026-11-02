@@ -6,11 +6,14 @@ pub mod graph;
 pub mod tagger;
 pub mod upscale;
 
+#[allow(unused_imports)]
 pub use client::{
     ensure_comfyui_running, execute_comfy_workflow, free_comfyui_vram, get_vram_free_mb,
-    interrupt_comfyui,
+    interrupt_comfyui, is_qis_budget_node_available,
 };
 pub use graph::build_generation_graph;
+#[allow(unused_imports)]
+pub use graph::calculate_dynamic_vram_reserve;
 #[allow(unused_imports)]
 pub use graph::calculate_dimensions;
 pub use tagger::execute_wd14;
@@ -148,6 +151,7 @@ impl LoraLevel {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct GenerationConfig<'a> {
     pub prompt: &'a str,
     pub negative_prompt: &'a str,

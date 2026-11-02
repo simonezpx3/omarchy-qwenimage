@@ -146,6 +146,41 @@ class ViggleTurboLora:
         return (m,)
 
 
-NODE_CLASS_MAPPINGS = {"ViggleTurboSigmas": ViggleTurboSigmas, "ViggleTurboLora": ViggleTurboLora}
-NODE_DISPLAY_NAME_MAPPINGS = {"ViggleTurboSigmas": "Qwen-Image-2.1 Viggle Turbo Sigmas",
-                              "ViggleTurboLora": "Qwen-Image-2.1 Viggle Turbo LoRA (unmerged)"}
+class QISVramBudget:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "model": ("MODEL", {"tooltip": "DiT diffusion model"}),
+                "reserve_gb": ("FLOAT", {"default": 1.2, "min": 0.1, "max": 16.0, "step": 0.1, "tooltip": "VRAM reserved for intermediate CUDA activations & other applications."}),
+                "purge_cache": ("BOOLEAN", {"default": False, "tooltip": "Soft empty torch CUDA cache before sampling."}),
+            }
+        }
+
+    RETURN_TYPES = ("MODEL",)
+    FUNCTION = "apply_budget"
+    CATEGORY = "QIS"
+    DESCRIPTION = "Dynamically adjusts ComfyUI EXTRA_RESERVED_VRAM and purges CUDA cache per-request based on active feature complexity (Turbo, LoRA, resolution)."
+
+    def apply_budget(self, model, reserve_gb, purge_cache):
+        try:
+            import comfy.model_management as mm
+            mm.EXTRA_RESERVED_VRAM = int(reserve_gb * 1024 * 1024 * 1024)
+            if purge_cache:
+                mm.soft_empty_cache()
+        except Exception as e:
+            import logging
+            logging.warning(f"QISVramBudget: failed to apply budget: {e}")
+        return (model,)
+
+
+NODE_CLASS_MAPPINGS = {
+    "ViggleTurboSigmas": ViggleTurboSigmas,
+    "ViggleTurboLora": ViggleTurboLora,
+    "QISVramBudget": QISVramBudget,
+}
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "ViggleTurboSigmas": "Qwen-Image-2.1 Viggle Turbo Sigmas",
+    "ViggleTurboLora": "Qwen-Image-2.1 Viggle Turbo LoRA (unmerged)",
+    "QISVramBudget": "QIS Dynamic VRAM Budget Governor",
+}
