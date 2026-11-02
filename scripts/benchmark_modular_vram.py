@@ -96,7 +96,7 @@ def run_benchmark():
     t_text = round((time.perf_counter() - t0) * 1000, 2)
     stat_a = get_cuda_stats()
     step_stats.append({"step": "text_encoder", "stats": stat_a, "latency_ms": t_text})
-    print(f"[Stage A] text_encoder -> VRAM: {stat_a['allocated_mb']} MB (Peak: {stat_a['peak_mb']} MB)")
+    print(f"Stage A // text_encoder -> VRAM: {stat_a['allocated_mb']} MB (Peak: {stat_a['peak_mb']} MB)")
 
     # Stage B: Transformer DiT forward (Must evict text_encoder if needed)
     t0 = time.perf_counter()
@@ -104,7 +104,7 @@ def run_benchmark():
     t_dit = round((time.perf_counter() - t0) * 1000, 2)
     stat_b = get_cuda_stats()
     step_stats.append({"step": "transformer", "stats": stat_b, "latency_ms": t_dit})
-    print(f"[Stage B] transformer  -> VRAM: {stat_b['allocated_mb']} MB (Peak: {stat_b['peak_mb']} MB)")
+    print(f"Stage B // transformer  -> VRAM: {stat_b['allocated_mb']} MB (Peak: {stat_b['peak_mb']} MB)")
 
     # Stage C: VAE Decode forward
     t0 = time.perf_counter()
@@ -112,7 +112,7 @@ def run_benchmark():
     t_vae = round((time.perf_counter() - t0) * 1000, 2)
     stat_c = get_cuda_stats()
     step_stats.append({"step": "vae", "stats": stat_c, "latency_ms": t_vae})
-    print(f"[Stage C] vae          -> VRAM: {stat_c['allocated_mb']} MB (Peak: {stat_c['peak_mb']} MB)")
+    print(f"Stage C // vae          -> VRAM: {stat_c['allocated_mb']} MB (Peak: {stat_c['peak_mb']} MB)")
 
     results["modular_auto_offload_2gb"] = {
         "steps": step_stats,
