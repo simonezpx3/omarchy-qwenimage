@@ -155,6 +155,11 @@ pub(crate) fn cmd_generate(
                         final_negative = sanitize_diffusion_prompt(&expanded_neg);
                     }
                     eprintln!("\x1b[38;2;97;213;248mPROMPT EXPANDER // Hotovo -> prompt rozvinut\x1b[0m");
+                    println!("{}", serde_json::json!({
+                        "event": "prompt_expanded",
+                        "prompt": final_prompt,
+                        "negative": final_negative
+                    }));
                 }
             }
             Err(e) => {
