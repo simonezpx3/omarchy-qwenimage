@@ -305,6 +305,12 @@ else
   for f in "${SCRIPT_DIR}"/views/*; do
     [[ -f "$f" && ! -L "$f" ]] && copy_safe "$f" "${TARGET_PLUGIN_DIR}/views/$(basename "$f")" 0644
   done
+  if [[ -d "${SCRIPT_DIR}/internal" ]]; then
+    ensure_safe_dir "${TARGET_PLUGIN_DIR}/internal"
+    for f in "${SCRIPT_DIR}"/internal/*; do
+      [[ -f "$f" && ! -L "$f" ]] && copy_safe "$f" "${TARGET_PLUGIN_DIR}/internal/$(basename "$f")" 0644
+    done
+  fi
   for f in "${SCRIPT_DIR}"/assets/*; do
     [[ -f "$f" && ! -L "$f" ]] && copy_safe "$f" "${TARGET_PLUGIN_DIR}/assets/$(basename "$f")" 0644
   done

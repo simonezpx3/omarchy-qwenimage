@@ -2,6 +2,26 @@
 
 Všechny významné změny, audity a bezpečnostní opravy projektu jsou zaznamenávány v tomto souboru. Formát vychází z [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) a dodržuje [Semantic Versioning](https://semver.org/).
 
+## [1.2.8] — 2026-11-02
+
+### Architecture, Modularity & Codecraft Compliance
+- **Monolithic Rust Bridge Decomposition (`rust-bridge/src/`):**
+  - Partitioned the 3,884-line monolithic `main.rs` into 11 domain-driven submodules (`common.rs`, `vram.rs`, `generate.rs`, `gallery.rs`, `clipboard.rs`, `scale.rs`, `prompts.rs`, `civitai.rs`, `settings.rs`, `vision.rs`, `tests.rs`), strictly adhering to the Codecraft hard ceiling (< 600 lines / 24 KB per file).
+- **Quattro Service Facade Decomposition (`Service.qml`, `internal/*.qml`):**
+  - Refactored the 1,192-line `Service.qml` into a high-performance facade delegating to five focused internal subcomponents in `internal/` (`SettingsSync.qml`, `TelemetryBridge.qml`, `GenerationBridge.qml`, `MediaActions.qml`, `DiscoveryBridge.qml`) registered via `internal/qmldir`.
+  - Preserved 100% backward compatibility of all public properties, signals, and IPC handlers for `BarWidget.qml`, `Panel.qml`, and external marketplace consumers.
+
+### Performance, Security & Concurrency Hardening
+- **Cooperative VRAM Management (`rust-bridge/src/vram.rs`):**
+  - Enhanced `check_gaming_hybrid` to probe for active local `llama-server` background instances (`is_llama_server_running()`), preventing false `LOCKED (GAME)` trigger states when VRAM is occupied by cooperative AI workers (e.g. `arci-moe35`, `arci-qwen4b`).
+- **Atomic RAII VRAM Lock Guard (`rust-bridge/src/vram.rs`):**
+  - Introduced `VramLockGuard` with non-blocking file-descriptor locks (`flock`) to guard generation tasks from concurrent execution collisions and guarantee orphan lock elimination even upon SIGKILL or abnormal process termination.
+- **Test Suite & Build Integrity:**
+  - Expanded unit test suite to 32 tests covering RAII lock recovery and llama-server process probing.
+  - Recompiled release binary `bin/qwen-bridge` and updated `bin/qwen-bridge.sha256`.
+
+---
+
 ## [1.2.5] — 2026-10-19
 
 ### Marketplace Alignment & Security Hardening
