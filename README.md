@@ -64,8 +64,11 @@ graph LR
 - **Hardware Attention Acceleration:** Native PyTorch 2.x SDPA (`scaled_dot_product_attention`) using FlashAttention and memory-efficient kernels directly on Tensor Cores, with optional SageAttention 2 support when installed by the user.
 - **POSIX Shared Memory Previews (`/dev/shm`):** Live step previews written directly to an isolated RAM disk (`/dev/shm/qis_preview_${UID}/`) with atomic file replacement, eliminating disk I/O latency and micro-stutter on high-refresh-rate Wayland compositors.
 - **Process Lifecycle Hardening & Zombie Protection:** Kernel-level process tracking via `libc::prctl(PR_SET_PDEATHSIG, SIGKILL)`, 8-second status process watchdogs, and transient systemd scopes (`systemd-run --user --scope`), ensuring immediate GPU VRAM eviction and zero orphan processes if the parent bridge terminates.
-- **Complete Bilingual Parity (EN // CS):** Dynamic language switcher with full localization across UI labels, tooltips, bridge error messages, and desktop notifications.
-- **Turbo Mode (Viggle Turbo DMD & SplitSigmasDenoise):** 6-step Distribution Matching Distillation (DMD) with zero-redundancy MLP hooks yielding ~5s generation on consumer GPUs (8 GB+ VRAM, enforcing a strict 1.8 GB VRAM system reserve), including dedicated `SplitSigmasDenoise` node routing for accurate denoise strength in Turbo Image-to-Image workflows.
+- **Standardized English Interface:** Fully aligned with Omarchy Quattro marketplace guidelines, offering clean technical English across all UI cards, tooltips, bridge telemetry, and notifications.
+- **Dynamic VRAM Budget Governor (`QISVramBudget`):** Adaptive per-request VRAM reserve management via a native ComfyUI custom node (`QISVramBudget`) dynamically adjusting `EXTRA_RESERVED_VRAM` before `KSampler` execution based on request parameters. Features a hardware-aware reserve matrix (0.5 GB on $\ge$14 GB cards, 0.6–1.2 GB on 10–14 GB cards, and 0.9–1.6 GB on $\le$8 GB GPUs), smart `EasyCache` bypass when LoRA adapters are active to prevent 192 MiB SwiGLU forward-pass collisions, and automated cache purging.
+- **Tiled VAE Decoding (512px Tiles):** Automated fallback to `VAEDecodeTiled` (512px tiles, 64px overlap) on cards with $\le$8 GB VRAM or constrained free memory, compressing peak VAE decode memory spikes from 576 MiB down to $<80$ MiB.
+- **Cooperative Multi-Process VRAM Management:** Intelligent runtime probing for active background AI processes (such as local `llama-server` instances) combined with non-blocking atomic `flock` file-descriptor locks (`VramLockGuard`), ensuring conflict-free shared GPU execution without false game-lock triggers.
+- **Turbo Mode (Viggle Turbo DMD & SplitSigmasDenoise):** 6-step Distribution Matching Distillation (DMD) with zero-redundancy MLP hooks yielding ~5s generation on consumer GPUs, including dedicated `SplitSigmasDenoise` node routing for accurate denoise strength in Turbo Image-to-Image workflows.
 - **Neural Super-Resolution (4X Upscalers):** Integrated local super-resolution suite executed within ComfyUI:
   - `4X ESRGAN` (RealESRGAN_x4plus) — General photographic and cinematic restoration with grain denoising.
   - `4X ULTRA` (4x-UltraSharp) — Micro-contrast and high-frequency texture preservation.
@@ -78,14 +81,15 @@ graph LR
 - **Interactive History & Wayland Fullscreen Viewer:** Direct ingestion of past generations back into the Studio reference buffer (`COPY TO BUFFER`) and zero-latency fullscreen inspection (`VIEW`) powered by `imv` (`imv -i imv-fullscreen -f -c "bind <Escape> quit"`).
 - **A/B Compare Interactive Splitter:** Dedicated dual-buffer inspection view (`views/CompareView.qml`) with a real-time split slider to optically evaluate generation quality, prompts, and aspect scaling variations side-by-side.
 - **Hardened Wayland Sandbox & Input Isolation:** Strictly bounded Wayland clipboard intake (16 KiB text/URI metadata ceiling, bounded 32 MiB image stream buffer, 1.2s timeout with `SIGKILL` fallback) and `FocusScope` event interception neutralizing foreign MIME starvation, DoS freezes, and primary selection leaks.
-- **Heretic LoRA (Abliterated Uncensored Latent):** Dedicated uncensored diffusion adapter with a dynamic LoRA weight governor preventing tensor saturation.
+- **Heretic LoRA (Abliterated Uncensored Latent):** Dedicated uncensored diffusion adapter with dynamic tri-state intensity cycling (`OFF` · `SOFT` · `FULL`).
+- **Anime LoRA & Adaptive Resolution Profiling:** Instant anime style injection with calibrated tri-state stylization levels (`OFF` · `SOFT` · `FULL`) and VRAM-aware resolution presets (`standard`, `high`).
+- **Anatomy LoRA (Body & Geometry Guard):** Specialized physiological fidelity adapter with tri-state intensity control (`OFF` · `SOFT` · `FULL`) and automated Euler fallback to preserve anatomical coherence.
 - **Anatomical Safety Guard:** Automated anatomy preservation enforcing a standard resolution floor (1024 px) and adaptive Euler sampling profile when human subjects or portraits are detected in draft mode.
 - **Live TAEQI 2.1 Previews:** Real-time intermediate diffusion preview streaming over WebSocket directly from ComfyUI (zero VRAM overhead, decoded via lightweight TAEQI into RAM-disk tmpfs).
 - **Quick Step Presets:** Instant step selection (`15`, `25`, `35`) with active state highlight and live elapsed timer.
 - **Universal Wayland Clipboard Engine:** Native Rust integration decoding raw image formats (PNG, JPEG, WebP, BMP, TIFF), file manager URIs (`file://` from Nemo, Thunar, Nautilus), and web image URLs directly into the reference buffer.
 - **Instant Generation Interrupt & Cancel:** Dynamic `CANCEL // Xs` button during active diffusion paired with a dedicated `interrupt_comfyui()` routine and `isCancelling` state machine in the Rust bridge, immediately halting the diffusion loop in ComfyUI and releasing GPU memory.
 - **Image-to-Image & Aspect Ratio Overrides:** Automatic aspect ratio extraction when set to `auto`, and explicit user aspect ratio enforcement (`21:9`, `16:9`, `16:10`, `4:3`, `1:1`, `3:4`, `9:16`) with center-crop scaling.
-- **Anime LoRA & Adaptive Resolution Profiling:** Instant anime style injection and VRAM-aware resolution presets (`standard`, `performance`, `high`).
 - **WD14 Tag Interrogator:** Fast Danbooru tag extraction via ONNX / ViT models.
 - **Vision Prompt Engineering:** Reverse-engineering existing reference scenes into structured diffusion prompts.
 - **Civitai Explorer:** Curated prompts, negative prompts, and generation settings browser with single-click apply and double-click instant generation.
@@ -93,7 +97,7 @@ graph LR
 - **Dynamic Output Node Resolution:** Resilient backend listener that dynamically resolves `SaveImage` nodes across custom workflows instead of relying on fixed node indices.
 - **Omarchy Instrumental UI Architecture:** Consistent geometric alignment with `Style.cornerRadius`, concentric surface depth, precision corner accents, and minimal frame overhead.
 - **Tabular Numerals & Optical Stability:** OpenType `tnum` tabular numerals across diffusion step badges, timers, and VRAM telemetry eliminating horizontal layout jitter.
-- **Clean Live System Telemetry:** Header telemetry indicators displaying connected Qwen model, ComfyUI (v0.41.2), Ollama, CUDA, Quickshell, and real-time VRAM utilization (including the 1.8 GB safety reserve).
+- **Clean Live System Telemetry:** Header telemetry indicators displaying connected Qwen model, ComfyUI (v0.41.2), Ollama, CUDA, Quickshell, and real-time VRAM utilization with dynamic budget status.
 - **In-Button Live Timers:** Dynamic second counters inside active operation buttons (`GENERATE`, `OPTIMIZE`, `TAGS`, `SCALE`).
 - **Wallpaper Integration:** One-click wallpaper deployment to Omarchy and Hyprland.
 
@@ -106,8 +110,9 @@ graph LR
 | **Toggle Studio Panel** | Click on bar widget or `omarchy-shell simonez.qwenimage toggle` | Opens or closes the floating studio window |
 | **Instant Generation** | `Ctrl + Enter` in prompt or negative prompt | Immediately launches diffusion synthesis |
 | **Turbo Mode Toggle** | Click on `TURBO: ON // OFF` in bottom bar | Toggles 6-step DMD acceleration (~5s) vs standard 28-step Euler sampling |
-| **Heretic LoRA Toggle** | Click on `HERETIC: ON // OFF` in bottom bar | Toggles uncensored latent diffusion adapter |
-| **Anime LoRA Toggle** | Click on `ANIME: ON // OFF` in bottom bar | Toggles anime and illustration stylization adapter |
+| **Heretic LoRA Cycle** | Click on `HERETIC` button in bottom bar | Cycles uncensored latent adapter (`OFF` · `SOFT` · `FULL`) |
+| **Anime LoRA Cycle** | Click on `ANIME` button in bottom bar | Cycles anime and illustration adapter (`OFF` · `SOFT` · `FULL`) |
+| **Anatomy LoRA Cycle** | Click on `ANATOMY` button in bottom bar | Cycles anatomical fidelity adapter (`OFF` · `SOFT` · `FULL`) |
 | **Paste Reference Image** | Click on reference preview box, `Ctrl + V`, or `Super + V` | Decodes image stream or local file URI from Wayland clipboard |
 | **Screen Area Snip** | Click on `SNIP` in Studio reference box | Interactively captures screen geometry (`slurp` + `grim`) into reference buffer |
 | **Clear Reference Buffer** | Click on `CLEAR` next to `SNIP` | Immediately clears the active reference image from the Studio buffer |
@@ -148,7 +153,7 @@ omarchy plugin add https://github.com/simonezpx3/omarchy-qwenimage.git
 ```bash
 git clone https://github.com/simonezpx3/omarchy-qwenimage.git
 cd omarchy-qwenimage
-git checkout --detach a5c4f346e01a1467475d41c9b68ad94d2105c9fc
+git checkout v1.2.8
 chmod +x install.sh
 ./install.sh
 ```
@@ -186,7 +191,7 @@ This plugin complies with the Omarchy Marketplace Security Baseline:
 - **Pinned Git Commits:** ComfyUI core (v0.41.2) and all custom nodes are pinned to immutable commit SHAs.
 - **Cryptographic Hash Verification:** All Python packages and sub-dependencies are locked with strict SHA-256 hashes (`pip install --require-hashes`) across CUDA 12.8, ROCm 6.2, and CPU architectures in `locks/`. Precompiled native binaries are verified via `bin/qwen-bridge.sha256`.
 - **Zero Unpinned Execution:** No unhashed or arbitrary code is downloaded during clone, install, or update operations.
-- **Hardware VRAM Reserve:** System reserve defaults to 1.8 GB on 8 GB GPUs (protecting Wayland desktop compositors and active applications), dynamically configurable via `QIS_VRAM_RESERVE_GB`.
+- **Dynamic Hardware VRAM Reserve:** System reserve dynamically governed by `QISVramBudget` (0.5 GB on high-end GPUs to 1.2–1.6 GB on constrained 8 GB GPUs with active LoRAs), protecting Wayland desktop compositors and preventing CUDA allocation spikes.
 - **Bounded Clipboard & POSIX Shared Memory:** Wayland text/URI clipboard intake is capped at 16 KiB with a 1.2s timeout; previews use user-isolated RAM disks (`/dev/shm/qis_preview_${UID}`) with mode `0700` permissions and automatic eviction on service stop.
 
 ---
