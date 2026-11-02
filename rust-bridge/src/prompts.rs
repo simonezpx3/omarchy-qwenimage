@@ -132,10 +132,11 @@ pub(crate) fn cmd_translate(text: &str) {
 
 pub(crate) fn get_best_llm_model() -> &'static str {
     let candidate_models = [
+        "qwen2.5-coder:7b",
+        "minicpm-v:latest",
         "heretic-v:latest",
         "maternion/mimo-v2.6-heretic:9b",
         "mimo:latest",
-        "qwen2.5-coder:7b",
         "coder:latest",
         "arci:latest",
     ];
@@ -157,13 +158,143 @@ pub(crate) fn get_best_llm_model() -> &'static str {
     "mimo:latest"
 }
 
+pub(crate) fn parse_optimized_response(
+    content: &str,
+    default_neg: &str,
+    trimmed_input: &str,
+) -> Option<(String, String, String)> {
+    let mut clean = content.trim();
+    // 1. Strip reasoning block </think> if present
+    if let Some(end_think) = clean.rfind("</think>") {
+        clean = clean[end_think + "</think>".len()..].trim();
+    }
+
+    // 2. Strip markdown code fence ```json ... ```
+    if clean.starts_with("```") {
+        if let Some(first_nl) = clean.find('\n') {
+            clean = clean[first_nl + 1..].trim();
+        }
+        if clean.ends_with("```") {
+            clean = clean[..clean.len() - 3].trim();
+        }
+    }
+
+    let lower = clean.to_lowercase();
+    if lower.contains("i can't")
+        || lower.contains("i cannot")
+        || lower.contains("violates my safety")
+        || lower.contains("safety guidelines")
+        || lower.contains("safety policy")
+        || lower.contains("explicit sexual content")
+    {
+        return Some((trimmed_input.to_string(), default_neg.to_string(), "16:10".to_string()));
+    }
+
+    // 3. Direct JSON parsing
+    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(clean) {
+        let rewritten = parsed.get("rewritten_prompt")
+            .or_else(|| parsed.get("optimized_prompt"))
+            .and_then(|r| r.as_str());
+        if let Some(r) = rewritten {
+            let ratio = parsed.get("wh_ratio").and_then(|w| w.as_str()).unwrap_or("16:10");
+            let neg = parsed.get("negative_prompt").and_then(|n| n.as_str()).unwrap_or(default_neg);
+            return Some((r.to_string(), neg.to_string(), ratio.to_string()));
+        }
+    }
+
+    // 4. Substring JSON extraction
+    if let Some(start) = clean.find('{') {
+        if let Some(end) = clean.rfind('}') {
+            if start < end {
+                let slice = &clean[start..=end];
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(slice) {
+                    let rewritten = parsed.get("rewritten_prompt")
+                        .or_else(|| parsed.get("optimized_prompt"))
+                        .and_then(|r| r.as_str());
+                    if let Some(r) = rewritten {
+                        let ratio = parsed.get("wh_ratio").and_then(|w| w.as_str()).unwrap_or("16:10");
+                        let neg = parsed.get("negative_prompt").and_then(|n| n.as_str()).unwrap_or(default_neg);
+                        return Some((r.to_string(), neg.to_string(), ratio.to_string()));
+                    }
+                }
+            }
+        }
+    }
+
+    if !clean.is_empty() {
+        return Some((clean.to_string(), default_neg.to_string(), "16:10".to_string()));
+    }
+
+    None
+}
+
+fn try_openai_optimize(
+    trimmed: &str,
+    sys_prompt: &str,
+    default_neg: &str,
+) -> Option<(String, String, String)> {
+    let endpoints = [
+        "http://127.0.0.1:8081",
+        "http://127.0.0.1:8080",
+        "http://127.0.0.1:10001",
+    ];
+
+    let probe_agent = get_http_agent(1);
+    for base in endpoints {
+        let models_url = format!("{}/v1/models", base);
+        if let Ok(mut resp) = probe_agent.get(&models_url).call() {
+            if resp.status().as_u16() == 200 {
+                let model_name = if let Ok(val) = resp.body_mut().read_json::<serde_json::Value>() {
+                    val.get("data")
+                        .and_then(|d| d.as_array())
+                        .and_then(|a| a.first())
+                        .and_then(|m| m.get("id"))
+                        .and_then(|id| id.as_str())
+                        .unwrap_or("default")
+                        .to_string()
+                } else {
+                    "default".to_string()
+                };
+
+                let chat_agent = get_http_agent(15);
+                let chat_url = format!("{}/v1/chat/completions", base);
+                let req_body = serde_json::json!({
+                    "model": model_name,
+                    "messages": [
+                        {"role": "system", "content": sys_prompt},
+                        {"role": "user", "content": trimmed}
+                    ],
+                    "temperature": 0.6,
+                    "max_tokens": 400
+                });
+
+                if let Ok(mut chat_resp) = chat_agent.post(&chat_url).send_json(&req_body) {
+                    if let Ok(val) = chat_resp.body_mut().read_json::<serde_json::Value>() {
+                        if let Some(content) = val.get("choices")
+                            .and_then(|c| c.as_array())
+                            .and_then(|a| a.first())
+                            .and_then(|c| c.get("message"))
+                            .and_then(|m| m.get("content"))
+                            .and_then(|c| c.as_str())
+                        {
+                            if let Some(res) = parse_optimized_response(content, default_neg, trimmed) {
+                                return Some(res);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 pub(crate) fn optimize_prompt_internal(text: &str) -> Result<(String, String, String), String> {
     let trimmed = text.trim();
     if trimmed.is_empty() {
         return Ok((String::new(), String::new(), "16:10".to_string()));
     }
 
-    let model = get_best_llm_model();
     let default_neg = "worst quality, low quality, blurry, deformed, bad anatomy, bad hands, missing fingers, extra limbs, fused fingers, deformed hands";
     let sys_prompt = "You are an elite prompt engineering specialist for Qwen-Image 2.1 DiT (Diffusion Transformer) visual generation.\n\
 Your goal is to convert brief, conversational, or multilingual user prompts into highly detailed, richly descriptive English prompts tailored for Qwen-Image 2.1, along with a clean, tailored negative prompt.\n\n\
@@ -184,7 +315,14 @@ Follow this methodology:\n\
 Return ONLY a single valid JSON object on one line:\n\
 {\"rewritten_prompt\": \"<the clean descriptive text starting with 'The image is...' or 'A detailed...'>\", \"negative_prompt\": \"<tailored negative filters>\", \"wh_ratio\": \"<e.g. 16:10>\"}";
 
-    let timeout_secs = 45 + ((SA_SIGNATURE_DNA % 5) as u64);
+    // 1. Fast Path: Resident local OpenAI-compatible server (8081, 8080, 10001)
+    if let Some(result) = try_openai_optimize(trimmed, sys_prompt, default_neg) {
+        return Ok(result);
+    }
+
+    // 2. Fallback Path: Ollama API with explicit thinking suppression & token bounding
+    let model = get_best_llm_model();
+    let timeout_secs = 25 + ((SA_SIGNATURE_DNA % 5) as u64);
     let agent = get_http_agent(timeout_secs);
 
     let req_body = serde_json::json!({
@@ -194,8 +332,10 @@ Return ONLY a single valid JSON object on one line:\n\
             {"role": "user", "content": trimmed}
         ],
         "stream": false,
+        "think": false,
         "options": {
-            "temperature": 0.65,
+            "temperature": 0.6,
+            "num_predict": 350,
             "seed": SA_SIGNATURE_DNA
         }
     });
@@ -203,50 +343,14 @@ Return ONLY a single valid JSON object on one line:\n\
     if let Ok(mut resp) = agent.post("http://127.0.0.1:11434/api/chat").send_json(&req_body) {
         if let Ok(val) = resp.body_mut().read_json::<serde_json::Value>() {
             if let Some(content) = val.get("message").and_then(|m| m.get("content")).and_then(|c| c.as_str()) {
-                let mut trimmed_content = content.trim();
-                // Strip reasoning block <think>...</think> if present
-                if let Some(end_think) = trimmed_content.rfind("</think>") {
-                    trimmed_content = trimmed_content[end_think + "</think>".len()..].trim();
+                if let Some(result) = parse_optimized_response(content, default_neg, trimmed) {
+                    return Ok(result);
                 }
-
-                let lower = trimmed_content.to_lowercase();
-                if lower.contains("i can't")
-                    || lower.contains("i cannot")
-                    || lower.contains("violates my safety")
-                    || lower.contains("safety guidelines")
-                    || lower.contains("safety policy")
-                    || lower.contains("explicit sexual content")
-                {
-                    return Ok((trimmed.to_string(), default_neg.to_string(), "16:10".to_string()));
-                }
-
-                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(trimmed_content) {
-                    if let Some(rewritten) = parsed.get("rewritten_prompt").and_then(|r| r.as_str()) {
-                        let ratio = parsed.get("wh_ratio").and_then(|w| w.as_str()).unwrap_or("16:10");
-                        let neg = parsed.get("negative_prompt").and_then(|n| n.as_str()).unwrap_or(default_neg);
-                        return Ok((rewritten.to_string(), neg.to_string(), ratio.to_string()));
-                    }
-                }
-                if let Some(start) = trimmed_content.find('{') {
-                    if let Some(end) = trimmed_content.rfind('}') {
-                        if start < end {
-                            let slice = &trimmed_content[start..=end];
-                            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(slice) {
-                                if let Some(rewritten) = parsed.get("rewritten_prompt").and_then(|r| r.as_str()) {
-                                    let ratio = parsed.get("wh_ratio").and_then(|w| w.as_str()).unwrap_or("16:10");
-                                    let neg = parsed.get("negative_prompt").and_then(|n| n.as_str()).unwrap_or(default_neg);
-                                    return Ok((rewritten.to_string(), neg.to_string(), ratio.to_string()));
-                                }
-                            }
-                        }
-                    }
-                }
-                return Ok((trimmed_content.to_string(), default_neg.to_string(), "16:10".to_string()));
             }
         }
     }
 
-    Err("Ollama request failed or model unavailable".to_string())
+    Err("No local LLM available (OpenAI 8081/8080/10001 or Ollama 11434)".to_string())
 }
 
 pub(crate) fn cmd_optimize_prompt(text: &str) {

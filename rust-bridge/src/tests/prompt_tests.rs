@@ -73,6 +73,13 @@ fn test_optimize_prompt_json_parsing() {
         parsed.get("negative_prompt").unwrap().as_str().unwrap(),
         "blurry, low quality, deformed"
     );
+
+    // Test markdown fence and reasoning strip in parse_optimized_response
+    let fenced_with_think = "<think>\nThinking about cyberpunk skyline...\n</think>\n```json\n{\"rewritten_prompt\": \"Cinematic neon city\", \"negative_prompt\": \"ugly\", \"wh_ratio\": \"21:9\"}\n```";
+    let (rewritten, neg, ratio) = crate::prompts::parse_optimized_response(fenced_with_think, "default_neg", "orig").unwrap();
+    assert_eq!(rewritten, "Cinematic neon city");
+    assert_eq!(neg, "ugly");
+    assert_eq!(ratio, "21:9");
 }
 
 #[test]
