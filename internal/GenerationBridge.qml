@@ -134,7 +134,7 @@ Item {
 
     service.isGenerating = true;
     service.generatingMode = "scale_" + modelChoice;
-    service.currentScaleFactor = (modelChoice === "sana") ? 2.0 : 4.0;
+    service.currentScaleFactor = 4.0;
 
     var args = [
       service.bridgeBin,

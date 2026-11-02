@@ -1035,15 +1035,9 @@ start_comfyui() {
     elif [[ "$HW_TIER" == "C" ]]; then
         args+=("--cpu")
     else
-        local reserve_val="1.8"
+        local reserve_val="0.5"
         if [[ -n "${QIS_VRAM_RESERVE_GB:-}" ]]; then
             reserve_val="${QIS_VRAM_RESERVE_GB}"
-        elif command -v nvidia-smi >/dev/null 2>&1; then
-            local free_vram
-            free_vram=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits 2>/dev/null | head -n1 | tr -d ' ' || echo 4000)
-            if [[ "$free_vram" =~ ^[0-9]+$ ]] && (( free_vram < 2000 )); then
-                reserve_val="2.0"
-            fi
         fi
         args+=("--reserve-vram" "${reserve_val}" "--enable-dynamic-vram" "--fp8_e4m3fn-text-enc")
     fi

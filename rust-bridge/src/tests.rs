@@ -483,27 +483,51 @@
     }
 
     #[test]
-    fn test_sana_upscale_choice_recognition() {
-        let choices = ["sana", "SANA", "Sana2k", "sana2k"];
-        for choice in &choices {
-            let is_sana = matches!(choice.to_lowercase().as_str(), "sana" | "sana2k");
-            assert!(is_sana, "Failed to match {}", choice);
+    fn test_neural_upscale_model_choice_recognition() {
+        let choices = [
+            ("esrgan", "RealESRGAN 4X"),
+            ("realesrgan", "RealESRGAN 4X"),
+            ("ultra", "UltraSharp 4X"),
+            ("ultrasharp", "UltraSharp 4X"),
+            ("anime", "AnimeSharp 4X"),
+            ("animesharp", "AnimeSharp 4X"),
+            ("unknown", "4X"),
+        ];
+        for (choice, expected) in &choices {
             let model_title = match choice.to_lowercase().as_str() {
                 "esrgan" | "realesrgan" => "RealESRGAN 4X",
                 "ultra" | "ultrasharp" => "UltraSharp 4X",
                 "anime" | "animesharp" => "AnimeSharp 4X",
-                "sana" | "sana2k" => "Sana 2K",
                 _ => "4X",
             };
-            assert_eq!(model_title, "Sana 2K");
+            assert_eq!(model_title, *expected);
         }
     }
 
     #[test]
-    fn test_sana_upscale_graph_micro_anatomy_fidelity() {
-        // beads-qis-sana-micro-anatomy-repair-nl7h
-        let default_fidelity = 0.35;
-        assert!(default_fidelity > 0.0 && default_fidelity <= 1.0);
+    fn test_anatomical_fallback_condition_and_step_upgrade() {
+        let turbo = true;
+        let anatomy = comfy::LoraLevel::Soft;
+        let mut active_turbo = turbo;
+        let mut final_steps: u32 = 6;
+        let mut final_cfg: f32 = 1.0;
+        let mut anatomical_fallback = false;
+
+        if active_turbo && anatomy.is_active() {
+            active_turbo = false;
+            anatomical_fallback = true;
+            if final_steps < 25 {
+                final_steps = 28;
+            }
+            if final_cfg < 3.0 {
+                final_cfg = 4.0;
+            }
+        }
+
+        assert!(!active_turbo);
+        assert!(anatomical_fallback);
+        assert_eq!(final_steps, 28);
+        assert_eq!(final_cfg, 4.0);
     }
 
     #[test]

@@ -33,7 +33,7 @@ test -x "$root/scripts/qis-stack.sh"
 # 5b. Run python unit tests if ComfyUI virtualenv exists
 comfy_py="${HOME}/.local/share/comfyui/.venv/bin/python"
 if [[ -x "${comfy_py}" ]]; then
-  PYTHONPATH="$root" "${comfy_py}" "$root/tests/test_sana_defensive_load.py" --quiet
+  PYTHONPATH="$root" "${comfy_py}" "$root/tests/test_diffusers_modular_vram.py" --quiet
 fi
 
 # 6. Omarchy CLI plugin validation if installed
