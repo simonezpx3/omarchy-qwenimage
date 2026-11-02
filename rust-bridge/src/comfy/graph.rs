@@ -431,14 +431,15 @@ pub fn calculate_dynamic_vram_reserve(
     height: u32,
 ) -> (f32, bool) {
     let is_high_res = (width * height > 1024 * 1024) || width > 1024 || height > 1024;
+    let is_vram_constrained = vram.total_mb <= 8500 || vram.free_mb < 3500;
 
-    // High-end cards (>= 16 GB, e.g. RTX 3090, 4080, 4090):
-    if vram.total_mb >= 16000 {
+    // High-end cards (>= 16 GB, e.g. RTX 3090, 4080, 4090) with unconstrained free headroom:
+    if vram.total_mb >= 16000 && !is_vram_constrained {
         return (0.5, false);
     }
 
-    // Mid-range cards (12 GB - 15 GB, e.g. RTX 3060 12GB, 4070):
-    if vram.total_mb >= 11500 {
+    // Mid-range cards (12 GB - 15 GB, e.g. RTX 3060 12GB, 4070) with unconstrained free headroom:
+    if vram.total_mb >= 11500 && !is_vram_constrained {
         if has_turbo {
             return (0.5, false);
         } else if active_lora_count >= 2 {
@@ -450,7 +451,7 @@ pub fn calculate_dynamic_vram_reserve(
         }
     }
 
-    // Constrained cards (<= 8 GB, e.g. RTX 3070 8GB, 4060, laptop GPUs):
+    // Constrained profile (<= 8 GB cards OR low free VRAM < 3.5 GB on any GPU):
     // Reserve controls minimum_inference_memory() = 0.8 + reserve.
     // If LoRA is active, GGUF dequantization + 192 MB SwiGLU forward pass requires 1.3 - 1.6 GB headroom.
     // In Turbo/standard mode, side-branch LoRA + VAE decode requires 0.9 - 1.0 GB headroom with cache purging.

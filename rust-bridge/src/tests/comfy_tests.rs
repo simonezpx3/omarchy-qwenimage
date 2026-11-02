@@ -350,6 +350,22 @@ fn test_dynamic_vram_reserve_budget_matrix() {
     let (res_8_2lora, purge_8_2lora) = comfy::calculate_dynamic_vram_reserve(&vram_8gb, false, 2, 1280, 720);
     assert_eq!(res_8_2lora, 1.6);
     assert!(purge_8_2lora);
+
+    // 4. Memory-Constrained fallback on any GPU (even high-end cards under external load)
+    let vram_constrained_24gb = VramInfo {
+        used_mb: 22000,
+        total_mb: 24576,
+        free_mb: 2576,
+        pct: 89,
+        name: "NVIDIA GeForce RTX 3090".to_string(),
+    };
+    let (res_c24_turbo, purge_c24_turbo) = comfy::calculate_dynamic_vram_reserve(&vram_constrained_24gb, true, 0, 1024, 1024);
+    assert_eq!(res_c24_turbo, 0.9);
+    assert!(purge_c24_turbo);
+
+    let (res_c24_lora_hi, purge_c24_lora_hi) = comfy::calculate_dynamic_vram_reserve(&vram_constrained_24gb, false, 2, 1152, 768);
+    assert_eq!(res_c24_lora_hi, 1.6);
+    assert!(purge_c24_lora_hi);
 }
 
 #[test]

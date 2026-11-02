@@ -164,10 +164,21 @@ class QISVramBudget:
 
     def apply_budget(self, model, reserve_gb, purge_cache):
         try:
+            import gc
             import comfy.model_management as mm
             mm.EXTRA_RESERVED_VRAM = int(reserve_gb * 1024 * 1024 * 1024)
             if purge_cache:
-                mm.soft_empty_cache()
+                # 1. Unload dormant conditioning / vision encoder models from VRAM before DiT sampling
+                dev = mm.get_torch_device()
+                mm.free_memory(1e30, dev, keep_loaded=[], for_dynamic=False)
+                # 2. Force Python garbage collection to release unreferenced tensors
+                gc.collect()
+                # 3. Synchronize and clear PyTorch CUDA caching allocator
+                mm.soft_empty_cache(force=True)
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    if hasattr(torch.cuda, "ipc_collect"):
+                        torch.cuda.ipc_collect()
         except Exception as e:
             import logging
             logging.warning(f"QISVramBudget: failed to apply budget: {e}")
