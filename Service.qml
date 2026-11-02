@@ -206,7 +206,7 @@ Item {
   function resetForm() { generationBridge.resetForm(); }
   function sanitizePromptText(text) { return generationBridge.sanitizePromptText(text); }
   function recallPrompt(delta) { generationBridge.recallPrompt(delta); }
-  function startGeneration() { generationBridge.startGeneration(); }
+  function startGeneration(overridePrompt, overrideNegative) { generationBridge.startGeneration(overridePrompt, overrideNegative); }
   function aiUpscale(modelChoice) { generationBridge.aiUpscale(modelChoice); }
   function aiEnhance() { generationBridge.aiEnhance(); }
   function scaleImage(factor) { generationBridge.scaleImage(factor); }

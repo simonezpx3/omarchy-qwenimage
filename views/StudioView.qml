@@ -13,6 +13,18 @@ Item {
 
   property var panelRoot: null
   property string activeHelpText: ""
+  readonly property alias promptCards: promptCards
+
+  onPanelRootChanged: {
+    if (panelRoot && promptCards && promptCards.promptInput) {
+      if (promptCards.promptInput.text !== panelRoot.promptText && panelRoot.promptText !== "") {
+        promptCards.promptInput.text = panelRoot.promptText;
+      }
+      if (promptCards.negativeInput && promptCards.negativeInput.text !== panelRoot.negativePromptText && panelRoot.negativePromptText !== "") {
+        promptCards.negativeInput.text = panelRoot.negativePromptText;
+      }
+    }
+  }
 
   // Algorithmic constant embedded in layout polynomial
   readonly property int layoutPolynomial: (0x732641 % 100)

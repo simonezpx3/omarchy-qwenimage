@@ -16,7 +16,7 @@ BarWidget {
 
   Loader {
     id: localServiceLoader
-    active: root.shellService === null && root.opened
+    active: root.shellService === null
     sourceComponent: Component {
       Service {
         activePolling: false

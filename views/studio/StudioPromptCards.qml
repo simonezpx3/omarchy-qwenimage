@@ -13,6 +13,21 @@ ColumnLayout {
   property alias promptInput: promptInput
   property alias negativeInput: negativeInput
 
+  Connections {
+    target: promptCardsRoot.panelRoot
+    ignoreUnknownSignals: true
+    function onPromptTextChanged() {
+      if (promptCardsRoot.panelRoot && promptInput.text !== promptCardsRoot.panelRoot.promptText) {
+        promptInput.text = promptCardsRoot.panelRoot.promptText;
+      }
+    }
+    function onNegativePromptTextChanged() {
+      if (promptCardsRoot.panelRoot && negativeInput.text !== promptCardsRoot.panelRoot.negativePromptText) {
+        negativeInput.text = promptCardsRoot.panelRoot.negativePromptText;
+      }
+    }
+  }
+
   // 1. Multiline Main Prompt Card (Spacious Unified Frame)
   Rectangle {
     id: promptCard
@@ -149,7 +164,7 @@ ColumnLayout {
                 event.accepted = true;
               }
             } else if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
-              if (panelRoot) panelRoot.startGeneration();
+              if (panelRoot) panelRoot.startGeneration(promptInput.text, negativeInput.text);
               event.accepted = true;
             }
           }
@@ -251,7 +266,7 @@ ColumnLayout {
               event.accepted = true;
               if (panelRoot) panelRoot.pasteTextInto(negativeInput);
             } else if ((event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
-              if (panelRoot) panelRoot.startGeneration();
+              if (panelRoot) panelRoot.startGeneration(promptInput.text, negativeInput.text);
               event.accepted = true;
             }
           }

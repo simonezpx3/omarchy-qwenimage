@@ -167,7 +167,9 @@ ColumnLayout {
           panelRoot.cancelGeneration();
           if (root) root.genElapsedSeconds = 0;
         } else {
-          panelRoot.startGeneration();
+          var pText = (root && root.promptCards && root.promptCards.promptInput) ? root.promptCards.promptInput.text : "";
+          var nText = (root && root.promptCards && root.promptCards.negativeInput) ? root.promptCards.negativeInput.text : "";
+          panelRoot.startGeneration(pText, nText);
         }
       }
     }

@@ -35,13 +35,21 @@ Item {
     service.promptText = service.promptHistory[service.promptHistoryIndex];
   }
 
-  function startGeneration() {
+  function startGeneration(overridePrompt, overrideNegative) {
     if (!service) return;
     if (!service.isBridgeAvailable) {
       service.generationTelemetry = "ERROR: bin/qwen-bridge is missing! Run install.sh";
       return;
     }
     if (service.isGenerating || service.isGameLocked) return;
+
+    if (typeof overridePrompt === "string" && overridePrompt.trim() !== "") {
+      service.promptText = overridePrompt;
+    }
+    if (typeof overrideNegative === "string") {
+      service.negativePromptText = overrideNegative;
+    }
+
     service.promptText = sanitizePromptText(service.promptText);
     service.negativePromptText = sanitizePromptText(service.negativePromptText);
     var trimmed = service.promptText;

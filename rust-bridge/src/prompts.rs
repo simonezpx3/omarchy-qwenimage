@@ -67,19 +67,93 @@ pub(crate) fn is_czech_text(s: &str) -> bool {
     cz_count > en_count
 }
 
+fn query_local_openai(
+    sys_prompt: &str,
+    user_content: &str,
+    temperature: f64,
+    max_tokens: usize,
+) -> Option<String> {
+    let endpoints = [
+        "http://127.0.0.1:8081",
+        "http://127.0.0.1:8080",
+        "http://127.0.0.1:10001",
+    ];
+
+    let probe_agent = get_http_agent(1);
+    for base in endpoints {
+        let models_url = format!("{}/v1/models", base);
+        if let Ok(mut resp) = probe_agent.get(&models_url).call() {
+            if resp.status().as_u16() == 200 {
+                let model_name = if let Ok(val) = resp.body_mut().read_json::<serde_json::Value>() {
+                    val.get("data")
+                        .and_then(|d| d.as_array())
+                        .and_then(|a| a.first())
+                        .and_then(|m| m.get("id"))
+                        .and_then(|id| id.as_str())
+                        .unwrap_or("default")
+                        .to_string()
+                } else {
+                    "default".to_string()
+                };
+
+                let chat_agent = get_http_agent(12);
+                let chat_url = format!("{}/v1/chat/completions", base);
+                let req_body = serde_json::json!({
+                    "model": model_name,
+                    "messages": [
+                        {"role": "system", "content": sys_prompt},
+                        {"role": "user", "content": user_content}
+                    ],
+                    "temperature": temperature,
+                    "max_tokens": max_tokens
+                });
+
+                if let Ok(mut chat_resp) = chat_agent.post(&chat_url).send_json(&req_body) {
+                    if let Ok(val) = chat_resp.body_mut().read_json::<serde_json::Value>() {
+                        if let Some(content) = val.get("choices")
+                            .and_then(|c| c.as_array())
+                            .and_then(|a| a.first())
+                            .and_then(|c| c.get("message"))
+                            .and_then(|m| m.get("content"))
+                            .and_then(|c| c.as_str())
+                        {
+                            return Some(content.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 pub(crate) fn cmd_translate_internal(text: &str) -> Result<String, String> {
-    let agent = get_http_agent(8);
     let sys_prompt = "You are an expert diffusion prompt engineer. If the input is in Czech, accurately translate and expand it into descriptive, photorealistic English tags and scene modifiers suitable for DiT diffusion models (Qwen-Image). If the input is in English, enhance it with lighting, composition, and aesthetic modifiers. Output ONLY the final enhanced English prompt string, without any quotation marks, preamble, or conversational text.";
 
+    // Tier 1: Probe fast local OpenAI-compatible server (port 8081/8080/10001)
+    if let Some(content) = query_local_openai(sys_prompt, text, 0.4, 300) {
+        let mut clean = content.trim();
+        if let Some(end_think) = clean.rfind("</think>") {
+            clean = clean[end_think + "</think>".len()..].trim();
+        }
+        if !clean.is_empty() {
+            return Ok(clean.to_string());
+        }
+    }
+
+    // Tier 2: Ollama fallback with suppressed thinking overhead
+    let agent = get_http_agent(15);
     let req_body = serde_json::json!({
-        "model": "qwen2.5-coder:7b",
+        "model": get_best_llm_model(),
         "messages": [
             {"role": "system", "content": sys_prompt},
             {"role": "user", "content": text}
         ],
         "stream": false,
+        "think": false,
         "options": {
-            "temperature": 0.5,
+            "temperature": 0.4,
+            "num_predict": 300,
             "seed": SA_SIGNATURE_DNA
         }
     });
@@ -91,9 +165,12 @@ pub(crate) fn cmd_translate_internal(text: &str) -> Result<String, String> {
         Ok(mut response) => {
             if let Ok(val) = response.body_mut().read_json::<serde_json::Value>() {
                 if let Some(content) = val.get("message").and_then(|m| m.get("content")).and_then(|c| c.as_str()) {
-                    let trimmed = content.trim();
-                    if !trimmed.is_empty() {
-                        return Ok(trimmed.to_string());
+                    let mut clean = content.trim();
+                    if let Some(end_think) = clean.rfind("</think>") {
+                        clean = clean[end_think + "</think>".len()..].trim();
+                    }
+                    if !clean.is_empty() {
+                        return Ok(clean.to_string());
                     }
                 }
             }
@@ -233,57 +310,9 @@ fn try_openai_optimize(
     sys_prompt: &str,
     default_neg: &str,
 ) -> Option<(String, String, String)> {
-    let endpoints = [
-        "http://127.0.0.1:8081",
-        "http://127.0.0.1:8080",
-        "http://127.0.0.1:10001",
-    ];
-
-    let probe_agent = get_http_agent(1);
-    for base in endpoints {
-        let models_url = format!("{}/v1/models", base);
-        if let Ok(mut resp) = probe_agent.get(&models_url).call() {
-            if resp.status().as_u16() == 200 {
-                let model_name = if let Ok(val) = resp.body_mut().read_json::<serde_json::Value>() {
-                    val.get("data")
-                        .and_then(|d| d.as_array())
-                        .and_then(|a| a.first())
-                        .and_then(|m| m.get("id"))
-                        .and_then(|id| id.as_str())
-                        .unwrap_or("default")
-                        .to_string()
-                } else {
-                    "default".to_string()
-                };
-
-                let chat_agent = get_http_agent(15);
-                let chat_url = format!("{}/v1/chat/completions", base);
-                let req_body = serde_json::json!({
-                    "model": model_name,
-                    "messages": [
-                        {"role": "system", "content": sys_prompt},
-                        {"role": "user", "content": trimmed}
-                    ],
-                    "temperature": 0.6,
-                    "max_tokens": 400
-                });
-
-                if let Ok(mut chat_resp) = chat_agent.post(&chat_url).send_json(&req_body) {
-                    if let Ok(val) = chat_resp.body_mut().read_json::<serde_json::Value>() {
-                        if let Some(content) = val.get("choices")
-                            .and_then(|c| c.as_array())
-                            .and_then(|a| a.first())
-                            .and_then(|c| c.get("message"))
-                            .and_then(|m| m.get("content"))
-                            .and_then(|c| c.as_str())
-                        {
-                            if let Some(res) = parse_optimized_response(content, default_neg, trimmed) {
-                                return Some(res);
-                            }
-                        }
-                    }
-                }
-            }
+    if let Some(content) = query_local_openai(sys_prompt, trimmed, 0.6, 400) {
+        if let Some(res) = parse_optimized_response(&content, default_neg, trimmed) {
+            return Some(res);
         }
     }
     None
