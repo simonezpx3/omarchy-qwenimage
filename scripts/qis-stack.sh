@@ -1029,7 +1029,7 @@ start_comfyui() {
         return 1
     fi
 
-    local args=("--listen" "127.0.0.1" "--port" "8188" "--preview-method" "auto")
+    local args=("--listen" "127.0.0.1" "--port" "8188" "--preview-method" "auto" "--disable-cuda-malloc")
     if [[ "$HW_TIER" == "B" ]]; then
         args+=("--lowvram" "--enable-dynamic-vram")
     elif [[ "$HW_TIER" == "C" ]]; then

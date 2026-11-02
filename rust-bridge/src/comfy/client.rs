@@ -107,7 +107,7 @@ pub fn ensure_comfyui_running() -> bool {
                     }
                 });
 
-            let mut py_args = vec!["--listen", "127.0.0.1", "--port", "8188", "--preview-method", "auto"];
+            let mut py_args = vec!["--listen", "127.0.0.1", "--port", "8188", "--preview-method", "auto", "--disable-cuda-malloc"];
             if tier == "B" {
                 py_args.extend_from_slice(&["--lowvram", "--enable-dynamic-vram"]);
             } else if tier == "C" {
