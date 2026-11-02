@@ -4,9 +4,18 @@ Všechny významné změny, audity a bezpečnostní opravy projektu jsou zazname
 
 ## [1.2.8] — 2026-11-02
 
+### Dynamic VRAM Budget Governor & Resource Scaling
+- **Per-Request VRAM Governor Node (`QISVramBudget`):**
+  - Added native ComfyUI custom node `QISVramBudget` that dynamically adjusts `comfy.model_management.EXTRA_RESERVED_VRAM` and triggers `soft_empty_cache()` before `KSampler` execution based on request parameters.
+  - Hardened multi-user scaling via Tier matrix: Tier S (>=14GB: 0.5 GB reserve), Tier A (10–14GB: 0.6–1.2 GB), Tier B (<=8GB: 0.9–1.6 GB).
+  - Automatic `EasyCache` bypass when LoRA is active on cards with <=8GB VRAM or <3.5GB free, eliminating the 192 MiB SwiGLU forward pass collision.
+  - Enforced `VAEDecodeTiled` (512px tiles, 64px overlap) for cards with <=8GB VRAM or <3.5GB free, reducing peak VAE decode memory spike from 576 MiB to <80 MiB.
+  - Verified live generation with Anime LoRA (132s), Heretic LoRA (64s), and Viggle Turbo (44s) with zero OOM.
+
 ### Architecture, Modularity & Codecraft Compliance
 - **Monolithic Rust Bridge Decomposition (`rust-bridge/src/`):**
-  - Partitioned the 3,884-line monolithic `main.rs` into 11 domain-driven submodules (`common.rs`, `vram.rs`, `generate.rs`, `gallery.rs`, `clipboard.rs`, `scale.rs`, `prompts.rs`, `civitai.rs`, `settings.rs`, `vision.rs`, `tests.rs`), strictly adhering to the Codecraft hard ceiling (< 600 lines / 24 KB per file).
+  - Partitioned the 3,884-line monolithic `main.rs` into 11 domain-driven submodules (`common.rs`, `vram.rs`, `generate.rs`, `gallery.rs`, `clipboard.rs`, `scale.rs`, `prompts.rs`, `civitai.rs`, `settings.rs`, `vision.rs`, `tests/`), strictly adhering to the Codecraft hard ceiling (< 600 lines / 24 KB per file).
+  - Decomposed test suite into modular `prompt_tests.rs` (9.3 KB) and `comfy_tests.rs` (13.8 KB), expanding test suite to 34 passing tests.
 - **Quattro Service Facade Decomposition (`Service.qml`, `internal/*.qml`):**
   - Refactored the 1,192-line `Service.qml` into a high-performance facade delegating to five focused internal subcomponents in `internal/` (`SettingsSync.qml`, `TelemetryBridge.qml`, `GenerationBridge.qml`, `MediaActions.qml`, `DiscoveryBridge.qml`) registered via `internal/qmldir`.
   - Preserved 100% backward compatibility of all public properties, signals, and IPC handlers for `BarWidget.qml`, `Panel.qml`, and external marketplace consumers.
@@ -17,7 +26,7 @@ Všechny významné změny, audity a bezpečnostní opravy projektu jsou zazname
 - **Atomic RAII VRAM Lock Guard (`rust-bridge/src/vram.rs`):**
   - Introduced `VramLockGuard` with non-blocking file-descriptor locks (`flock`) to guard generation tasks from concurrent execution collisions and guarantee orphan lock elimination even upon SIGKILL or abnormal process termination.
 - **Test Suite & Build Integrity:**
-  - Expanded unit test suite to 32 tests covering RAII lock recovery and llama-server process probing.
+  - Expanded unit test suite to 34 tests covering RAII lock recovery, llama-server probing, and dynamic VRAM reserve matrix.
   - Recompiled release binary `bin/qwen-bridge` and updated `bin/qwen-bridge.sha256`.
 
 ---
