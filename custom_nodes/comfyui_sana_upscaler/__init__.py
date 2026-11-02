@@ -240,9 +240,9 @@ class Sana2KUpscalerNode:
             pil_resized = pil_in.resize((target_w, target_h), Image.Resampling.LANCZOS)
 
             with torch.inference_mode():
-                # Naplánování timesteps a určení počátečního kroku podle strength
+                # Naplánování timesteps a určení počátečního kroku podle strength (garance alespoň 1 kroku)
                 pipe.scheduler.set_timesteps(steps, device=device)
-                init_timestep = min(int(steps * strength), steps)
+                init_timestep = max(1, min(int(round(steps * strength)), steps))
                 t_start = max(steps - init_timestep, 0)
                 timesteps = pipe.scheduler.timesteps[t_start:]
                 pipe.scheduler.set_begin_index(t_start)
