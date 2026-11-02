@@ -246,9 +246,14 @@ Item {
         service.livePreviewMaxSteps = res.max_steps || service.steps;
         service.livePreviewTick += 1;
       } else if (res.event === "prompt_expanded") {
-        if (res.prompt) service.promptText = res.prompt;
-        if (res.negative && service.negativePromptText === "") {
-          service.negativePromptText = res.negative;
+        if (typeof res.prompt === "string" && res.prompt.trim() !== "") {
+          var safePrompt = sanitizePromptText(res.prompt.slice(0, 8192));
+          if (safePrompt !== "") {
+            service.promptText = safePrompt;
+          }
+        }
+        if (typeof res.negative === "string" && res.negative.trim() !== "" && service.negativePromptText === "") {
+          service.negativePromptText = sanitizePromptText(res.negative.slice(0, 4096));
         }
       } else if (res.status === "ok" && res.path) {
         service.isGenerating = false;

@@ -171,7 +171,10 @@ class QISVramBudget:
                 # 2. Force Python garbage collection to release unreferenced tensors
                 gc.collect()
                 # 3. Synchronize and clear PyTorch CUDA caching allocator
-                mm.soft_empty_cache(force=True)
+                try:
+                    mm.soft_empty_cache(force=True)
+                except TypeError:
+                    mm.soft_empty_cache()
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
                     if hasattr(torch.cuda, "ipc_collect"):

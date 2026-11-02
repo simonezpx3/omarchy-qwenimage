@@ -67,33 +67,56 @@ pub(crate) fn is_czech_text(s: &str) -> bool {
     cz_count > en_count
 }
 
+pub(crate) fn strip_reasoning_and_fences(content: &str) -> String {
+    let mut s = content.trim();
+    if let Some(end) = s.rfind("</think>") {
+        s = s[end + "</think>".len()..].trim();
+    } else if let Some(end) = s.rfind("</thought>") {
+        s = s[end + "</thought>".len()..].trim();
+    } else {
+        let start = s.chars().take(16).collect::<String>().to_lowercase();
+        if start.starts_with("<think>") || start.starts_with("<thought>") {
+            return String::new();
+        }
+    }
+    if s.starts_with("```") {
+        if let Some(nl) = s.find('\n') {
+            s = s[nl + 1..].trim();
+        }
+        if s.ends_with("```") {
+            s = s[..s.len() - 3].trim();
+        }
+    }
+    s.to_string()
+}
+
 fn query_local_openai(
     sys_prompt: &str,
     user_content: &str,
     temperature: f64,
     max_tokens: usize,
 ) -> Option<String> {
-    let endpoints = [
-        "http://127.0.0.1:8081",
-        "http://127.0.0.1:8080",
-        "http://127.0.0.1:10001",
-    ];
-
+    let endpoints = ["http://127.0.0.1:8081", "http://127.0.0.1:8080", "http://127.0.0.1:10001"];
     let probe_agent = get_http_agent(1);
     for base in endpoints {
         let models_url = format!("{}/v1/models", base);
         if let Ok(mut resp) = probe_agent.get(&models_url).call() {
             if resp.status().as_u16() == 200 {
-                let model_name = if let Ok(val) = resp.body_mut().read_json::<serde_json::Value>() {
-                    val.get("data")
-                        .and_then(|d| d.as_array())
-                        .and_then(|a| a.first())
-                        .and_then(|m| m.get("id"))
-                        .and_then(|id| id.as_str())
-                        .unwrap_or("default")
-                        .to_string()
-                } else {
-                    "default".to_string()
+                let Some(model_name) = resp
+                    .body_mut()
+                    .read_json::<serde_json::Value>()
+                    .ok()
+                    .and_then(|val| {
+                        val.get("data")
+                            .and_then(|d| d.as_array())
+                            .and_then(|a| a.first())
+                            .and_then(|m| m.get("id"))
+                            .and_then(|id| id.as_str())
+                            .filter(|id| !id.trim().is_empty())
+                            .map(|id| id.to_string())
+                    })
+                else {
+                    continue;
                 };
 
                 let chat_agent = get_http_agent(12);
@@ -117,7 +140,10 @@ fn query_local_openai(
                             .and_then(|m| m.get("content"))
                             .and_then(|c| c.as_str())
                         {
-                            return Some(content.to_string());
+                            let cleaned = strip_reasoning_and_fences(content);
+                            if !cleaned.is_empty() {
+                                return Some(cleaned);
+                            }
                         }
                     }
                 }
@@ -132,12 +158,9 @@ pub(crate) fn cmd_translate_internal(text: &str) -> Result<String, String> {
 
     // Tier 1: Probe fast local OpenAI-compatible server (port 8081/8080/10001)
     if let Some(content) = query_local_openai(sys_prompt, text, 0.4, 300) {
-        let mut clean = content.trim();
-        if let Some(end_think) = clean.rfind("</think>") {
-            clean = clean[end_think + "</think>".len()..].trim();
-        }
+        let clean = strip_reasoning_and_fences(&content);
         if !clean.is_empty() {
-            return Ok(clean.to_string());
+            return Ok(clean);
         }
     }
 
@@ -165,12 +188,9 @@ pub(crate) fn cmd_translate_internal(text: &str) -> Result<String, String> {
         Ok(mut response) => {
             if let Ok(val) = response.body_mut().read_json::<serde_json::Value>() {
                 if let Some(content) = val.get("message").and_then(|m| m.get("content")).and_then(|c| c.as_str()) {
-                    let mut clean = content.trim();
-                    if let Some(end_think) = clean.rfind("</think>") {
-                        clean = clean[end_think + "</think>".len()..].trim();
-                    }
+                    let clean = strip_reasoning_and_fences(content);
                     if !clean.is_empty() {
-                        return Ok(clean.to_string());
+                        return Ok(clean);
                     }
                 }
             }
@@ -240,20 +260,10 @@ pub(crate) fn parse_optimized_response(
     default_neg: &str,
     trimmed_input: &str,
 ) -> Option<(String, String, String)> {
-    let mut clean = content.trim();
-    // 1. Strip reasoning block </think> if present
-    if let Some(end_think) = clean.rfind("</think>") {
-        clean = clean[end_think + "</think>".len()..].trim();
-    }
-
-    // 2. Strip markdown code fence ```json ... ```
-    if clean.starts_with("```") {
-        if let Some(first_nl) = clean.find('\n') {
-            clean = clean[first_nl + 1..].trim();
-        }
-        if clean.ends_with("```") {
-            clean = clean[..clean.len() - 3].trim();
-        }
+    let clean_str = strip_reasoning_and_fences(content);
+    let clean = clean_str.trim();
+    if clean.is_empty() {
+        return None;
     }
 
     let lower = clean.to_lowercase();
@@ -481,32 +491,25 @@ pub(crate) fn strip_foreign_prompt_tags(s: &str) -> String {
 }
 
 pub(crate) fn unpack_json_prompt_if_present(s: &str) -> String {
-    if s.contains("rewritten_prompt") {
-        if let Some(pos) = s.find("\"rewritten_prompt\"") {
-            let rest = &s[pos + 18..];
-            if let Some(colon) = rest.find(':') {
-                let after_colon = rest[colon + 1..].trim_start();
-                if let Some(stripped) = after_colon.strip_prefix('"') {
-                    let mut extracted = String::new();
-                    let mut chars = stripped.chars();
-                    while let Some(c) = chars.next() {
-                        if c == '\\' {
-                            if let Some(next_c) = chars.next() {
-                                if next_c == 'n' {
-                                    extracted.push('\n');
-                                } else {
-                                    extracted.push(next_c);
-                                }
-                            }
-                        } else if c == '"' {
-                            break;
-                        } else {
-                            extracted.push(c);
+    if let Some(pos) = s.find("\"rewritten_prompt\"") {
+        if let Some(colon) = s[pos + 18..].find(':') {
+            let after_colon = s[pos + 18 + colon + 1..].trim_start();
+            if let Some(stripped) = after_colon.strip_prefix('"') {
+                let mut extracted = String::new();
+                let mut chars = stripped.chars();
+                while let Some(c) = chars.next() {
+                    if c == '\\' {
+                        if let Some(next_c) = chars.next() {
+                            extracted.push(if next_c == 'n' { '\n' } else { next_c });
                         }
+                    } else if c == '"' {
+                        break;
+                    } else {
+                        extracted.push(c);
                     }
-                    if extracted.len() > 20 {
-                        return extracted;
-                    }
+                }
+                if extracted.len() > 20 {
+                    return extracted;
                 }
             }
         }
@@ -524,32 +527,15 @@ pub fn sanitize_diffusion_prompt(input: &str) -> String {
 
     let mut filtered = String::with_capacity(input.len());
     for c in input.chars() {
-        // 1. TUI anchors (Interlinear Annotation Anchors U+FFF9..U+FFFB) & replacement char U+FFFD
-        if ('\u{FFF9}'..='\u{FFFB}').contains(&c) || c == '\u{FFFD}' {
+        if ('\u{FFF9}'..='\u{FFFB}').contains(&c) || c == '\u{FFFD}'
+            || matches!(c, '\u{FEFF}' | '\u{200B}'..='\u{200D}' | '\u{2060}' | '\u{00AD}')
+            || ('\u{202A}'..='\u{202E}').contains(&c) || ('\u{2066}'..='\u{2069}').contains(&c) || c == '\u{200E}' || c == '\u{200F}'
+            || ('\u{E000}'..='\u{F8FF}').contains(&c)
+            || (c.is_control() && c != '\n' && c != '\r' && c != '\t')
+        {
             continue;
         }
 
-        // 2. Zero-width, BOM, Word Joiners & Soft Hyphen
-        if c == '\u{FEFF}' || c == '\u{200B}' || c == '\u{200C}' || c == '\u{200D}' || c == '\u{2060}' || c == '\u{00AD}' {
-            continue;
-        }
-
-        // 3. Bidi directional overrides and isolates
-        if ('\u{202A}'..='\u{202E}').contains(&c) || ('\u{2066}'..='\u{2069}').contains(&c) || c == '\u{200E}' || c == '\u{200F}' {
-            continue;
-        }
-
-        // 4. Private Use Area (PUA icons, Nerd Font glyphs)
-        if ('\u{E000}'..='\u{F8FF}').contains(&c) {
-            continue;
-        }
-
-        // 5. C0 / C1 control characters (strip all except \n, \t, and \r)
-        if c.is_control() && c != '\n' && c != '\r' && c != '\t' {
-            continue;
-        }
-
-        // Convert carriage return to space
         if c == '\r' {
             filtered.push(' ');
             continue;

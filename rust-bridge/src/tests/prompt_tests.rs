@@ -247,3 +247,39 @@ fn test_vram_lock_guard_raii_acquire() {
     assert!(third.is_ok(), "Lock should be re-acquirable after RAII drop");
     let _ = fs::remove_file(&lock_file);
 }
+
+#[test]
+fn test_strip_reasoning_and_fences_closed_and_truncated() {
+    use crate::prompts::strip_reasoning_and_fences;
+
+    // 1. Closed tags
+    let closed_think = "<think>Analyzing user request...</think>A breathtaking sunset over Prague.";
+    assert_eq!(strip_reasoning_and_fences(closed_think), "A breathtaking sunset over Prague.");
+
+    let closed_thought = "<thought>Formatting response...</thought>Cyberpunk street in rain.";
+    assert_eq!(strip_reasoning_and_fences(closed_thought), "Cyberpunk street in rain.");
+
+    // 2. Truncated thinking blocks (token exhaustion cutoff without closing tag)
+    let cut_think = "<think>The user wants a fantasy warrior. Let me think about armor details and lighting. First, we need to consider...";
+    assert_eq!(strip_reasoning_and_fences(cut_think), "");
+
+    let cut_thought = "<thought>Thinking step by step about realistic anatomy and background scenery";
+    assert_eq!(strip_reasoning_and_fences(cut_thought), "");
+
+    // 3. Markdown code fences
+    let fenced = "```json\n{\"rewritten_prompt\": \"Neon samurai\"}\n```";
+    assert_eq!(strip_reasoning_and_fences(fenced), "{\"rewritten_prompt\": \"Neon samurai\"}");
+
+    // 4. Normal text without reasoning
+    let plain = "A serene forest with sunbeams shining through mist.";
+    assert_eq!(strip_reasoning_and_fences(plain), "A serene forest with sunbeams shining through mist.");
+}
+
+#[test]
+fn test_parse_optimized_response_unclosed_think_cutoff() {
+    use crate::prompts::parse_optimized_response;
+
+    let cutoff = "<think>I need to expand this prompt into JSON. Let me draft the fields:\n{\n  \"rewritten_prompt\": \"incomplete text";
+    let res = parse_optimized_response(cutoff, "default_neg", "orig_prompt");
+    assert!(res.is_none(), "Unclosed <think> cutoff should return None and not leak internal monologue");
+}
