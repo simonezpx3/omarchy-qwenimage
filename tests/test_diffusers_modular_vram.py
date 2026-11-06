@@ -58,10 +58,11 @@ class TestDiffusersModularVram(unittest.TestCase):
         cm.add("transformer", mod_b)
 
         # Set reserve margin equal to current free memory so any active model
-        # is evicted to CPU when a new model requires GPU headroom
-        margin_str = f"{free_bytes // (1024 * 1024)}MB"
+        # is evicted to CPU when a new model requires GPU headroom.
+        # Use exact byte count or MiB (binary prefix) to avoid decimal MB mismatch in accelerate.
+        margin = free_bytes
 
-        cm.enable_auto_cpu_offload(device="cuda:0", memory_reserve_margin=margin_str)
+        cm.enable_auto_cpu_offload(device="cuda:0", memory_reserve_margin=margin)
 
         # Models start on CPU
         self.assertEqual(mod_a.device.type, "cpu")
