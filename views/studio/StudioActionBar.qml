@@ -74,6 +74,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       selected: panelRoot && panelRoot.isTurboEnabled
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_turbo_lora"), hot)
       onClicked: if (panelRoot) panelRoot.toggleTurbo()
     }
@@ -87,6 +89,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       selected: panelRoot && panelRoot.animeMode !== "off"
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_anime_lora"), hot)
       onClicked: if (panelRoot) panelRoot.cycleAnimeMode()
     }
@@ -100,6 +104,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       selected: panelRoot && panelRoot.hereticMode !== "off"
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_uncensored_lora"), hot)
       onClicked: if (panelRoot) panelRoot.cycleHereticMode()
     }
@@ -113,17 +119,21 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       selected: panelRoot && panelRoot.anatomyMode !== "off"
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_anatomy_lora"), hot)
       onClicked: if (panelRoot) panelRoot.cycleAnatomyMode()
     }
 
     Item { Layout.fillWidth: true }
 
-    // Reset button (framed standard style)
+    // Reset button (framed standard style, height 20)
     Button {
       text: root ? root.tr("reset") : "RESET"
       fontSize: Commons.Style.font.caption
       bordered: true
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_reset"), hot)
       onClicked: if (panelRoot) {
         panelRoot.resetForm();
@@ -131,7 +141,7 @@ ColumnLayout {
       }
     }
 
-    // Primary CTA: GENERATE
+    // Primary CTA: GENERATE (height 20 matching tabs)
     Button {
       readonly property bool isBusy: Boolean(panelRoot && (panelRoot.isGenerating || panelRoot.isCancelling))
       text: {
@@ -144,13 +154,14 @@ ColumnLayout {
         if (panelRoot && panelRoot.isGameLocked) return root ? root.tr("locked_game") : "LOCKED";
         return root ? root.tr("generate") : "GENERATE";
       }
-      fontSize: Commons.Style.font.body
+      fontSize: Commons.Style.font.caption
       bordered: true
       active: true
       selected: !isBusy
       foreground: isBusy ? Commons.Color.urgent : Commons.Color.accent
       Layout.preferredWidth: Commons.Style.space(136)
-      Layout.preferredHeight: Commons.Style.space(28)
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       enabled: panelRoot && (isBusy || !panelRoot.isGameLocked)
       onHotChanged: if (root) root.setHelp(isBusy ? root.tr("help_cancel") : root.tr("help_generate"), hot)
       onClicked: {

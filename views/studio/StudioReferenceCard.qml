@@ -138,6 +138,8 @@ Rectangle {
         fontSize: Commons.Style.font.caption
         bordered: true
         Layout.fillWidth: true
+        Layout.preferredHeight: Commons.Style.space(20)
+        verticalPadding: Commons.Style.space(1)
         onHotChanged: if (root) root.setHelp(root.tr("help_paste"), hot)
         onClicked: if (panelRoot) panelRoot.pasteFromClipboard()
       }
@@ -147,6 +149,8 @@ Rectangle {
         fontSize: Commons.Style.font.caption
         bordered: true
         Layout.fillWidth: true
+        Layout.preferredHeight: Commons.Style.space(20)
+        verticalPadding: Commons.Style.space(1)
         onHotChanged: if (root) root.setHelp(root.tr("help_snip"), hot)
         onClicked: if (panelRoot) panelRoot.triggerScreenSnip()
       }
@@ -156,6 +160,8 @@ Rectangle {
         fontSize: Commons.Style.font.caption
         bordered: true
         Layout.fillWidth: true
+        Layout.preferredHeight: Commons.Style.space(20)
+        verticalPadding: Commons.Style.space(1)
         enabled: panelRoot && (panelRoot.referencePath !== "" || panelRoot.referenceMatchedRatio !== "") && !panelRoot.isGenerating && !panelRoot.isInterrogating && !panelRoot.isVisionLoading
         onHotChanged: if (root) root.setHelp(root.tr("help_clear"), hot)
         onClicked: if (panelRoot) panelRoot.clearReference()
@@ -166,6 +172,8 @@ Rectangle {
         fontSize: Commons.Style.font.caption
         bordered: true
         Layout.fillWidth: true
+        Layout.preferredHeight: Commons.Style.space(20)
+        verticalPadding: Commons.Style.space(1)
         active: panelRoot && panelRoot.isInterrogating
         selected: panelRoot && panelRoot.isInterrogating
         foreground: (panelRoot && panelRoot.isInterrogating) ? Commons.Color.accent : Commons.Color.foreground
@@ -179,6 +187,8 @@ Rectangle {
         fontSize: Commons.Style.font.caption
         bordered: true
         Layout.fillWidth: true
+        Layout.preferredHeight: Commons.Style.space(20)
+        verticalPadding: Commons.Style.space(1)
         active: panelRoot && panelRoot.isVisionLoading
         selected: panelRoot && panelRoot.isVisionLoading
         foreground: (panelRoot && panelRoot.isVisionLoading) ? Commons.Color.accent : Commons.Color.foreground

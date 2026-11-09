@@ -23,6 +23,8 @@ ColumnLayout {
       visible: panelRoot && panelRoot.referencePath !== ""
       selected: panelRoot && panelRoot.aspectRatio === "auto"
       Layout.fillWidth: true
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_ratio_auto_ref"), hot)
       onClicked: if (panelRoot) panelRoot.aspectRatio = "auto"
     }
@@ -37,6 +39,8 @@ ColumnLayout {
         bordered: true
         selected: panelRoot && panelRoot.aspectRatio === modelData
         Layout.fillWidth: true
+        Layout.preferredHeight: Commons.Style.space(20)
+        verticalPadding: Commons.Style.space(1)
         onHotChanged: if (root) root.setHelp(root.tr("help_ratio_" + modelData.replace(":", "_")), hot)
         onClicked: if (panelRoot) panelRoot.aspectRatio = modelData
       }
@@ -54,6 +58,8 @@ ColumnLayout {
       bordered: true
       selected: panelRoot && panelRoot.resMode === "draft"
       Layout.fillWidth: true
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_res_draft"), hot)
       onClicked: if (panelRoot) panelRoot.setResolutionMode("draft")
     }
@@ -63,6 +69,8 @@ ColumnLayout {
       bordered: true
       selected: panelRoot && panelRoot.resMode === "standard"
       Layout.fillWidth: true
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_res_std"), hot)
       onClicked: if (panelRoot) panelRoot.setResolutionMode("standard")
     }
@@ -72,6 +80,8 @@ ColumnLayout {
       bordered: true
       selected: panelRoot && panelRoot.resMode === "high"
       Layout.fillWidth: true
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_res_high"), hot)
       onClicked: if (panelRoot) panelRoot.setResolutionMode("high")
     }
@@ -84,6 +94,8 @@ ColumnLayout {
       opacity: isAllowed ? 1.0 : 0.4
       selected: panelRoot && panelRoot.resMode === "ultra"
       Layout.fillWidth: true
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(isAllowed ? root.tr("help_res_ultra") : root.tr("help_res_ultra_locked"), hot)
       onClicked: if (isAllowed && panelRoot) panelRoot.setResolutionMode("ultra")
     }
@@ -96,6 +108,8 @@ ColumnLayout {
       opacity: isAllowed ? 1.0 : 0.4
       selected: panelRoot && panelRoot.resMode === "max"
       Layout.fillWidth: true
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(isAllowed ? root.tr("help_res_max") : root.tr("help_res_max_locked"), hot)
       onClicked: if (isAllowed && panelRoot) panelRoot.setResolutionMode("max")
     }
@@ -112,6 +126,8 @@ ColumnLayout {
       bordered: true
       selected: panelRoot && panelRoot.seedLocked
       Layout.preferredWidth: Commons.Style.space(110)
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       onHotChanged: {
         if (hot && panelRoot && root) {
           if (panelRoot.seedLocked) {
@@ -188,8 +204,9 @@ ColumnLayout {
           selected: panelRoot && panelRoot.steps === modelData
           active: panelRoot && panelRoot.steps === modelData
           Layout.preferredWidth: Commons.Style.space(28)
+          Layout.preferredHeight: Commons.Style.space(20)
           horizontalPadding: Commons.Style.space(3)
-          verticalPadding: Commons.Style.space(2)
+          verticalPadding: Commons.Style.space(1)
           onClicked: if (panelRoot) panelRoot.steps = modelData
           onHotChanged: if (root) root.setHelp(root.tr("help_steps_" + modelData), hot)
         }

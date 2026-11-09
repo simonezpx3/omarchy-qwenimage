@@ -23,6 +23,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       Layout.fillWidth: true
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       active: isBusy
       selected: isBusy
       foreground: isBusy ? Commons.Color.accent : Commons.Color.foreground
@@ -37,6 +39,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       Layout.fillWidth: true
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       active: isBusy
       selected: isBusy
       foreground: isBusy ? Commons.Color.accent : Commons.Color.foreground
@@ -51,6 +55,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       Layout.fillWidth: true
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       active: isBusy
       selected: isBusy
       foreground: isBusy ? Commons.Color.accent : Commons.Color.foreground
@@ -65,6 +71,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       Layout.fillWidth: true
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       active: isBusy
       selected: isBusy
       foreground: isBusy ? Commons.Color.accent : Commons.Color.foreground
@@ -79,6 +87,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       Layout.fillWidth: true
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       active: isBusy
       selected: isBusy
       foreground: isBusy ? Commons.Color.accent : Commons.Color.foreground
@@ -98,6 +108,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       Layout.fillWidth: true
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       enabled: panelRoot && panelRoot.generatedPath !== ""
       onHotChanged: if (root) root.setHelp(root.tr("help_set_wallpaper"), hot)
       onClicked: if (panelRoot) panelRoot.setAsWallpaper(panelRoot.generatedPath)
@@ -108,6 +120,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       Layout.fillWidth: true
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       enabled: panelRoot && panelRoot.referencePath !== "" && panelRoot.generatedPath !== ""
       onHotChanged: if (root) root.setHelp(root.tr("help_compare_ab"), hot)
       onClicked: if (panelRoot) panelRoot.currentView = "compare"
@@ -118,6 +132,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       Layout.fillWidth: true
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       enabled: panelRoot && panelRoot.generatedPath !== ""
       onHotChanged: if (root) root.setHelp(root.tr("help_copy_clipboard"), hot)
       onClicked: if (panelRoot) panelRoot.copyImageToClipboard(panelRoot.generatedPath)
@@ -128,6 +144,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       Layout.fillWidth: true
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
       enabled: panelRoot && panelRoot.generatedPath !== ""
       onHotChanged: if (root) root.setHelp(root.tr("help_open_viewer"), hot)
       onClicked: if (panelRoot) panelRoot.openImageViewer(panelRoot.generatedPath)

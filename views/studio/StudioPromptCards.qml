@@ -69,6 +69,8 @@ ColumnLayout {
           text: (panelRoot && panelRoot.isOptimizingPrompt) ? (root.tr("optimizing") + " " + root.optElapsedSeconds + "s") : (root ? root.tr("optimize") : "OPTIMIZE")
           fontSize: Commons.Style.font.caption
           bordered: true
+          Layout.preferredHeight: Commons.Style.space(20)
+          verticalPadding: Commons.Style.space(1)
           active: panelRoot && panelRoot.isOptimizingPrompt
           enabled: panelRoot && !panelRoot.isOptimizingPrompt
           onHotChanged: if (root) root.setHelp(root.tr("help_optimize"), hot)
@@ -79,6 +81,8 @@ ColumnLayout {
           text: (panelRoot && panelRoot.isAutoExpandEnabled) ? (root ? root.tr("auto_expand_on") : "Expand: ON") : (root ? root.tr("auto_expand_off") : "Expand: OFF")
           fontSize: Commons.Style.font.caption
           bordered: true
+          Layout.preferredHeight: Commons.Style.space(20)
+          verticalPadding: Commons.Style.space(1)
           active: panelRoot && panelRoot.isAutoExpandEnabled
           onHotChanged: if (root) root.setHelp(root.tr("help_auto_expand"), hot)
           onClicked: if (panelRoot) panelRoot.toggleAutoExpand()
