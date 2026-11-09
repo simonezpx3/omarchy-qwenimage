@@ -77,42 +77,6 @@ RowLayout {
     }
   }
 
-  // Active Qwen Model Version Badge (Compact, matching detector height 20)
-  Rectangle {
-    height: Commons.Style.space(20)
-    implicitWidth: qwenModelRow.implicitWidth + Commons.Style.spacing.xs * 2
-    color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.12)
-    border.color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.45)
-    border.width: 1
-    radius: Commons.Style.cornerRadius
-
-    RowLayout {
-      id: qwenModelRow
-      anchors.centerIn: parent
-      spacing: 4
-      Text {
-        textFormat: Text.PlainText
-        text: "QWEN //"
-        font.family: Commons.Style.font.family
-        font.pixelSize: Commons.Style.font.caption
-        color: Commons.Color.accent
-      }
-      Text {
-        textFormat: Text.PlainText
-        text: {
-          var v = headerRoot.versionQwen || "";
-          return v.replace("Qwen-Image ", "").replace("Heretic ", "");
-        }
-        font.family: Commons.Style.font.family
-        font.pixelSize: Commons.Style.font.caption
-        font.bold: true
-        color: Commons.Color.accent
-        elide: Text.ElideRight
-        Layout.maximumWidth: Commons.Style.space(130)
-      }
-    }
-  }
-
   // Segmented Navigation Tabs (AC1 - Styled identical to detector pills, height 20)
   RowLayout {
     spacing: Commons.Style.spacing.xs
@@ -164,9 +128,45 @@ RowLayout {
 
   Item { Layout.fillWidth: true }
 
-  // Service Health Badges row (Compact detector size, height 20)
+  // Service Health & Model Badges row (Compact detector size, height 20)
   RowLayout {
     spacing: Commons.Style.spacing.xs
+
+    // 0. Active Qwen Model Version Badge (matched to WD14 / positiveColor)
+    Rectangle {
+      height: Commons.Style.space(20)
+      implicitWidth: qwenModelRow.implicitWidth + Commons.Style.spacing.xs * 2
+      color: Commons.Util.alpha(headerRoot.positiveColor, 0.15)
+      border.color: Commons.Util.alpha(headerRoot.positiveColor, 0.6)
+      border.width: 1
+      radius: Commons.Style.cornerRadius
+
+      RowLayout {
+        id: qwenModelRow
+        anchors.centerIn: parent
+        spacing: 4
+        Text {
+          textFormat: Text.PlainText
+          text: "QWEN //"
+          font.family: Commons.Style.font.family
+          font.pixelSize: Commons.Style.font.caption
+          color: headerRoot.positiveColor
+        }
+        Text {
+          textFormat: Text.PlainText
+          text: {
+            var v = headerRoot.versionQwen || "";
+            return v.replace("Qwen-Image ", "").replace("Heretic ", "");
+          }
+          font.family: Commons.Style.font.family
+          font.pixelSize: Commons.Style.font.caption
+          font.bold: true
+          color: headerRoot.positiveColor
+          elide: Text.ElideRight
+          Layout.maximumWidth: Commons.Style.space(130)
+        }
+      }
+    }
 
     // 1. COMFYUI
     Rectangle {
