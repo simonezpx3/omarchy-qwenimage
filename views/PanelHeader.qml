@@ -62,7 +62,7 @@ RowLayout {
         source: qisLogo
         visible: true
         colorization: 1.0
-        colorizationColor: Commons.Color.accent
+        colorizationColor: "#ffffff"
       }
     }
 
@@ -72,7 +72,7 @@ RowLayout {
       font.family: Commons.Style.font.family
       font.pixelSize: Commons.Style.font.body
       font.bold: true
-      color: Commons.Color.accent
+      color: "#ffffff"
       Layout.alignment: Qt.AlignVCenter
     }
   }
