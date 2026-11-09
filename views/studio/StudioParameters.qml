@@ -22,6 +22,8 @@ ColumnLayout {
       bordered: true
       visible: panelRoot && panelRoot.referencePath !== ""
       selected: panelRoot && panelRoot.aspectRatio === "auto"
+      foreground: selected ? "#4ade80" : Commons.Color.muted
+      accent: "#4ade80"
       Layout.fillWidth: true
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
@@ -38,6 +40,8 @@ ColumnLayout {
         fontSize: Commons.Style.font.caption
         bordered: true
         selected: panelRoot && panelRoot.aspectRatio === modelData
+        foreground: selected ? "#4ade80" : Commons.Color.muted
+        accent: "#4ade80"
         Layout.fillWidth: true
         Layout.preferredHeight: Commons.Style.space(20)
         verticalPadding: Commons.Style.space(1)
@@ -57,6 +61,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       selected: panelRoot && panelRoot.resMode === "draft"
+      foreground: selected ? "#4ade80" : Commons.Color.muted
+      accent: "#4ade80"
       Layout.fillWidth: true
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
@@ -68,6 +74,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       selected: panelRoot && panelRoot.resMode === "standard"
+      foreground: selected ? "#4ade80" : Commons.Color.muted
+      accent: "#4ade80"
       Layout.fillWidth: true
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
@@ -79,6 +87,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       selected: panelRoot && panelRoot.resMode === "high"
+      foreground: selected ? "#4ade80" : Commons.Color.muted
+      accent: "#4ade80"
       Layout.fillWidth: true
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
@@ -93,6 +103,8 @@ ColumnLayout {
       enabled: isAllowed
       opacity: isAllowed ? 1.0 : 0.4
       selected: panelRoot && panelRoot.resMode === "ultra"
+      foreground: selected ? "#4ade80" : Commons.Color.muted
+      accent: "#4ade80"
       Layout.fillWidth: true
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
@@ -107,6 +119,8 @@ ColumnLayout {
       enabled: isAllowed
       opacity: isAllowed ? 1.0 : 0.4
       selected: panelRoot && panelRoot.resMode === "max"
+      foreground: selected ? "#4ade80" : Commons.Color.muted
+      accent: "#4ade80"
       Layout.fillWidth: true
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
@@ -203,6 +217,8 @@ ColumnLayout {
           bordered: true
           selected: panelRoot && panelRoot.steps === modelData
           active: panelRoot && panelRoot.steps === modelData
+          foreground: selected ? "#4ade80" : Commons.Color.muted
+          accent: "#4ade80"
           Layout.preferredWidth: Commons.Style.space(28)
           Layout.preferredHeight: Commons.Style.space(20)
           horizontalPadding: Commons.Style.space(3)

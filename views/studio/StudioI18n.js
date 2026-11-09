@@ -7,8 +7,8 @@ var strings = {
     "en": "PROMPT"
   },
   "prompt_placeholder": {
-    "cs": "Zadej prompt v angličtině (automatický lokální překlad)...",
-    "en": "Enter prompt in English (automatic local translation)..."
+    "cs": "Zadej prompt...",
+    "en": "Enter prompt..."
   },
   "words": { "cs": "slov", "en": "words" },
   "optimize": { "cs": "VYLEPŠIT", "en": "OPTIMIZE" },

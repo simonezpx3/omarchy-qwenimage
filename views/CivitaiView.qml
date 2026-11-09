@@ -64,6 +64,8 @@ Item {
           Layout.preferredHeight: Commons.Style.space(20)
           verticalPadding: Commons.Style.space(1)
           selected: root.activeSource === modelData.key
+          foreground: selected ? "#4ade80" : Commons.Color.muted
+          accent: "#4ade80"
           onClicked: root.selectSource(modelData.key)
         }
       }
@@ -311,6 +313,8 @@ Item {
         Layout.preferredHeight: Commons.Style.space(20)
         verticalPadding: Commons.Style.space(1)
         selected: panelRoot && panelRoot.isNsfwEnabled
+        foreground: selected ? "#4ade80" : Commons.Color.muted
+        accent: "#4ade80"
         onClicked: if (panelRoot) panelRoot.toggleNsfw()
       }
 

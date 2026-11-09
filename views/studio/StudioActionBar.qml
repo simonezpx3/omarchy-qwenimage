@@ -74,6 +74,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       selected: panelRoot && panelRoot.isTurboEnabled
+      foreground: selected ? "#4ade80" : Commons.Color.muted
+      accent: "#4ade80"
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_turbo_lora"), hot)
@@ -89,6 +91,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       selected: panelRoot && panelRoot.animeMode !== "off"
+      foreground: selected ? "#4ade80" : Commons.Color.muted
+      accent: "#4ade80"
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_anime_lora"), hot)
@@ -104,6 +108,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       selected: panelRoot && panelRoot.hereticMode !== "off"
+      foreground: selected ? "#4ade80" : Commons.Color.muted
+      accent: "#4ade80"
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_uncensored_lora"), hot)
@@ -119,6 +125,8 @@ ColumnLayout {
       fontSize: Commons.Style.font.caption
       bordered: true
       selected: panelRoot && panelRoot.anatomyMode !== "off"
+      foreground: selected ? "#4ade80" : Commons.Color.muted
+      accent: "#4ade80"
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_anatomy_lora"), hot)

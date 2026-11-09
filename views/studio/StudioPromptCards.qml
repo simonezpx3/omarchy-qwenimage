@@ -83,7 +83,9 @@ ColumnLayout {
           bordered: true
           Layout.preferredHeight: Commons.Style.space(20)
           verticalPadding: Commons.Style.space(1)
-          active: panelRoot && panelRoot.isAutoExpandEnabled
+          selected: panelRoot && panelRoot.isAutoExpandEnabled
+          foreground: selected ? "#4ade80" : Commons.Color.muted
+          accent: "#4ade80"
           onHotChanged: if (root) root.setHelp(root.tr("help_auto_expand"), hot)
           onClicked: if (panelRoot) panelRoot.toggleAutoExpand()
         }
