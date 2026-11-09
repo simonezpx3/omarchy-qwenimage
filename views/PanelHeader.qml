@@ -121,8 +121,7 @@ RowLayout {
       model: [
         { key: "studio", label: "STUDIO" },
         { key: "civitai", label: "INSPIRATION" },
-        { key: "history", label: "HISTORY" },
-        { key: "compare", label: "COMPARE" }
+        { key: "history", label: "HISTORY" }
       ]
 
       delegate: Rectangle {

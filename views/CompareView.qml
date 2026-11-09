@@ -218,8 +218,11 @@ Item {
 
       Button {
         text: "APPLY AS FINAL"
+        fontSize: Commons.Style.font.caption
         bordered: true
         selected: true
+        Layout.preferredHeight: Commons.Style.space(20)
+        verticalPadding: Commons.Style.space(1)
         onClicked: {
           if (panelRoot) {
             panelRoot.referencePath = panelRoot.generatedPath;
@@ -230,7 +233,10 @@ Item {
 
       Button {
         text: "DISCARD VARIATION"
+        fontSize: Commons.Style.font.caption
         bordered: true
+        Layout.preferredHeight: Commons.Style.space(20)
+        verticalPadding: Commons.Style.space(1)
         onClicked: {
           if (panelRoot) panelRoot.currentView = "studio";
         }
@@ -238,7 +244,10 @@ Item {
 
       Button {
         text: "SET AS WALLPAPER"
+        fontSize: Commons.Style.font.caption
         bordered: true
+        Layout.preferredHeight: Commons.Style.space(20)
+        verticalPadding: Commons.Style.space(1)
         enabled: panelRoot && panelRoot.generatedPath !== ""
         onClicked: {
           if (panelRoot) panelRoot.setAsWallpaper(panelRoot.generatedPath);
@@ -249,8 +258,11 @@ Item {
 
       Button {
         text: "BACK TO STUDIO"
+        fontSize: Commons.Style.font.caption
         bordered: true
         active: true
+        Layout.preferredHeight: Commons.Style.space(20)
+        verticalPadding: Commons.Style.space(1)
         onClicked: {
           if (panelRoot) panelRoot.currentView = "studio";
         }

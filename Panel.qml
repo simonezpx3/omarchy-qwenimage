@@ -198,6 +198,8 @@ Panel {
               text: "RECHECK"
               fontSize: Commons.Style.font.caption
               bordered: true
+              Layout.preferredHeight: Commons.Style.space(20)
+              verticalPadding: Commons.Style.space(1)
               onClicked: {
                 root.checkBridge();
                 root.refreshTelemetry();

@@ -147,6 +147,8 @@ Item {
                   selected: true
                   Layout.preferredWidth: 0
                   Layout.fillWidth: true
+                  Layout.preferredHeight: Commons.Style.space(20)
+                  verticalPadding: Commons.Style.space(1)
                   onClicked: {
                     if (panelRoot) {
                       panelRoot.restoreFromHistory(modelData.path, modelData.prompt, modelData.seed, modelData.ratio, modelData.negative_prompt);
@@ -161,6 +163,8 @@ Item {
                   bordered: true
                   Layout.preferredWidth: 0
                   Layout.fillWidth: true
+                  Layout.preferredHeight: Commons.Style.space(20)
+                  verticalPadding: Commons.Style.space(1)
                   onClicked: {
                     if (panelRoot) {
                       panelRoot.setReferenceImage(modelData.path);
@@ -180,6 +184,8 @@ Item {
                   bordered: true
                   Layout.preferredWidth: 0
                   Layout.fillWidth: true
+                  Layout.preferredHeight: Commons.Style.space(20)
+                  verticalPadding: Commons.Style.space(1)
                   onClicked: if (panelRoot) panelRoot.setAsWallpaper(modelData.path)
                 }
 
@@ -189,6 +195,8 @@ Item {
                   bordered: true
                   Layout.preferredWidth: 0
                   Layout.fillWidth: true
+                  Layout.preferredHeight: Commons.Style.space(20)
+                  verticalPadding: Commons.Style.space(1)
                   onClicked: if (panelRoot) panelRoot.openFullscreenViewer(modelData.path)
                 }
               }
@@ -272,7 +280,10 @@ Item {
 
       Button {
         text: "OPEN PICTURES FOLDER"
+        fontSize: Commons.Style.font.caption
         bordered: true
+        Layout.preferredHeight: Commons.Style.space(20)
+        verticalPadding: Commons.Style.space(1)
         onClicked: {
           if (panelRoot) panelRoot.openPicturesFolder();
         }
@@ -280,7 +291,10 @@ Item {
 
       Button {
         text: "REFRESH"
+        fontSize: Commons.Style.font.caption
         bordered: true
+        Layout.preferredHeight: Commons.Style.space(20)
+        verticalPadding: Commons.Style.space(1)
         onClicked: root.refreshHistory()
       }
 
@@ -288,8 +302,11 @@ Item {
 
       Button {
         text: "BACK TO STUDIO"
+        fontSize: Commons.Style.font.caption
         bordered: true
         active: true
+        Layout.preferredHeight: Commons.Style.space(20)
+        verticalPadding: Commons.Style.space(1)
         onClicked: {
           if (panelRoot) panelRoot.currentView = "studio";
         }
