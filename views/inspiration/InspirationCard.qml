@@ -12,6 +12,8 @@ Rectangle {
   property var panelRoot: null
   property string activeSource: "civitai"
 
+  readonly property var itemData: (modelData && modelData.prompt !== undefined) ? modelData : ((modelData && modelData.modelData) ? modelData.modelData : (typeof model !== "undefined" && model && model.modelData ? model.modelData : null))
+
   implicitHeight: Math.max(Commons.Style.space(150), rowContent.implicitHeight + Commons.Style.spacing.sm * 2)
   color: cardArea.containsMouse ? Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.06) : Commons.Color.menu.background
   border.color: cardArea.containsMouse ? Commons.Color.accent : Commons.Color.menu.border
@@ -19,17 +21,17 @@ Rectangle {
   radius: Commons.Style.cornerRadius
 
   function applyPrompt(autoGenerate) {
-    if (panelRoot) {
-      panelRoot.promptText = panelRoot.sanitizePromptText ? panelRoot.sanitizePromptText(modelData.prompt || "") : (modelData.prompt || "");
-      if (modelData.negative_prompt) {
-        panelRoot.negativePromptText = panelRoot.sanitizePromptText ? panelRoot.sanitizePromptText(modelData.negative_prompt) : modelData.negative_prompt;
+    if (panelRoot && itemData) {
+      panelRoot.promptText = panelRoot.sanitizePromptText ? panelRoot.sanitizePromptText(itemData.prompt || "") : (itemData.prompt || "");
+      if (itemData.negative_prompt) {
+        panelRoot.negativePromptText = panelRoot.sanitizePromptText ? panelRoot.sanitizePromptText(itemData.negative_prompt) : itemData.negative_prompt;
       }
-      if (modelData.seed && modelData.seed > 0) {
-        panelRoot.seedVal = modelData.seed;
+      if (itemData.seed && itemData.seed > 0) {
+        panelRoot.seedVal = itemData.seed;
         panelRoot.seedLocked = true;
       }
-      if (modelData.steps) panelRoot.steps = modelData.steps;
-      if (modelData.cfg) panelRoot.cfg = modelData.cfg;
+      if (itemData.steps) panelRoot.steps = itemData.steps;
+      if (itemData.cfg) panelRoot.cfg = itemData.cfg;
       panelRoot.currentView = "studio";
       if (autoGenerate) {
         if (panelRoot && !panelRoot.isGenerating && !panelRoot.isGameLocked) {
@@ -67,7 +69,7 @@ Rectangle {
       Layout.fillHeight: true
       Layout.minimumHeight: Commons.Style.space(136)
 
-      readonly property string itemSource: String((modelData && modelData.source) || cardDelegate.activeSource).toLowerCase()
+      readonly property string itemSource: String((itemData && itemData.source) || cardDelegate.activeSource).toLowerCase()
       readonly property color domainColor: Helper.sourceColor(itemSource, Commons.Color.background.hslLightness, Commons.Color.accent, Commons.Color.urgent)
 
       color: Qt.rgba(domainColor.r, domainColor.g, domainColor.b, 0.07)
@@ -104,7 +106,7 @@ Rectangle {
         Text {
           textFormat: Text.PlainText
           Layout.alignment: Qt.AlignHCenter
-          text: ((modelData && modelData.prompt) ? String(modelData.prompt).trim().split(/\s+/).length : 0) + " WORDS"
+          text: ((itemData && itemData.prompt) ? String(itemData.prompt).trim().split(/\s+/).length : 0) + " WORDS"
           font.family: Commons.Style.font.family
           font.pixelSize: Commons.Style.font.caption
           font.bold: true
@@ -131,7 +133,7 @@ Rectangle {
         radius: Commons.Style.cornerRadius
         color: Commons.Color.urgent
         visible: {
-          var n = String((modelData && modelData.nsfw) || "none").toLowerCase();
+          var n = String((itemData && itemData.nsfw) || "none").toLowerCase();
           return n !== "none" && n !== "1" && n !== "false" && n !== "0" && n !== "";
         }
 
@@ -139,7 +141,7 @@ Rectangle {
           id: nsfwBadgeText
           textFormat: Text.PlainText
           anchors.centerIn: parent
-          text: String((modelData && modelData.nsfw) || "").toUpperCase()
+          text: String((itemData && itemData.nsfw) || "").toUpperCase()
           font.family: Commons.Style.font.family
           font.pixelSize: 10
           font.bold: true
@@ -170,7 +172,7 @@ Rectangle {
             id: srcTagText
             textFormat: Text.PlainText
             anchors.centerIn: parent
-            text: ((modelData && modelData.source) || cardDelegate.activeSource).toUpperCase()
+            text: ((itemData && itemData.source) || cardDelegate.activeSource).toUpperCase()
             font.family: Commons.Style.font.family
             font.pixelSize: 10
             font.bold: true
@@ -179,7 +181,7 @@ Rectangle {
         }
 
         Text {
-          text: "SEED: " + ((modelData && modelData.seed) || "Random") + " | CFG: " + ((modelData && modelData.cfg) || "4.0") + " | STEPS: " + ((modelData && modelData.steps) || "25") + ((modelData && modelData.sampler) ? (" | " + modelData.sampler) : "")
+          text: "SEED: " + ((itemData && itemData.seed) || "Random") + " | CFG: " + ((itemData && itemData.cfg) || "4.0") + " | STEPS: " + ((itemData && itemData.steps) || "25") + ((itemData && itemData.sampler) ? (" | " + itemData.sampler) : "")
           textFormat: Text.PlainText
           font.family: Commons.Style.font.family
           font.pixelSize: Commons.Style.font.caption
@@ -194,6 +196,8 @@ Rectangle {
           fontSize: Commons.Style.font.caption
           bordered: true
           selected: true
+          foreground: "#4ade80"
+          accent: "#4ade80"
           Layout.preferredHeight: Commons.Style.space(20)
           verticalPadding: Commons.Style.space(1)
           onClicked: cardDelegate.applyPrompt(false)
@@ -203,10 +207,12 @@ Rectangle {
           text: "COPY RAW"
           fontSize: Commons.Style.font.caption
           bordered: true
+          foreground: Commons.Color.muted
+          accent: Commons.Color.accent
           Layout.preferredHeight: Commons.Style.space(20)
           verticalPadding: Commons.Style.space(1)
           onClicked: {
-            if (panelRoot) panelRoot.copyTextToClipboard((modelData && modelData.prompt) || "");
+            if (panelRoot) panelRoot.copyTextToClipboard((itemData && itemData.prompt) || "");
           }
         }
       }
@@ -214,7 +220,7 @@ Rectangle {
       Text {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        text: (modelData && modelData.prompt) || "No prompt description"
+        text: (itemData && itemData.prompt) || "No prompt description"
         textFormat: Text.PlainText
         wrapMode: Text.Wrap
         maximumLineCount: 4
@@ -226,7 +232,7 @@ Rectangle {
 
       Text {
         Layout.fillWidth: true
-        text: "NEG: " + ((modelData && modelData.negative_prompt) || "None")
+        text: "NEG: " + ((itemData && itemData.negative_prompt) || "None")
         textFormat: Text.PlainText
         wrapMode: Text.Wrap
         maximumLineCount: 1
@@ -234,7 +240,7 @@ Rectangle {
         font.family: Commons.Style.font.family
         font.pixelSize: Commons.Style.font.caption
         color: Commons.Util.alpha(Commons.Color.foreground, 0.55)
-        visible: Boolean(modelData && modelData.negative_prompt)
+        visible: Boolean(itemData && itemData.negative_prompt)
       }
     }
   }

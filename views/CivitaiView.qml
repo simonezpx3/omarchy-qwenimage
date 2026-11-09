@@ -79,7 +79,8 @@ Item {
       FocusScope {
         id: searchField
         Layout.fillWidth: true
-        implicitHeight: Commons.Style.space(30)
+        Layout.preferredHeight: Commons.Style.space(20)
+        implicitHeight: Commons.Style.space(20)
         activeFocusOnTab: true
 
         property string text: ""
@@ -116,14 +117,14 @@ Item {
           verticalAlignment: Text.AlignVCenter
           elide: Text.ElideLeft
           font.family: Commons.Style.font.family
-          font.pixelSize: Commons.Style.font.body
+          font.pixelSize: Commons.Style.font.caption
           color: searchField.text.length ? Commons.Color.foreground : Commons.Util.alpha(Commons.Color.foreground, 0.55)
           text: searchField.text.length ? searchField.text : searchField.placeholderText
         }
 
         Rectangle {
           width: 1
-          height: label.font.pixelSize + 4
+          height: label.font.pixelSize + 2
           anchors.verticalCenter: parent.verticalCenter
           anchors.left: label.left
           anchors.leftMargin: searchField.text.length ? label.implicitWidth + 2 : 0
@@ -226,7 +227,7 @@ Item {
 
         delegate: InspirationCard {
           width: promptList.width - Commons.Style.spacing.sm
-          modelData: model
+          modelData: model.modelData
           panelRoot: root.panelRoot
           activeSource: root.activeSource
         }
