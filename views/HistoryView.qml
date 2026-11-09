@@ -136,15 +136,14 @@ Item {
               }
             }
 
-            // Action Buttons for this item (compact 150px layout, 20px height)
+            // Action Buttons for this item (text-fitted, height 20)
             ColumnLayout {
-              Layout.preferredWidth: Commons.Style.space(150)
-              Layout.alignment: Qt.AlignVCenter
-              spacing: Commons.Style.spacing.xxs
+              Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+              spacing: Commons.Style.spacing.xs
 
               RowLayout {
-                Layout.fillWidth: true
-                spacing: Commons.Style.spacing.xxs
+                Layout.alignment: Qt.AlignRight
+                spacing: Commons.Style.spacing.xs
 
                 Button {
                   text: "RESTORE"
@@ -153,10 +152,9 @@ Item {
                   selected: true
                   foreground: "#4ade80"
                   accent: "#4ade80"
-                  Layout.preferredWidth: 0
-                  Layout.fillWidth: true
                   Layout.preferredHeight: Commons.Style.space(20)
                   verticalPadding: Commons.Style.space(1)
+                  horizontalPadding: Commons.Style.space(6)
                   onClicked: {
                     if (panelRoot) {
                       panelRoot.restoreFromHistory(modelData.path, modelData.prompt, modelData.seed, modelData.ratio, modelData.negative_prompt);
@@ -171,10 +169,9 @@ Item {
                   bordered: true
                   foreground: Commons.Color.muted
                   accent: Commons.Color.accent
-                  Layout.preferredWidth: 0
-                  Layout.fillWidth: true
                   Layout.preferredHeight: Commons.Style.space(20)
                   verticalPadding: Commons.Style.space(1)
+                  horizontalPadding: Commons.Style.space(6)
                   onClicked: {
                     if (panelRoot) {
                       panelRoot.setReferenceImage(modelData.path);
@@ -185,8 +182,8 @@ Item {
               }
 
               RowLayout {
-                Layout.fillWidth: true
-                spacing: Commons.Style.spacing.xxs
+                Layout.alignment: Qt.AlignRight
+                spacing: Commons.Style.spacing.xs
 
                 Button {
                   text: "WALLPAPER"
@@ -194,10 +191,9 @@ Item {
                   bordered: true
                   foreground: Commons.Color.muted
                   accent: Commons.Color.accent
-                  Layout.preferredWidth: 0
-                  Layout.fillWidth: true
                   Layout.preferredHeight: Commons.Style.space(20)
                   verticalPadding: Commons.Style.space(1)
+                  horizontalPadding: Commons.Style.space(6)
                   onClicked: if (panelRoot) panelRoot.setAsWallpaper(modelData.path)
                 }
 
@@ -207,10 +203,9 @@ Item {
                   bordered: true
                   foreground: Commons.Color.muted
                   accent: Commons.Color.accent
-                  Layout.preferredWidth: 0
-                  Layout.fillWidth: true
                   Layout.preferredHeight: Commons.Style.space(20)
                   verticalPadding: Commons.Style.space(1)
+                  horizontalPadding: Commons.Style.space(6)
                   onClicked: if (panelRoot) panelRoot.openFullscreenViewer(modelData.path)
                 }
               }
