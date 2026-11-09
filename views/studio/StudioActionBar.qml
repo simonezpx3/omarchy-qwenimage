@@ -153,7 +153,6 @@ ColumnLayout {
         return root ? root.tr("generate") : "GENERATE";
       }
       fontSize: Commons.Style.font.body
-      font.bold: true
       bordered: true
       active: true
       selected: !isBusy
