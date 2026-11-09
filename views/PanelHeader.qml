@@ -19,6 +19,22 @@ RowLayout {
   readonly property int vramTotal: panelRoot ? panelRoot.vramTotal : 8192
   readonly property int vramPct: panelRoot ? panelRoot.vramPct : 0
 
+  readonly property string currentView: {
+    if (panelRoot && panelRoot.svc && panelRoot.svc.currentView) return panelRoot.svc.currentView;
+    if (panelRoot && panelRoot.currentView) return panelRoot.currentView;
+    return "studio";
+  }
+
+  function setView(viewKey) {
+    if (panelRoot) {
+      if (panelRoot.svc) {
+        panelRoot.svc.currentView = viewKey;
+      } else if ("currentView" in panelRoot) {
+        panelRoot.currentView = viewKey;
+      }
+    }
+  }
+
   spacing: Commons.Style.spacing.sm
 
   RowLayout {
@@ -91,6 +107,31 @@ RowLayout {
       }
     }
   }
+
+  // Segmented Navigation Tabs (AC1)
+  RowLayout {
+    spacing: Commons.Style.spacing.xs
+
+    Repeater {
+      model: [
+        { key: "studio", label: "STUDIO" },
+        { key: "civitai", label: "CIVITAI" },
+        { key: "history", label: "HISTORY" },
+        { key: "compare", label: "COMPARE" }
+      ]
+
+      delegate: Button {
+        text: modelData.label
+        fontSize: Commons.Style.font.caption
+        bordered: true
+        selected: headerRoot.currentView === modelData.key
+        active: headerRoot.currentView === modelData.key
+        onClicked: headerRoot.setView(modelData.key)
+      }
+    }
+  }
+
+  Item { Layout.fillWidth: true }
 
   // Service Health Badges row
   RowLayout {
@@ -187,7 +228,13 @@ RowLayout {
     }
   }
 
-  Item { Layout.fillWidth: true }
+  // Subtle vertical divider between health badges and VRAM
+  Rectangle {
+    width: 1
+    implicitHeight: Commons.Style.space(16)
+    color: Commons.Util.alpha(Commons.Color.menu.border, 0.5)
+    Layout.alignment: Qt.AlignVCenter
+  }
 
   Text {
     textFormat: Text.PlainText
@@ -196,5 +243,6 @@ RowLayout {
     font.features: { "tnum": 1 }
     font.pixelSize: Commons.Style.font.caption
     color: Commons.Color.foreground
+    Layout.alignment: Qt.AlignVCenter
   }
 }

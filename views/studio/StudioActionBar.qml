@@ -62,18 +62,11 @@ ColumnLayout {
   PanelSeparator { Layout.fillWidth: true }
 
   // ===================================================================
-  // BOTTOM BAR: Navigation, Reset, LoRA Toggles & Synthesis Action
+  // BOTTOM BAR: LoRA Toggles, Reset & Primary Synthesis Action (AC2)
   // ===================================================================
   RowLayout {
     Layout.fillWidth: true
     spacing: Commons.Style.spacing.sm
-
-    Button {
-      text: root ? root.tr("civitai_prompts") : "PROMPTY & INSPIRACE"
-      bordered: true
-      onHotChanged: if (root) root.setHelp(root.tr("help_civitai_prompts"), hot)
-      onClicked: if (panelRoot) panelRoot.currentView = "civitai"
-    }
 
     // Turbo Viggle LoRA Switcher
     Button {
@@ -124,16 +117,14 @@ ColumnLayout {
       onClicked: if (panelRoot) panelRoot.cycleAnatomyMode()
     }
 
-    Button {
-      text: root ? root.tr("history") : "HISTORY"
-      bordered: true
-      onHotChanged: if (root) root.setHelp(root.tr("help_history"), hot)
-      onClicked: if (panelRoot) panelRoot.currentView = "history"
-    }
+    Item { Layout.fillWidth: true }
 
+    // Isolated subtle Reset button (protected against accidental clicks)
     Button {
       text: root ? root.tr("reset") : "RESET"
-      bordered: true
+      fontSize: Commons.Style.font.caption
+      bordered: false
+      foreground: Commons.Util.alpha(Commons.Color.foreground, 0.55)
       onHotChanged: if (root) root.setHelp(root.tr("help_reset"), hot)
       onClicked: if (panelRoot) {
         panelRoot.resetForm();
@@ -141,8 +132,14 @@ ColumnLayout {
       }
     }
 
-    Item { Layout.fillWidth: true }
+    Rectangle {
+      width: 1
+      implicitHeight: Commons.Style.space(16)
+      color: Commons.Util.alpha(Commons.Color.menu.border, 0.6)
+      Layout.alignment: Qt.AlignVCenter
+    }
 
+    // Primary CTA: GENERATE
     Button {
       readonly property bool isBusy: Boolean(panelRoot && (panelRoot.isGenerating || panelRoot.isCancelling))
       text: {
@@ -155,10 +152,14 @@ ColumnLayout {
         if (panelRoot && panelRoot.isGameLocked) return root ? root.tr("locked_game") : "LOCKED";
         return root ? root.tr("generate") : "GENERATE";
       }
+      fontSize: Commons.Style.font.body
+      font.bold: true
       bordered: true
-      active: isBusy
-      selected: isBusy
-      foreground: isBusy ? Commons.Color.urgent : Commons.Color.foreground
+      active: true
+      selected: !isBusy
+      foreground: isBusy ? Commons.Color.urgent : Commons.Color.accent
+      Layout.preferredWidth: Commons.Style.space(136)
+      Layout.preferredHeight: Commons.Style.space(28)
       enabled: panelRoot && (isBusy || !panelRoot.isGameLocked)
       onHotChanged: if (root) root.setHelp(isBusy ? root.tr("help_cancel") : root.tr("help_generate"), hot)
       onClicked: {
