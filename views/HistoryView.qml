@@ -40,9 +40,15 @@ Item {
         anchors.margins: Commons.Style.spacing.xs
         spacing: Commons.Style.spacing.sm
         model: panelRoot ? panelRoot.historyModel : []
+        clip: true
+
+        ScrollBar.vertical: ScrollBar {
+          policy: ScrollBar.AsNeeded
+        }
 
         delegate: Rectangle {
-          width: historyList.width - Commons.Style.spacing.sm
+          x: Math.round((historyList.width - width) / 2)
+          width: historyList.width - Commons.Style.spacing.sm * 2
           height: Commons.Style.space(125)
           color: Commons.Color.menu.background
           border.color: Commons.Color.menu.border
@@ -130,9 +136,9 @@ Item {
               }
             }
 
-            // Action Buttons for this item
+            // Action Buttons for this item (compact 150px layout, 20px height)
             ColumnLayout {
-              Layout.preferredWidth: Commons.Style.space(240)
+              Layout.preferredWidth: Commons.Style.space(150)
               Layout.alignment: Qt.AlignVCenter
               spacing: Commons.Style.spacing.xxs
 
@@ -141,10 +147,12 @@ Item {
                 spacing: Commons.Style.spacing.xxs
 
                 Button {
-                  text: "RESTORE PARAMS"
+                  text: "RESTORE"
                   fontSize: Commons.Style.font.caption
                   bordered: true
                   selected: true
+                  foreground: "#4ade80"
+                  accent: "#4ade80"
                   Layout.preferredWidth: 0
                   Layout.fillWidth: true
                   Layout.preferredHeight: Commons.Style.space(20)
@@ -158,9 +166,11 @@ Item {
                 }
 
                 Button {
-                  text: "COPY TO BUFFER"
+                  text: "BUFFER"
                   fontSize: Commons.Style.font.caption
                   bordered: true
+                  foreground: Commons.Color.muted
+                  accent: Commons.Color.accent
                   Layout.preferredWidth: 0
                   Layout.fillWidth: true
                   Layout.preferredHeight: Commons.Style.space(20)
@@ -182,6 +192,8 @@ Item {
                   text: "WALLPAPER"
                   fontSize: Commons.Style.font.caption
                   bordered: true
+                  foreground: Commons.Color.muted
+                  accent: Commons.Color.accent
                   Layout.preferredWidth: 0
                   Layout.fillWidth: true
                   Layout.preferredHeight: Commons.Style.space(20)
@@ -193,6 +205,8 @@ Item {
                   text: "VIEW"
                   fontSize: Commons.Style.font.caption
                   bordered: true
+                  foreground: Commons.Color.muted
+                  accent: Commons.Color.accent
                   Layout.preferredWidth: 0
                   Layout.fillWidth: true
                   Layout.preferredHeight: Commons.Style.space(20)
@@ -279,7 +293,7 @@ Item {
       spacing: Commons.Style.spacing.sm
 
       Button {
-        text: "OPEN PICTURES FOLDER"
+        text: "OPEN FOLDER"
         fontSize: Commons.Style.font.caption
         bordered: true
         Layout.preferredHeight: Commons.Style.space(20)

@@ -225,8 +225,13 @@ Item {
           });
         }
 
+        ScrollBar.vertical: ScrollBar {
+          policy: ScrollBar.AsNeeded
+        }
+
         delegate: InspirationCard {
-          width: promptList.width - Commons.Style.spacing.sm
+          x: Math.round((promptList.width - width) / 2)
+          width: promptList.width - Commons.Style.spacing.sm * 2
           modelData: model.modelData
           panelRoot: root.panelRoot
           activeSource: root.activeSource
