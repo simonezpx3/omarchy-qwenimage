@@ -120,7 +120,7 @@ RowLayout {
     Repeater {
       model: [
         { key: "studio", label: "STUDIO" },
-        { key: "civitai", label: "CIVITAI" },
+        { key: "civitai", label: "INSPIRATION" },
         { key: "history", label: "HISTORY" },
         { key: "compare", label: "COMPARE" }
       ]
