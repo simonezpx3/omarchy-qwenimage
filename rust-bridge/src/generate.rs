@@ -219,6 +219,10 @@ pub(crate) fn cmd_generate(
     } else if active_turbo {
         final_cfg = 1.0;
         final_steps = if is_human { 7 } else { 6 };
+    } else if final_steps < 20 {
+        // Enforce standard step floor when Turbo is disabled to prevent
+        // Euler scheduler discretization collapse with denoise
+        final_steps = 25;
     }
 
     if is_human {

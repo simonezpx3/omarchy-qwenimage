@@ -418,3 +418,34 @@ fn test_vram_budget_node_in_graph_and_easycache_lora_bypass() {
     let (graph_no_lora, _, _, _) = comfy::build_generation_graph(&cfg).expect("graph should build");
     assert!(graph_no_lora.get("10").is_some(), "EasyCache must be active when no LoRA is enabled");
 }
+
+#[test]
+fn test_denoise_full_new_scene_empty_latent() {
+    let dummy_ref = "/tmp/test_qis_ref.png";
+    let _ = std::fs::write(dummy_ref, b"fake png");
+
+    let cfg_edit = comfy::GenerationConfig {
+        prompt: "girl on a beach",
+        negative_prompt: "blurry",
+        ratio: "1:1",
+        steps: 25,
+        cfg: 4.0,
+        seed: 42,
+        image_ref: Some(dummy_ref),
+        denoise: 1.0,
+        anime: comfy::LoraLevel::Off,
+        turbo: false,
+        uncensored: comfy::LoraLevel::Off,
+        anatomy: comfy::LoraLevel::Off,
+        res_mode: "standard",
+        is_human: true,
+    };
+
+    let (graph, _, _, _) = comfy::build_generation_graph(&cfg_edit).expect("graph should build");
+    assert!(graph.get("5c").is_some(), "Node 5c (EmptyLatentImage) must exist for denoise 1.0");
+    assert_eq!(graph["5c"]["class_type"], "EmptyLatentImage");
+    assert_eq!(graph["6"]["inputs"]["latent_image"], serde_json::json!(["5c", 0]));
+    assert_eq!(graph["6"]["inputs"]["denoise"], 1.0);
+
+    let _ = std::fs::remove_file(dummy_ref);
+}

@@ -190,7 +190,7 @@ ColumnLayout {
         id: stepsSlider
         anchors.fill: parent
         bar: panelRoot ? panelRoot.bar : null
-        minimum: 10
+        minimum: panelRoot && panelRoot.isTurboEnabled ? 4 : 20
         maximum: 50
         integer: true
         step: 1
@@ -205,12 +205,12 @@ ColumnLayout {
       }
     }
 
-    // Quick Step Presets (15 Fast, 25 Standard, 35 Detail)
+    // Quick Step Presets (Turbo: 4, 6, 8 | Standard: 20, 25, 35)
     RowLayout {
       spacing: Commons.Style.spacing.xs
       Layout.alignment: Qt.AlignVCenter
       Repeater {
-        model: [15, 25, 35]
+        model: panelRoot && panelRoot.isTurboEnabled ? [4, 6, 8] : [20, 25, 35]
         delegate: Button {
           text: String(modelData)
           fontSize: Commons.Style.font.caption

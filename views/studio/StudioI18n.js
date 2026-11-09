@@ -160,9 +160,25 @@ var strings = {
     "cs": "KROKY (STEPS): Počet difuzních vzorkovacích kroků (výchozí: 25). Vyšší hodnoty zjemňují detaily, nižší urychlují generování.",
     "en": "STEPS: Number of diffusion sampling steps (default: 25). Higher values refine detail, lower values speed up generation."
   },
+  "help_steps_4": {
+    "cs": "4 KROKY // Extrémní Turbo rychlost",
+    "en": "4 STEPS // Extreme Turbo speed"
+  },
+  "help_steps_6": {
+    "cs": "6 KROKŮ // Výchozí Turbo rychlost (~5s)",
+    "en": "6 STEPS // Default Turbo speed (~5s)"
+  },
+  "help_steps_8": {
+    "cs": "8 KROKŮ // Maximální Turbo kvalita",
+    "en": "8 STEPS // Maximum Turbo quality"
+  },
   "help_steps_15": {
     "cs": "15 KROKŮ // Bleskový draft (~6s)",
     "en": "15 STEPS // Fast draft (~6s)"
+  },
+  "help_steps_20": {
+    "cs": "20 KROKŮ // Rychlý standardní render",
+    "en": "20 STEPS // Fast standard render"
   },
   "help_steps_25": {
     "cs": "25 KROKŮ // Standardní vyvážená kvalita (~18s)",
@@ -196,9 +212,13 @@ var strings = {
     "cs": "VISION PROMPT: Zrekonstruuje a popíše scénu přirozeným jazykem pomocí multimodálního modelu Qwen-Vision na lokální GPU.",
     "en": "VISION PROMPT: Reconstructs and describes scene in natural language via local multimodal Qwen-Vision on local GPU."
   },
+  "denoise_new_scene": {
+    "cs": "1.00 (NOVÁ SCÉNA)",
+    "en": "1.00 (NEW SCENE)"
+  },
   "help_denoise": {
-    "cs": "DENOISE: Míra přepracování referenčního obrázku (0.10 = jemná úprava, 0.65 = vyvážená změna, 0.95 = maximální transformace při zachování předlohy).",
-    "en": "DENOISE: Modification strength of reference image (0.10 = subtle edit, 0.65 = balanced redesign, 0.95 = max transformation preserving reference)."
+    "cs": "DENOISE: Míra přepracování referenčního obrázku (0.10 = jemná úprava detailů, 0.65 = vyvážený redesign kompozice, 0.85 = hluboká transformace, 1.00 = nová scéna s přenosem identity).",
+    "en": "DENOISE: Modification strength of reference image (0.10 = subtle detail edit, 0.65 = balanced redesign, 0.85 = heavy transformation, 1.00 = new scene with subject identity transfer)."
   },
   "help_scale_esrgan": {
     "cs": "4X ESRGAN: Neuronový 4X upscaling pomocí RealESRGAN_x4plus (silné potlačení šumu a artefaktů, nulová mřížka).",

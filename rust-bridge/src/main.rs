@@ -462,7 +462,7 @@ fn main() {
             let seed = pos_args.get(4).and_then(|s| s.parse::<i64>().ok()).unwrap_or(-1);
             let negative = pos_args.get(5).copied().unwrap_or("");
             let image_ref = pos_args.get(6).copied().filter(|s| !s.trim().is_empty());
-            let denoise = pos_args.get(7).and_then(|s| s.parse::<f32>().ok()).unwrap_or(0.85).clamp(0.05, 0.95);
+            let denoise = pos_args.get(7).and_then(|s| s.parse::<f32>().ok()).unwrap_or(0.85).clamp(0.05, 1.0);
 
             cmd_generate(prompt, ratio, steps, cfg, seed, negative, image_ref, denoise, anime, turbo, uncensored, anatomy, res_mode.as_deref(), expand);
         }
