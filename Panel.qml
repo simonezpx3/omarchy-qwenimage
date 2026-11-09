@@ -263,16 +263,6 @@ Panel {
               color: Commons.Util.alpha(root.bar ? root.bar.foreground : Commons.Color.foreground, 0.55)
             }
           }
-
-          Text {
-            textFormat: Text.PlainText
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            text: "CLOSE"
-            font.family: root.bar ? root.bar.fontFamily : Commons.Style.font.family
-            font.pixelSize: Commons.Style.font.caption
-            color: Commons.Util.alpha(root.bar ? root.bar.foreground : Commons.Color.foreground, 0.55)
-          }
         }
       }
     }

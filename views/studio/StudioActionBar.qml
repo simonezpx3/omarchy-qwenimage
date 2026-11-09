@@ -119,24 +119,16 @@ ColumnLayout {
 
     Item { Layout.fillWidth: true }
 
-    // Isolated subtle Reset button (protected against accidental clicks)
+    // Reset button (framed standard style)
     Button {
       text: root ? root.tr("reset") : "RESET"
       fontSize: Commons.Style.font.caption
-      bordered: false
-      foreground: Commons.Util.alpha(Commons.Color.foreground, 0.55)
+      bordered: true
       onHotChanged: if (root) root.setHelp(root.tr("help_reset"), hot)
       onClicked: if (panelRoot) {
         panelRoot.resetForm();
         if (root) root.genElapsedSeconds = 0;
       }
-    }
-
-    Rectangle {
-      width: 1
-      implicitHeight: Commons.Style.space(16)
-      color: Commons.Util.alpha(Commons.Color.menu.border, 0.6)
-      Layout.alignment: Qt.AlignVCenter
     }
 
     // Primary CTA: GENERATE
