@@ -133,20 +133,32 @@ pub(crate) fn now_millis() -> u128 {
 pub enum LoraLevel {
     #[default]
     Off,
-    Soft,
-    Full,
+    Light,
+    Medium,
+    Heavy,
 }
 
 impl LoraLevel {
     pub fn is_active(&self) -> bool {
-        matches!(self, LoraLevel::Soft | LoraLevel::Full)
+        matches!(self, LoraLevel::Light | LoraLevel::Medium | LoraLevel::Heavy)
     }
 
     pub fn from_str_opt(s: &str) -> Self {
         match s.trim().to_lowercase().as_str() {
-            "soft" | "low" | "1" => LoraLevel::Soft,
-            "full" | "high" | "hard" | "true" | "on" | "2" => LoraLevel::Full,
+            "light" | "soft" | "low" | "1" => LoraLevel::Light,
+            "medium" | "med" | "mid" | "2" => LoraLevel::Medium,
+            "heavy" | "full" | "high" | "hard" | "true" | "on" | "3" => LoraLevel::Heavy,
             _ => LoraLevel::Off,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            LoraLevel::Off => "off",
+            LoraLevel::Light => "light",
+            LoraLevel::Medium => "medium",
+            LoraLevel::Heavy => "heavy",
         }
     }
 }

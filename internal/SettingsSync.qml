@@ -42,8 +42,9 @@ Item {
 
   function cycleAnimeMode() {
     if (!service) return;
-    if (service.animeMode === "off") service.animeMode = "soft";
-    else if (service.animeMode === "soft") service.animeMode = "full";
+    if (service.animeMode === "off") service.animeMode = "light";
+    else if (service.animeMode === "light" || service.animeMode === "soft") service.animeMode = "medium";
+    else if (service.animeMode === "medium") service.animeMode = "heavy";
     else service.animeMode = "off";
     saveSetting("anime_mode", service.animeMode);
   }
@@ -63,16 +64,18 @@ Item {
 
   function cycleHereticMode() {
     if (!service) return;
-    if (service.hereticMode === "off") service.hereticMode = "soft";
-    else if (service.hereticMode === "soft") service.hereticMode = "full";
+    if (service.hereticMode === "off") service.hereticMode = "light";
+    else if (service.hereticMode === "light" || service.hereticMode === "soft") service.hereticMode = "medium";
+    else if (service.hereticMode === "medium") service.hereticMode = "heavy";
     else service.hereticMode = "off";
     saveSetting("heretic_mode", service.hereticMode);
   }
 
   function cycleAnatomyMode() {
     if (!service) return;
-    if (service.anatomyMode === "off") service.anatomyMode = "soft";
-    else if (service.anatomyMode === "soft") service.anatomyMode = "full";
+    if (service.anatomyMode === "off") service.anatomyMode = "light";
+    else if (service.anatomyMode === "light" || service.anatomyMode === "soft") service.anatomyMode = "medium";
+    else if (service.anatomyMode === "medium") service.anatomyMode = "heavy";
     else service.anatomyMode = "off";
     saveSetting("anatomy_mode", service.anatomyMode);
   }
@@ -109,26 +112,26 @@ Item {
             service.isNsfwEnabled = res.nsfw;
           }
           if (res.anime_mode) {
-            service.animeMode = res.anime_mode;
+            service.animeMode = (res.anime_mode === "soft" ? "light" : (res.anime_mode === "full" ? "heavy" : res.anime_mode));
           } else if (typeof res.anime === "boolean") {
-            service.animeMode = res.anime ? "full" : "off";
+            service.animeMode = res.anime ? "heavy" : "off";
           }
           if (typeof res.turbo === "boolean") {
             service.isTurboEnabled = res.turbo;
           }
           if (res.heretic_mode) {
-            service.hereticMode = res.heretic_mode;
+            service.hereticMode = (res.heretic_mode === "soft" ? "light" : (res.heretic_mode === "full" ? "heavy" : res.heretic_mode));
           } else if (res.uncensored_mode) {
-            service.hereticMode = res.uncensored_mode;
+            service.hereticMode = (res.uncensored_mode === "soft" ? "light" : (res.uncensored_mode === "full" ? "heavy" : res.uncensored_mode));
           } else if (typeof res.uncensored === "boolean") {
-            service.hereticMode = res.uncensored ? "full" : "off";
+            service.hereticMode = res.uncensored ? "heavy" : "off";
           }
           if (res.anatomy_mode) {
-            service.anatomyMode = res.anatomy_mode;
+            service.anatomyMode = (res.anatomy_mode === "soft" ? "light" : (res.anatomy_mode === "full" ? "heavy" : res.anatomy_mode));
           } else if (typeof res.anatomy === "boolean") {
-            service.anatomyMode = res.anatomy ? "full" : "off";
+            service.anatomyMode = res.anatomy ? "heavy" : "off";
           } else if (typeof res.anatomy_lora === "boolean") {
-            service.anatomyMode = res.anatomy_lora ? "full" : "off";
+            service.anatomyMode = res.anatomy_lora ? "heavy" : "off";
           }
           if (typeof res.auto_expand === "boolean") {
             service.isAutoExpandEnabled = res.auto_expand;

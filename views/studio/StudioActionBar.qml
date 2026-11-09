@@ -82,11 +82,14 @@ ColumnLayout {
       onClicked: if (panelRoot) panelRoot.toggleTurbo()
     }
 
-    // Anime Style LoRA Switcher (Tri-State: OFF -> SOFT -> FULL)
+    // Anime Style LoRA Switcher (4-State: OFF -> LIGHT -> MEDIUM -> HEAVY)
     Button {
       text: {
         var mode = panelRoot ? panelRoot.animeMode : "off";
-        return mode === "full" ? "ANIME: FULL" : (mode === "soft" ? "ANIME: SOFT" : "ANIME: OFF");
+        if (mode === "heavy" || mode === "full") return "ANIME: HEAVY";
+        if (mode === "medium") return "ANIME: MEDIUM";
+        if (mode === "light" || mode === "soft") return "ANIME: LIGHT";
+        return "ANIME: OFF";
       }
       fontSize: Commons.Style.font.caption
       bordered: true
@@ -99,11 +102,14 @@ ColumnLayout {
       onClicked: if (panelRoot) panelRoot.cycleAnimeMode()
     }
 
-    // Uncensored Latent LoRA Switcher (Tri-State: OFF -> SOFT -> FULL)
+    // Uncensored Latent LoRA Switcher (4-State: OFF -> LIGHT -> MEDIUM -> HEAVY)
     Button {
       text: {
         var mode = panelRoot ? panelRoot.hereticMode : "off";
-        return mode === "full" ? "HERETIC: FULL" : (mode === "soft" ? "HERETIC: SOFT" : "HERETIC: OFF");
+        if (mode === "heavy" || mode === "full") return "HERETIC: HEAVY";
+        if (mode === "medium") return "HERETIC: MEDIUM";
+        if (mode === "light" || mode === "soft") return "HERETIC: LIGHT";
+        return "HERETIC: OFF";
       }
       fontSize: Commons.Style.font.caption
       bordered: true
@@ -116,11 +122,14 @@ ColumnLayout {
       onClicked: if (panelRoot) panelRoot.cycleHereticMode()
     }
 
-    // Anatomy Body LoRA Switcher (Tri-State: OFF -> SOFT -> FULL)
+    // Anatomy Body LoRA Switcher (4-State: OFF -> LIGHT -> MEDIUM -> HEAVY)
     Button {
       text: {
         var mode = panelRoot ? panelRoot.anatomyMode : "off";
-        return mode === "full" ? "ANATOMY: FULL" : (mode === "soft" ? "ANATOMY: SOFT" : "ANATOMY: OFF");
+        if (mode === "heavy" || mode === "full") return "ANATOMY: HEAVY";
+        if (mode === "medium") return "ANATOMY: MEDIUM";
+        if (mode === "light" || mode === "soft") return "ANATOMY: LIGHT";
+        return "ANATOMY: OFF";
       }
       fontSize: Commons.Style.font.caption
       bordered: true

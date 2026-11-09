@@ -154,22 +154,28 @@ fn test_anatomy_lora_graph_wiring() {
         anime: comfy::LoraLevel::Off,
         turbo: false,
         uncensored: comfy::LoraLevel::Off,
-        anatomy: comfy::LoraLevel::Soft,
+        anatomy: comfy::LoraLevel::Light,
         res_mode: "standard",
         is_human: true,
     };
 
-    let (graph_soft, _, _, _) = comfy::build_generation_graph(&cfg).expect("anatomy graph build should succeed");
-    if graph_soft.get("22").is_some() {
-        assert_eq!(graph_soft["22"]["class_type"], "LoraLoaderModelOnly");
-        assert_eq!(graph_soft["22"]["inputs"]["lora_name"], "Genitalia-Anatomy-2.1-v1.safetensors");
-        assert_eq!(graph_soft["22"]["inputs"]["strength_model"], 0.35);
+    let (graph_light, _, _, _) = comfy::build_generation_graph(&cfg).expect("anatomy graph build should succeed");
+    if graph_light.get("22").is_some() {
+        assert_eq!(graph_light["22"]["class_type"], "LoraLoaderModelOnly");
+        assert_eq!(graph_light["22"]["inputs"]["lora_name"], "Genitalia-Anatomy-2.1-v1.safetensors");
+        assert_eq!(graph_light["22"]["inputs"]["strength_model"], 0.28);
     }
 
-    cfg.anatomy = comfy::LoraLevel::Full;
-    let (graph_full, _, _, _) = comfy::build_generation_graph(&cfg).expect("anatomy graph build should succeed");
-    if graph_full.get("22").is_some() {
-        assert_eq!(graph_full["22"]["inputs"]["strength_model"], 0.60);
+    cfg.anatomy = comfy::LoraLevel::Medium;
+    let (graph_med, _, _, _) = comfy::build_generation_graph(&cfg).expect("anatomy graph build should succeed");
+    if graph_med.get("22").is_some() {
+        assert_eq!(graph_med["22"]["inputs"]["strength_model"], 0.42);
+    }
+
+    cfg.anatomy = comfy::LoraLevel::Heavy;
+    let (graph_heavy, _, _, _) = comfy::build_generation_graph(&cfg).expect("anatomy graph build should succeed");
+    if graph_heavy.get("22").is_some() {
+        assert_eq!(graph_heavy["22"]["inputs"]["strength_model"], 0.62);
     }
 }
 
@@ -184,30 +190,40 @@ fn test_anime_and_heretic_tri_state_levels() {
         seed: 101,
         image_ref: None,
         denoise: 0.85,
-        anime: comfy::LoraLevel::Soft,
+        anime: comfy::LoraLevel::Light,
         turbo: false,
-        uncensored: comfy::LoraLevel::Soft,
+        uncensored: comfy::LoraLevel::Light,
         anatomy: comfy::LoraLevel::Off,
         res_mode: "standard",
         is_human: true,
     };
 
-    let (graph_soft, _, _, _) = comfy::build_generation_graph(&cfg).expect("graph soft should succeed");
-    if graph_soft.get("15").is_some() {
-        assert_eq!(graph_soft["15"]["inputs"]["strength_model"], 0.40);
+    let (graph_light, _, _, _) = comfy::build_generation_graph(&cfg).expect("graph light should succeed");
+    if graph_light.get("15").is_some() {
+        assert_eq!(graph_light["15"]["inputs"]["strength_model"], 0.30);
     }
-    if graph_soft.get("14").is_some() {
-        assert_eq!(graph_soft["14"]["inputs"]["strength_model"], 0.35);
+    if graph_light.get("14").is_some() {
+        assert_eq!(graph_light["14"]["inputs"]["strength_model"], 0.28);
     }
 
-    cfg.anime = comfy::LoraLevel::Full;
-    cfg.uncensored = comfy::LoraLevel::Full;
-    let (graph_full, _, _, _) = comfy::build_generation_graph(&cfg).expect("graph full should succeed");
-    if graph_full.get("15").is_some() {
-        assert_eq!(graph_full["15"]["inputs"]["strength_model"], 0.65);
+    cfg.anime = comfy::LoraLevel::Medium;
+    cfg.uncensored = comfy::LoraLevel::Medium;
+    let (graph_med, _, _, _) = comfy::build_generation_graph(&cfg).expect("graph med should succeed");
+    if graph_med.get("15").is_some() {
+        assert_eq!(graph_med["15"]["inputs"]["strength_model"], 0.48);
     }
-    if graph_full.get("14").is_some() {
-        assert_eq!(graph_full["14"]["inputs"]["strength_model"], 0.50);
+    if graph_med.get("14").is_some() {
+        assert_eq!(graph_med["14"]["inputs"]["strength_model"], 0.40);
+    }
+
+    cfg.anime = comfy::LoraLevel::Heavy;
+    cfg.uncensored = comfy::LoraLevel::Heavy;
+    let (graph_heavy, _, _, _) = comfy::build_generation_graph(&cfg).expect("graph heavy should succeed");
+    if graph_heavy.get("15").is_some() {
+        assert_eq!(graph_heavy["15"]["inputs"]["strength_model"], 0.70);
+    }
+    if graph_heavy.get("14").is_some() {
+        assert_eq!(graph_heavy["14"]["inputs"]["strength_model"], 0.52);
     }
 }
 
@@ -379,7 +395,7 @@ fn test_vram_budget_node_in_graph_and_easycache_lora_bypass() {
         seed: 42,
         image_ref: None,
         denoise: 0.85,
-        anime: comfy::LoraLevel::Soft,
+        anime: comfy::LoraLevel::Medium,
         turbo: false,
         uncensored: comfy::LoraLevel::Off,
         anatomy: comfy::LoraLevel::Off,

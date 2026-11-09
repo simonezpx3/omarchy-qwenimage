@@ -400,13 +400,13 @@ fn main() {
                 } else if args[idx] == "--anime" {
                     if let Some(next) = args.get(idx + 1) {
                         let next_lower = next.to_lowercase();
-                        if next_lower == "soft" || next_lower == "full" || next_lower == "off" {
+                        if next_lower == "light" || next_lower == "medium" || next_lower == "heavy" || next_lower == "soft" || next_lower == "full" || next_lower == "off" {
                             anime = comfy::LoraLevel::from_str_opt(&next_lower);
                             idx += 2;
                             continue;
                         }
                     }
-                    anime = comfy::LoraLevel::Full;
+                    anime = comfy::LoraLevel::Heavy;
                     idx += 1;
                 } else if args[idx] == "--turbo" {
                     turbo = true;
@@ -417,13 +417,13 @@ fn main() {
                 } else if args[idx] == "--uncensored" || args[idx] == "--heretic" {
                     if let Some(next) = args.get(idx + 1) {
                         let next_lower = next.to_lowercase();
-                        if next_lower == "soft" || next_lower == "full" || next_lower == "off" {
+                        if next_lower == "light" || next_lower == "medium" || next_lower == "heavy" || next_lower == "soft" || next_lower == "full" || next_lower == "off" {
                             uncensored = comfy::LoraLevel::from_str_opt(&next_lower);
                             idx += 2;
                             continue;
                         }
                     }
-                    uncensored = comfy::LoraLevel::Full;
+                    uncensored = comfy::LoraLevel::Heavy;
                     idx += 1;
                 } else if let Some(val) = args[idx].strip_prefix("--anatomy=").or_else(|| args[idx].strip_prefix("--anatomy-lora=")) {
                     anatomy = comfy::LoraLevel::from_str_opt(val);
@@ -431,13 +431,13 @@ fn main() {
                 } else if args[idx] == "--anatomy" || args[idx] == "--anatomy-lora" {
                     if let Some(next) = args.get(idx + 1) {
                         let next_lower = next.to_lowercase();
-                        if next_lower == "soft" || next_lower == "full" || next_lower == "off" {
+                        if next_lower == "light" || next_lower == "medium" || next_lower == "heavy" || next_lower == "soft" || next_lower == "full" || next_lower == "off" {
                             anatomy = comfy::LoraLevel::from_str_opt(&next_lower);
                             idx += 2;
                             continue;
                         }
                     }
-                    anatomy = comfy::LoraLevel::Full;
+                    anatomy = comfy::LoraLevel::Heavy;
                     idx += 1;
                 } else if args[idx] == "--expand" || args[idx] == "--auto-expand" {
                     expand = true;

@@ -110,10 +110,17 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
 
     let mut prompt_text = cfg.prompt.to_string();
     if has_anime && !prompt_text.to_lowercase().contains("anime") {
-        if cfg.anime == LoraLevel::Full {
-            prompt_text = format!("masterpiece, detailed anime visual novel illustration, cel shading, {}", prompt_text);
-        } else {
-            prompt_text = format!("masterpiece, clean stylized illustration, expressive anime aesthetic, {}", prompt_text);
+        match cfg.anime {
+            LoraLevel::Heavy => {
+                prompt_text = format!("masterpiece, detailed anime visual novel illustration, cel shading, {}", prompt_text);
+            }
+            LoraLevel::Medium => {
+                prompt_text = format!("masterpiece, clean stylized illustration, expressive anime aesthetic, {}", prompt_text);
+            }
+            LoraLevel::Light => {
+                prompt_text = format!("clean anime subtle styling, {}", prompt_text);
+            }
+            LoraLevel::Off => {}
         }
     }
 
@@ -184,10 +191,11 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     let mut current_model = json!(["1", 0]);
 
     if has_uncensored {
-        // Heretic / Uncensored LoRA: calibrated for Soft (0.35/0.30) and Full (0.50/0.45)
+        // Heretic / Uncensored LoRA: calibrated for Light (0.28/0.24), Medium (0.40/0.35), Heavy (0.52/0.46)
         let weight = match cfg.uncensored {
-            LoraLevel::Soft => if has_turbo { 0.30 } else { 0.35 },
-            LoraLevel::Full => if has_turbo { 0.45 } else { 0.50 },
+            LoraLevel::Light => if has_turbo { 0.24 } else { 0.28 },
+            LoraLevel::Medium => if has_turbo { 0.35 } else { 0.40 },
+            LoraLevel::Heavy => if has_turbo { 0.46 } else { 0.52 },
             LoraLevel::Off => 0.0,
         };
         graph["14"] = json!({
@@ -202,10 +210,11 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     }
 
     if has_anime {
-        // Anime LoRA: Soft (0.40/0.35) for subtle illustration aesthetic, Full (0.65/0.55) for 2D cel-shading
+        // Anime LoRA: Light (0.30/0.25) for subtle illustration, Medium (0.48/0.40) for stylized, Heavy (0.70/0.58) for 2D cel-shading
         let weight = match cfg.anime {
-            LoraLevel::Soft => if has_turbo { 0.35 } else { 0.40 },
-            LoraLevel::Full => if has_turbo { 0.55 } else { 0.65 },
+            LoraLevel::Light => if has_turbo { 0.25 } else { 0.30 },
+            LoraLevel::Medium => if has_turbo { 0.40 } else { 0.48 },
+            LoraLevel::Heavy => if has_turbo { 0.58 } else { 0.70 },
             LoraLevel::Off => 0.0,
         };
         graph["15"] = json!({
@@ -220,10 +229,11 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     }
 
     if has_anatomy {
-        // Anatomy LoRA: Soft (0.35/0.30) preserves natural body proportions without warping props/armor, Full (0.60/0.55) for explicit nudes
+        // Anatomy LoRA: Light (0.28/0.24), Medium (0.42/0.36), Heavy (0.62/0.55)
         let weight = match cfg.anatomy {
-            LoraLevel::Soft => if has_turbo { 0.30 } else { 0.35 },
-            LoraLevel::Full => if has_turbo { 0.55 } else { 0.60 },
+            LoraLevel::Light => if has_turbo { 0.24 } else { 0.28 },
+            LoraLevel::Medium => if has_turbo { 0.36 } else { 0.42 },
+            LoraLevel::Heavy => if has_turbo { 0.55 } else { 0.62 },
             LoraLevel::Off => 0.0,
         };
         graph["22"] = json!({

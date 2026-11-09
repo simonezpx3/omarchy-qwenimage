@@ -80,7 +80,7 @@ Item {
       args.push(String(clampedDenoise));
     }
 
-    if (service.animeMode === "soft" || service.animeMode === "full") {
+    if (service.animeMode && service.animeMode !== "off") {
       args.push("--anime");
       args.push(service.animeMode);
     }
@@ -89,12 +89,12 @@ Item {
       args.push("--turbo");
     }
 
-    if (service.hereticMode === "soft" || service.hereticMode === "full") {
+    if (service.hereticMode && service.hereticMode !== "off") {
       args.push("--heretic");
       args.push(service.hereticMode);
     }
 
-    if (service.anatomyMode === "soft" || service.anatomyMode === "full") {
+    if (service.anatomyMode && service.anatomyMode !== "off") {
       args.push("--anatomy");
       args.push(service.anatomyMode);
     }

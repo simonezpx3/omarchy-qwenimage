@@ -121,10 +121,10 @@ Item {
   // User Preferences
   property string currentLang: "en"
   property bool isNsfwEnabled: false
-  property string animeMode: "off"      // "off" | "soft" | "full"
+  property string animeMode: "off"      // "off" | "light" | "medium" | "heavy"
   property bool isTurboEnabled: true
-  property string hereticMode: "off"    // "off" | "soft" | "full"
-  property string anatomyMode: "off"    // "off" | "soft" | "full"
+  property string hereticMode: "off"    // "off" | "light" | "medium" | "heavy"
+  property string anatomyMode: "off"    // "off" | "light" | "medium" | "heavy"
   property bool isAutoExpandEnabled: false
 
   // Backward compatibility properties for bindings and external widgets
@@ -297,6 +297,15 @@ Item {
     function paste(): void {
       root.pasteFromClipboard();
       root.openRequested("studio");
+    }
+    function anime(): void {
+      root.cycleAnimeMode();
+    }
+    function heretic(): void {
+      root.cycleHereticMode();
+    }
+    function anatomy(): void {
+      root.cycleAnatomyMode();
     }
   }
 }
