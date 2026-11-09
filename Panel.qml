@@ -131,7 +131,7 @@ Panel {
     owner: root
     bar: root.bar
     centerOnBar: true
-    contentWidth: panel.fittedContentWidth(Commons.Style.space(960))
+    contentWidth: panel.fittedContentWidth(Commons.Style.space(980))
     contentHeight: panel.fittedContentHeight(Commons.Style.space(720))
 
     PanelKeyCatcher {

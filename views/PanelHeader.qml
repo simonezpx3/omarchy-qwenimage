@@ -77,7 +77,7 @@ RowLayout {
     }
   }
 
-  // Active Qwen Model Version Badge
+  // Active Qwen Model Version Badge (Compact, matching detector height 20)
   Rectangle {
     height: Commons.Style.space(20)
     implicitWidth: qwenModelRow.implicitWidth + Commons.Style.spacing.xs * 2
@@ -99,16 +99,21 @@ RowLayout {
       }
       Text {
         textFormat: Text.PlainText
-        text: headerRoot.versionQwen
+        text: {
+          var v = headerRoot.versionQwen || "";
+          return v.replace("Qwen-Image ", "").replace("Heretic ", "");
+        }
         font.family: Commons.Style.font.family
         font.pixelSize: Commons.Style.font.caption
         font.bold: true
         color: Commons.Color.accent
+        elide: Text.ElideRight
+        Layout.maximumWidth: Commons.Style.space(130)
       }
     }
   }
 
-  // Segmented Navigation Tabs (AC1)
+  // Segmented Navigation Tabs (AC1 - Styled identical to detector pills, height 20)
   RowLayout {
     spacing: Commons.Style.spacing.xs
 
@@ -120,20 +125,47 @@ RowLayout {
         { key: "compare", label: "COMPARE" }
       ]
 
-      delegate: Button {
-        text: modelData.label
-        fontSize: Commons.Style.font.caption
-        bordered: true
-        selected: headerRoot.currentView === modelData.key
-        active: headerRoot.currentView === modelData.key
-        onClicked: headerRoot.setView(modelData.key)
+      delegate: Rectangle {
+        readonly property bool isSelected: headerRoot.currentView === modelData.key
+        property bool isHovered: false
+
+        height: Commons.Style.space(20)
+        implicitWidth: tabText.implicitWidth + Commons.Style.spacing.xs * 2
+        radius: Commons.Style.cornerRadius
+        color: isSelected
+          ? Commons.Util.alpha(Commons.Color.accent, 0.22)
+          : (isHovered ? Commons.Util.alpha(Commons.Color.foreground, 0.1) : Commons.Util.alpha(Commons.Color.background, 0.35))
+        border.color: isSelected
+          ? Commons.Color.accent
+          : (isHovered ? Commons.Util.alpha(Commons.Color.menu.border, 0.8) : Commons.Util.alpha(Commons.Color.menu.border, 0.45))
+        border.width: 1
+
+        Text {
+          id: tabText
+          anchors.centerIn: parent
+          textFormat: Text.PlainText
+          text: modelData.label
+          font.family: Commons.Style.font.family
+          font.pixelSize: Commons.Style.font.caption
+          font.bold: isSelected
+          color: isSelected ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.foreground, 0.8)
+        }
+
+        MouseArea {
+          anchors.fill: parent
+          hoverEnabled: true
+          cursorShape: Qt.PointingHandCursor
+          onEntered: parent.isHovered = true
+          onExited: parent.isHovered = false
+          onClicked: headerRoot.setView(modelData.key)
+        }
       }
     }
   }
 
   Item { Layout.fillWidth: true }
 
-  // Service Health Badges row
+  // Service Health Badges row (Compact detector size, height 20)
   RowLayout {
     spacing: Commons.Style.spacing.xs
 
@@ -158,7 +190,7 @@ RowLayout {
         }
         Text {
           textFormat: Text.PlainText
-          text: (headerRoot.versionComfy && headerRoot.versionComfy !== "Offline" && headerRoot.versionComfy !== "Online") ? ("COMFYUI v" + headerRoot.versionComfy) : "COMFYUI"
+          text: "COMFYUI"
           font.family: Commons.Style.font.family
           font.pixelSize: Commons.Style.font.caption
           font.bold: true
@@ -188,7 +220,7 @@ RowLayout {
         }
         Text {
           textFormat: Text.PlainText
-          text: (headerRoot.versionOllama && headerRoot.versionOllama !== "Offline" && headerRoot.versionOllama !== "Online") ? ("OLLAMA v" + headerRoot.versionOllama) : "OLLAMA"
+          text: "OLLAMA"
           font.family: Commons.Style.font.family
           font.pixelSize: Commons.Style.font.caption
           font.bold: true
@@ -218,7 +250,7 @@ RowLayout {
         }
         Text {
           textFormat: Text.PlainText
-          text: "WD14 ONNX"
+          text: "WD14"
           font.family: Commons.Style.font.family
           font.pixelSize: Commons.Style.font.caption
           font.bold: true
@@ -238,7 +270,7 @@ RowLayout {
 
   Text {
     textFormat: Text.PlainText
-    text: "VRAM: " + (headerRoot.vramUsed / 1024).toFixed(1) + " / " + (headerRoot.vramTotal / 1024).toFixed(1) + " GB (" + headerRoot.vramPct + "%)"
+    text: (headerRoot.vramUsed / 1024).toFixed(1) + " / " + (headerRoot.vramTotal / 1024).toFixed(1) + " GB (" + headerRoot.vramPct + "%)"
     font.family: Commons.Style.font.family
     font.features: { "tnum": 1 }
     font.pixelSize: Commons.Style.font.caption
