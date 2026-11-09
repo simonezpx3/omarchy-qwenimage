@@ -1029,18 +1029,13 @@ start_comfyui() {
         return 1
     fi
 
-    local args=("--listen" "127.0.0.1" "--port" "8188" "--preview-method" "auto" "--disable-cuda-malloc")
+    local args=("--listen" "127.0.0.1" "--port" "8188" "--preview-method" "auto" "--disable-cuda-malloc" "--cache-classic")
     if [[ "$HW_TIER" == "B" ]]; then
         args+=("--lowvram" "--enable-dynamic-vram")
     elif [[ "$HW_TIER" == "C" ]]; then
         args+=("--cpu")
     else
-        local reserve_val="1.2"
-        if (( VRAM_MB >= 14000 )); then
-            reserve_val="0.5"
-        elif (( VRAM_MB >= 10000 )); then
-            reserve_val="0.8"
-        fi
+        local reserve_val="0.5"
         if [[ -n "${QIS_VRAM_RESERVE_GB:-}" ]]; then
             reserve_val="${QIS_VRAM_RESERVE_GB}"
         fi

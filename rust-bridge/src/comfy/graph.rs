@@ -157,27 +157,9 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
         }
         if let Some(n6) = val.get_mut("6").and_then(|n| n.get_mut("inputs")) {
             n6["seed"] = json!(final_seed);
-            n6["steps"] = json!(if has_turbo { 6 } else { cfg.steps.max(20) });
+            n6["steps"] = json!(if has_turbo { 6 } else { cfg.steps });
             n6["cfg"] = json!(if has_turbo { 1.0 } else { cfg.cfg });
             n6["denoise"] = json!(cfg.denoise);
-        }
-
-        // When denoise is 1.0 (New Scene / Subject Transfer), start from EmptyLatentImage
-        // so the old scene pixels don't bleed into the new canvas, while TextEncodeQwenImageEditPlus
-        // provides reference vision conditioning for identity consistency.
-        if cfg.denoise >= 0.999 {
-            val["5c"] = json!({
-                "class_type": "EmptyLatentImage",
-                "inputs": {
-                    "width": width,
-                    "height": height,
-                    "batch_size": 1
-                }
-            });
-            if let Some(n6) = val.get_mut("6").and_then(|n| n.get_mut("inputs")) {
-                n6["latent_image"] = json!(["5c", 0]);
-                n6["denoise"] = json!(1.0);
-            }
         }
         val
     } else {
@@ -348,24 +330,7 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
             }
         });
         let has_ref_image = cfg.image_ref.filter(|s| !s.trim().is_empty()).is_some();
-        let is_new_scene_transfer = has_ref_image && cfg.denoise >= 0.999;
-        if is_new_scene_transfer {
-            graph["5c"] = json!({
-                "class_type": "EmptyLatentImage",
-                "inputs": {
-                    "width": width,
-                    "height": height,
-                    "batch_size": 1
-                }
-            });
-        }
-        let latent_node = if has_ref_image && !is_new_scene_transfer {
-            json!(["5b", 0])
-        } else if is_new_scene_transfer {
-            json!(["5c", 0])
-        } else {
-            json!(["5", 0])
-        };
+        let latent_node = if has_ref_image { json!(["5b", 0]) } else { json!(["5", 0]) };
         let turbo_nodes = if cfg.is_human {
             // Official 7-step schedule: adds 0.9583 and 0.9167 for anatomical stability
             "1.0, 0.9583, 0.9167, 0.875, 0.75, 0.5, 0.25"
@@ -380,20 +345,7 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
                 "nodes": turbo_nodes
             }
         });
-        let sigmas_source = if has_ref_image && cfg.denoise < 0.999 {
-            let min_denoise = if cfg.is_human { 1.0_f32 / 7.0_f32 } else { 1.0_f32 / 6.0_f32 };
-            let effective_denoise = cfg.denoise.clamp(min_denoise, 1.0);
-            graph["21"] = json!({
-                "class_type": "SplitSigmasDenoise",
-                "inputs": {
-                    "sigmas": ["20", 0],
-                    "denoise": effective_denoise
-                }
-            });
-            json!(["21", 1])
-        } else {
-            json!(["20", 0])
-        };
+        let sigmas_source = json!(["20", 0]);
         graph["6"] = json!({
             "class_type": "SamplerCustomAdvanced",
             "inputs": {

@@ -119,23 +119,11 @@ fn test_turbo_i2i_split_sigmas_denoise() {
         is_human: false,
     };
 
-    let (graph_part, _, _, _) = comfy::build_generation_graph(&cfg_partial).expect("graph partial should succeed");
-    assert!(graph_part.get("21").is_some());
-    assert_eq!(graph_part["21"]["class_type"], "SplitSigmasDenoise");
-    assert_eq!(graph_part["6"]["inputs"]["sigmas"], serde_json::json!(["21", 1]));
-    assert!((graph_part["21"]["inputs"]["denoise"].as_f64().unwrap() - 0.65).abs() < 1e-4);
-
-    let mut cfg_full = cfg_partial.clone();
-    cfg_full.denoise = 1.0;
-    let (graph_full, _, _, _) = comfy::build_generation_graph(&cfg_full).expect("graph full should succeed");
-    assert!(graph_full.get("21").is_none());
-    assert_eq!(graph_full["6"]["inputs"]["sigmas"], serde_json::json!(["20", 0]));
-
-    let mut cfg_low = cfg_partial.clone();
-    cfg_low.denoise = 0.05;
-    let (graph_low, _, _, _) = comfy::build_generation_graph(&cfg_low).expect("graph low should succeed");
-    let low_d = graph_low["21"]["inputs"]["denoise"].as_f64().unwrap();
-    assert!(low_d >= (1.0 / 6.0) - 1e-5);
+    let (graph, _, _, _) = comfy::build_generation_graph(&cfg_partial).expect("turbo i2i graph should succeed");
+    // Turbo i2i retains full student distillation schedule ["20", 0] without destructive SplitSigmas truncation
+    assert_eq!(graph["6"]["inputs"]["sigmas"], serde_json::json!(["20", 0]));
+    assert!(graph.get("21").is_none());
+    assert_eq!(graph["6"]["inputs"]["latent_image"], serde_json::json!(["5b", 0]));
 
     let _ = fs::remove_file(&ref_img);
 }
@@ -417,35 +405,4 @@ fn test_vram_budget_node_in_graph_and_easycache_lora_bypass() {
     cfg.anime = comfy::LoraLevel::Off;
     let (graph_no_lora, _, _, _) = comfy::build_generation_graph(&cfg).expect("graph should build");
     assert!(graph_no_lora.get("10").is_some(), "EasyCache must be active when no LoRA is enabled");
-}
-
-#[test]
-fn test_denoise_full_new_scene_empty_latent() {
-    let dummy_ref = "/tmp/test_qis_ref.png";
-    let _ = std::fs::write(dummy_ref, b"fake png");
-
-    let cfg_edit = comfy::GenerationConfig {
-        prompt: "girl on a beach",
-        negative_prompt: "blurry",
-        ratio: "1:1",
-        steps: 25,
-        cfg: 4.0,
-        seed: 42,
-        image_ref: Some(dummy_ref),
-        denoise: 1.0,
-        anime: comfy::LoraLevel::Off,
-        turbo: false,
-        uncensored: comfy::LoraLevel::Off,
-        anatomy: comfy::LoraLevel::Off,
-        res_mode: "standard",
-        is_human: true,
-    };
-
-    let (graph, _, _, _) = comfy::build_generation_graph(&cfg_edit).expect("graph should build");
-    assert!(graph.get("5c").is_some(), "Node 5c (EmptyLatentImage) must exist for denoise 1.0");
-    assert_eq!(graph["5c"]["class_type"], "EmptyLatentImage");
-    assert_eq!(graph["6"]["inputs"]["latent_image"], serde_json::json!(["5c", 0]));
-    assert_eq!(graph["6"]["inputs"]["denoise"], 1.0);
-
-    let _ = std::fs::remove_file(dummy_ref);
 }

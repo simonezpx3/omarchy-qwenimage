@@ -206,16 +206,11 @@ Rectangle {
       Text {
         id: denoiseLabel
         textFormat: Text.PlainText
-        text: {
-          if (panelRoot && panelRoot.denoise >= 0.98) {
-            return (root ? root.tr("denoise") : "DENOISE: ") + (root ? root.tr("denoise_new_scene") : "1.00 (NEW SCENE)");
-          }
-          return (root ? root.tr("denoise") : "DENOISE: ") + (panelRoot ? panelRoot.denoise.toFixed(2) : "0.65");
-        }
+        text: (root ? root.tr("denoise") : "DENOISE: ") + (panelRoot ? panelRoot.denoise.toFixed(2) : "0.65")
         font.family: Commons.Style.font.family
         font.pixelSize: Commons.Style.font.caption
         color: panelRoot && panelRoot.referencePath !== "" ? Commons.Color.foreground : Commons.Util.alpha(Commons.Color.foreground, 0.45)
-        Layout.preferredWidth: Commons.Style.space(145)
+        Layout.preferredWidth: Commons.Style.space(85)
 
         HoverHandler {
           onHoveredChanged: if (root) root.setHelp(root.tr("help_denoise"), hovered)
@@ -227,7 +222,7 @@ Rectangle {
         Layout.fillWidth: true
         bar: panelRoot ? panelRoot.bar : null
         minimum: 0.1
-        maximum: 1.0
+        maximum: 0.95
         step: 0.05
         enabled: panelRoot && panelRoot.referencePath !== ""
         value: panelRoot ? panelRoot.denoise : 0.65

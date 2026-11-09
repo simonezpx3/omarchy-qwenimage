@@ -195,35 +195,14 @@ pub(crate) fn cmd_generate(
 
     let is_human = detect_human_subject(&final_prompt);
     let final_res_mode = res_mode.unwrap_or("standard").to_string();
-    let mut final_steps = steps;
-    let mut final_cfg = if turbo { 1.0 } else { cfg };
-    let mut active_turbo = turbo;
-    let mut anatomical_fallback = false;
-
-    // Anatomical Safety Router:
-    // Viggle Turbo LoRA operates at CFG 1.0 without negative prompts and collapses fine anatomy
-    // when layered with Anatomy LoRA. When anatomy is active, smoothly step down to Standard Euler
-    // (28 steps, CFG 4.0, full anatomical negative filter protection with EasyCache).
-    if active_turbo && anatomy.is_active() {
-        active_turbo = false;
-        anatomical_fallback = true;
-        if final_steps < 25 {
-            final_steps = 28;
-        }
-        if final_cfg < 3.0 {
-            final_cfg = 4.0;
-        }
-        eprintln!(
-            "\x1b[38;2;97;213;248mANATOMICAL ROUTER // Anatomy LoRA active -> Auto transition: TURBO -> STANDARD (Euler 28 steps, CFG 4.0, negative anatomical guard)\x1b[0m"
-        );
-    } else if active_turbo {
-        final_cfg = 1.0;
-        final_steps = if is_human { 7 } else { 6 };
-    } else if final_steps < 20 {
-        // Enforce standard step floor when Turbo is disabled to prevent
-        // Euler scheduler discretization collapse with denoise
-        final_steps = 25;
-    }
+    let active_turbo = turbo;
+    let anatomical_fallback = false;
+    let final_steps = if active_turbo {
+        if is_human { 7 } else { 6 }
+    } else {
+        steps.max(20)
+    };
+    let final_cfg = if active_turbo { 1.0 } else { cfg };
 
     if is_human {
         let neg_lower = final_negative.to_lowercase();
@@ -256,11 +235,6 @@ pub(crate) fn cmd_generate(
     if !crate::comfy::ensure_comfyui_running() {
         println!("{}", serde_json::json!({"status": "error", "message": "ComfyUI server is offline"}));
         return;
-    }
-
-    let free_vram = crate::comfy::get_vram_free_mb();
-    if free_vram < 4000 {
-        crate::comfy::free_comfyui_vram(true);
     }
 
     let gen_cfg = crate::comfy::GenerationConfig {

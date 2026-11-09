@@ -76,7 +76,7 @@ Item {
 
     if (service.referencePath !== "") {
       args.push(service.referencePath);
-      var clampedDenoise = Math.min(1.0, Math.max(0.05, service.denoise));
+      var clampedDenoise = Math.min(0.95, Math.max(0.05, service.denoise));
       args.push(String(clampedDenoise));
     }
 

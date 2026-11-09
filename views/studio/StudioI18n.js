@@ -212,13 +212,9 @@ var strings = {
     "cs": "VISION PROMPT: Zrekonstruuje a popíše scénu přirozeným jazykem pomocí multimodálního modelu Qwen-Vision na lokální GPU.",
     "en": "VISION PROMPT: Reconstructs and describes scene in natural language via local multimodal Qwen-Vision on local GPU."
   },
-  "denoise_new_scene": {
-    "cs": "1.00 (NOVÁ SCÉNA)",
-    "en": "1.00 (NEW SCENE)"
-  },
   "help_denoise": {
-    "cs": "DENOISE: Míra přepracování referenčního obrázku (0.10 = jemná úprava detailů, 0.65 = vyvážený redesign kompozice, 0.85 = hluboká transformace, 1.00 = nová scéna s přenosem identity).",
-    "en": "DENOISE: Modification strength of reference image (0.10 = subtle detail edit, 0.65 = balanced redesign, 0.85 = heavy transformation, 1.00 = new scene with subject identity transfer)."
+    "cs": "DENOISE: Míra přepracování referenčního obrázku (0.10 = jemné úpravy, 0.65 = vyvážený redesign kompozice, 0.95 = hluboká transformace).",
+    "en": "DENOISE: Modification strength of reference image (0.10 = subtle edit, 0.65 = balanced redesign, 0.95 = deep transformation)."
   },
   "help_scale_esrgan": {
     "cs": "4X ESRGAN: Neuronový 4X upscaling pomocí RealESRGAN_x4plus (silné potlačení šumu a artefaktů, nulová mřížka).",

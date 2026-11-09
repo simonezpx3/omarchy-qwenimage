@@ -179,6 +179,7 @@ pub fn ensure_comfyui_running() -> bool {
     false
 }
 
+#[allow(dead_code)]
 pub fn get_vram_free_mb() -> u64 {
     let agent = ureq::Agent::config_builder()
         .timeout_global(Some(Duration::from_millis(800)))
@@ -283,12 +284,6 @@ pub fn execute_comfy_workflow(prompt_graph: &Value) -> Result<String, String> {
         .timeout_global(Some(Duration::from_secs(12)))
         .build()
         .new_agent();
-
-    // Pre-flight memory cleanup if free VRAM is under pressure (< 3.2 GB)
-    let vram_free_mb = crate::vram::get_vram_info().free_mb;
-    if vram_free_mb < 3200 {
-        free_comfyui_vram(false);
-    }
 
     // 2-pass auto-recovery on CUDA OOM
     for attempt in 1..=2 {
