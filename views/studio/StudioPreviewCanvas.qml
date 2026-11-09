@@ -116,7 +116,7 @@ ColumnLayout {
               Layout.alignment: Qt.AlignHCenter
               text: panelRoot && panelRoot.isGenerating
                 ? "Initializing diffusion pipeline..."
-                : "Enter prompt and press Ctrl+Enter"
+                : "Enter prompt to synthesize"
               font.family: Commons.Style.font.family
               font.pixelSize: Commons.Style.font.caption
               color: Commons.Util.alpha(Commons.Color.foreground, 0.35)

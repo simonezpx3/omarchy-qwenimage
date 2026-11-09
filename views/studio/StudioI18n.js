@@ -3,8 +3,8 @@
 var strings = {
   // Prompt Box
   "prompt_title": {
-    "cs": "PROMPT (ALT+↑/↓ HISTORIE)",
-    "en": "PROMPT (ALT+↑/↓ HISTORY)"
+    "cs": "PROMPT",
+    "en": "PROMPT"
   },
   "prompt_placeholder": {
     "cs": "Zadej prompt v angličtině (automatický lokální překlad)...",
@@ -67,7 +67,7 @@ var strings = {
   },
   "no_buffer": { "cs": "Bez bufferu", "en": "No Buffer" },
   "buffer_empty": { "cs": "BUFFER // PRÁZDNÝ", "en": "BUFFER // EMPTY" },
-  "drop_hint": { "cs": "Vlož obrázek ze schránky (Super+V) nebo pořiď výřez", "en": "Paste image from clipboard (Super+V) or snip area" },
+  "drop_hint": { "cs": "Vlož obrázek ze schránky nebo pořiď výřez", "en": "Paste image from clipboard or snip area" },
   "buffer_ref": { "cs": "BUFFER // REFERENCE", "en": "BUFFER // REFERENCE" },
   "paste": { "cs": "VLOŽIT", "en": "PASTE" },
   "snip": { "cs": "VÝŘEZ", "en": "SNIP" },
@@ -82,7 +82,7 @@ var strings = {
   "canvas_title": { "cs": "PLÁTNO & VÝSTUP", "en": "CANVAS & OUTPUT" },
   "generating_img": { "cs": "GENEROVÁNÍ OBRAZU NA LOKÁLNÍ GPU...", "en": "GENERATING IMAGE ON LOCAL GPU..." },
   "ready_to_synth": { "cs": "PŘIPRAVENO KE GENEROVÁNÍ", "en": "READY TO SYNTHESIZE" },
-  "press_gen_hint": { "cs": "Stiskni GENERATE nebo Ctrl+Enter", "en": "Press GENERATE or Ctrl+Enter" },
+  "press_gen_hint": { "cs": "Stiskni GENERATE", "en": "Press GENERATE to synthesize" },
   "scale": { "cs": "MĚŘÍTKO:", "en": "SCALE:" },
   "set_wallpaper": { "cs": "JAKO TAPETU", "en": "SET AS WALLPAPER" },
   "compare_ab": { "cs": "SROVNAT A/B", "en": "COMPARE A/B" },
@@ -94,14 +94,14 @@ var strings = {
   "history": { "cs": "HISTORIE", "en": "HISTORY" },
   "reset": { "cs": "RESETOVAT", "en": "RESET" },
   "cancel": { "cs": "PŘERUŠIT", "en": "CANCEL" },
-  "generate": { "cs": "GENEROVAT (CTRL+ENTER)", "en": "GENERATE (CTRL+ENTER)" },
+  "generate": { "cs": "GENEROVAT", "en": "GENERATE" },
   "generating": { "cs": "GENEROVÁNÍ...", "en": "GENERATING..." },
   "upscaling": { "cs": "ZVĚTŠOVÁNÍ (UPSCALE)...", "en": "UPSCALING..." },
   "enhancing": { "cs": "AI ZVĚTŠOVÁNÍ (2X)...", "en": "AI ENHANCING (2X)..." },
   "locked_game": { "cs": "ZAMČENO (BĚŽÍ HRA)", "en": "LOCKED (GAME RUNNING)" },
   "default_tip": {
-    "cs": "Tip: Stiskni Ctrl+Enter pro generování | Alt+↑ / Alt+↓ pro procházení historie promptů",
-    "en": "Tip: Press Ctrl+Enter to generate | Alt+↑ / Alt+↓ to browse prompt history"
+    "cs": "Tip: Zadej prompt a zvol preset pro generování na lokální GPU",
+    "en": "Tip: Enter prompt and choose preset to generate on local GPU"
   },
 
   // Contextual Hover Help
@@ -277,8 +277,8 @@ var strings = {
     "en": "LANGUAGE SWITCHER: Toggles interface and help text between English (EN) and Czech (CZ)."
   },
   "help_generate": {
-    "cs": "GENERATE (Ctrl+Enter): Spustí generování obrazu na lokální GPU za 0 tokenů.",
-    "en": "GENERATE (Ctrl+Enter): Starts image generation on local GPU at 0 tokens."
+    "cs": "GENERATE: Spustí generování obrazu na lokální GPU za 0 tokenů.",
+    "en": "GENERATE: Starts image generation on local GPU at 0 tokens."
   }
 };
 

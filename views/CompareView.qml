@@ -248,7 +248,7 @@ Item {
       Item { Layout.fillWidth: true }
 
       Button {
-        text: "BACK TO STUDIO (ESC)"
+        text: "BACK TO STUDIO"
         bordered: true
         active: true
         onClicked: {
