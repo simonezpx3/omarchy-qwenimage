@@ -47,26 +47,51 @@ Item {
         }
 
         delegate: Rectangle {
+          id: cardDelegate
           x: Math.round((historyList.width - width) / 2)
           width: historyList.width - Commons.Style.spacing.sm * 2
-          height: Commons.Style.space(125)
-          color: Commons.Color.menu.background
-          border.color: Commons.Color.menu.border
+          implicitHeight: Math.max(Commons.Style.space(130), rowContent.implicitHeight + Commons.Style.spacing.sm * 2)
+          height: implicitHeight
+          color: cardArea.containsMouse ? Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.06) : Commons.Color.menu.background
+          border.color: cardArea.containsMouse ? Commons.Color.accent : Commons.Color.menu.border
           border.width: 1
           radius: Commons.Style.cornerRadius
 
-          RowLayout {
+          MouseArea {
+            id: cardArea
             anchors.fill: parent
-            anchors.margins: Commons.Style.spacing.xs
-            spacing: Commons.Style.spacing.sm
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            z: 0
+            onClicked: {
+              if (panelRoot) {
+                panelRoot.restoreFromHistory(modelData.path, modelData.prompt, modelData.seed, modelData.ratio, modelData.negative_prompt);
+                panelRoot.currentView = "studio";
+              }
+            }
+            onDoubleClicked: {
+              if (panelRoot) panelRoot.openFullscreenViewer(modelData.path);
+            }
+          }
 
-            // Thumbnail (+50% enlarged from 80px to 120px)
+          RowLayout {
+            id: rowContent
+            z: 1
+            anchors.fill: parent
+            anchors.margins: Commons.Style.spacing.sm
+            spacing: Commons.Style.spacing.md
+
+            // 1. Thumbnail Preview Box
             Rectangle {
+              id: previewBox
               Layout.preferredWidth: Commons.Style.space(120)
               Layout.fillHeight: true
+              Layout.minimumHeight: Commons.Style.space(110)
               color: Commons.Color.background
               radius: Commons.Style.cornerRadius
               clip: true
+              border.color: Commons.Color.menu.border
+              border.width: 1
 
               Image {
                 anchors.fill: parent
@@ -78,72 +103,58 @@ Item {
                 cache: true
                 asynchronous: true
               }
+
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: if (panelRoot) panelRoot.openFullscreenViewer(modelData.path)
+              }
             }
 
-            // Meta Info
+            // 2. Metadata, Prompt description & Action Buttons Header (Inspiration layout)
             ColumnLayout {
               Layout.fillWidth: true
-              Layout.alignment: Qt.AlignVCenter
-              spacing: Commons.Style.spacing.xxs
-
-              Text {
-                text: modelData.filename || ""
-                textFormat: Text.PlainText
-                font.family: Commons.Style.font.family
-                font.pixelSize: Commons.Style.font.caption
-                font.bold: true
-                color: Commons.Color.accent
-                elide: Text.ElideMiddle
-                Layout.preferredWidth: 0
-                Layout.fillWidth: true
-              }
-
-              Text {
-                text: modelData.prompt || "No prompt"
-                textFormat: Text.PlainText
-                font.family: Commons.Style.font.family
-                font.pixelSize: Commons.Style.font.caption
-                color: Commons.Color.foreground
-                elide: Text.ElideRight
-                maximumLineCount: 2
-                wrapMode: Text.Wrap
-                Layout.preferredWidth: 0
-                Layout.fillWidth: true
-              }
-
-              Text {
-                visible: !!modelData.negative_prompt && modelData.negative_prompt.trim() !== ""
-                text: "// NEG: " + (modelData.negative_prompt || "")
-                textFormat: Text.PlainText
-                font.family: Commons.Style.font.family
-                font.pixelSize: Math.max(10, Commons.Style.font.caption * 0.9)
-                color: Commons.Util.alpha(Commons.Color.foreground, 0.55)
-                elide: Text.ElideRight
-                maximumLineCount: 1
-                Layout.preferredWidth: 0
-                Layout.fillWidth: true
-              }
-
-              Text {
-                text: (modelData.size_mb ? (modelData.size_mb + " MB") : "")
-                      + (modelData.seed && modelData.seed > 0 ? (" // SEED " + modelData.seed) : "")
-                      + (modelData.steps ? (" // " + modelData.steps + " STEPS") : "")
-                textFormat: Text.PlainText
-                font.family: Commons.Style.font.family
-                font.pixelSize: Commons.Style.font.caption
-                color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
-                Layout.fillWidth: true
-              }
-            }
-
-            // Action Buttons for this item (text-fitted, height 20)
-            ColumnLayout {
-              Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+              Layout.fillHeight: true
               spacing: Commons.Style.spacing.xs
 
+              // Top row: Badge + Filename/Metadata + Action Buttons
               RowLayout {
-                Layout.alignment: Qt.AlignRight
+                Layout.fillWidth: true
                 spacing: Commons.Style.spacing.xs
+
+                Rectangle {
+                  height: Commons.Style.space(18)
+                  implicitWidth: tagText.implicitWidth + Commons.Style.spacing.xs * 2
+                  color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.15)
+                  border.color: Commons.Color.accent
+                  border.width: 1
+                  radius: Commons.Style.cornerRadius
+
+                  Text {
+                    id: tagText
+                    textFormat: Text.PlainText
+                    anchors.centerIn: parent
+                    text: "SAVED"
+                    font.family: Commons.Style.font.family
+                    font.pixelSize: 10
+                    font.bold: true
+                    color: Commons.Color.accent
+                  }
+                }
+
+                Text {
+                  text: (modelData.filename ? (modelData.filename + " | ") : "")
+                        + (modelData.size_mb ? (modelData.size_mb + " MB | ") : "")
+                        + (modelData.seed && modelData.seed > 0 ? ("SEED: " + modelData.seed + " | ") : "")
+                        + (modelData.steps ? (modelData.steps + " STEPS") : "")
+                  textFormat: Text.PlainText
+                  font.family: Commons.Style.font.family
+                  font.pixelSize: Commons.Style.font.caption
+                  font.bold: true
+                  color: Commons.Color.accent
+                  elide: Text.ElideRight
+                  Layout.fillWidth: true
+                }
 
                 Button {
                   text: "RESTORE"
@@ -179,11 +190,6 @@ Item {
                     }
                   }
                 }
-              }
-
-              RowLayout {
-                Layout.alignment: Qt.AlignRight
-                spacing: Commons.Style.spacing.xs
 
                 Button {
                   text: "WALLPAPER"
@@ -208,6 +214,34 @@ Item {
                   horizontalPadding: Commons.Style.space(6)
                   onClicked: if (panelRoot) panelRoot.openFullscreenViewer(modelData.path)
                 }
+              }
+
+              // Main Prompt Text
+              Text {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                text: modelData.prompt || "No prompt description"
+                textFormat: Text.PlainText
+                wrapMode: Text.Wrap
+                maximumLineCount: 3
+                elide: Text.ElideRight
+                font.family: Commons.Style.font.family
+                font.pixelSize: Commons.Style.font.caption
+                color: Commons.Color.foreground
+              }
+
+              // Negative Prompt Text
+              Text {
+                Layout.fillWidth: true
+                text: "NEG: " + (modelData.negative_prompt || "")
+                textFormat: Text.PlainText
+                wrapMode: Text.Wrap
+                maximumLineCount: 1
+                elide: Text.ElideRight
+                font.family: Commons.Style.font.family
+                font.pixelSize: Math.max(10, Commons.Style.font.caption * 0.9)
+                color: Commons.Util.alpha(Commons.Color.foreground, 0.55)
+                visible: !!modelData.negative_prompt && modelData.negative_prompt.trim() !== ""
               }
             }
           }
