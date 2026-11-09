@@ -404,5 +404,15 @@ fn test_vram_budget_node_in_graph_and_easycache_lora_bypass() {
 
     cfg.anime = comfy::LoraLevel::Off;
     let (graph_no_lora, _, _, _) = comfy::build_generation_graph(&cfg).expect("graph should build");
-    assert!(graph_no_lora.get("10").is_some(), "EasyCache must be active when no LoRA is enabled");
+    assert!(graph_no_lora.get("10").is_some(), "EasyCache must be active when no LoRA is enabled in T2I");
+
+    // In I2I / Edit mode, EasyCache must ALWAYS be disabled, even with no LoRA and no Turbo
+    let dir = std::env::temp_dir();
+    let ref_img = dir.join("qis_test_i2i_easycache_ref.png");
+    let _ = std::fs::write(&ref_img, b"fake_png_data");
+    cfg.image_ref = Some(ref_img.to_str().unwrap());
+    let (graph_i2i, _, _, _) = comfy::build_generation_graph(&cfg).expect("graph should build");
+    assert!(graph_i2i.get("10").is_none(), "EasyCache must NEVER be active during I2I/edit mode");
+    assert_eq!(graph_i2i["6"]["inputs"]["cfg"].as_f64().unwrap(), 4.0, "Non-turbo I2I must use CFG >= 4.0");
+    let _ = std::fs::remove_file(&ref_img);
 }

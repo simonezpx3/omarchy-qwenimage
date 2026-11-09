@@ -158,7 +158,7 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
         if let Some(n6) = val.get_mut("6").and_then(|n| n.get_mut("inputs")) {
             n6["seed"] = json!(final_seed);
             n6["steps"] = json!(if has_turbo { 6 } else { cfg.steps });
-            n6["cfg"] = json!(if has_turbo { 1.0 } else { cfg.cfg });
+            n6["cfg"] = json!(if has_turbo { 1.0 } else if cfg.cfg <= 1.05 { 4.0 } else { cfg.cfg });
             n6["denoise"] = json!(cfg.denoise);
         }
         val
@@ -280,8 +280,11 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     // with negligible +160 MB VRAM overhead. In 6-step Turbo mode, native schedule runs in 13.0 s without cache overhead.
     // Concurrently dequantizing LoRA weights on <=8GB cards (or free VRAM < 3.5GB) while holding EasyCache
     // attention states causes CUDA OOM in the 192 MB SwiGLU forward pass.
+    // In Image-to-Image / Edit mode, EasyCache must be disabled because reusing cache diffs against
+    // an existing image latent suppresses iterative denoise updates.
+    let is_i2i = cfg.image_ref.filter(|s| !s.trim().is_empty()).is_some();
     let lora_memory_risk = has_any_lora && (vram_info.total_mb < 12000 || vram_info.free_mb < 3500);
-    let use_easycache = !has_turbo && !lora_memory_risk && std::env::var("QIS_DISABLE_EASYCACHE").unwrap_or_default() != "1";
+    let use_easycache = !is_i2i && !has_turbo && !lora_memory_risk && std::env::var("QIS_DISABLE_EASYCACHE").unwrap_or_default() != "1";
     if use_easycache {
         graph["10"] = json!({
             "class_type": "EasyCache",

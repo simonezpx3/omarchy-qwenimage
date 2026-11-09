@@ -52,11 +52,15 @@ Item {
   function toggleTurbo() {
     if (!service) return;
     service.isTurboEnabled = !service.isTurboEnabled;
-    if (!service.isTurboEnabled && service.steps < 25) {
-      service.steps = 28;
+    if (!service.isTurboEnabled) {
+      if (service.steps < 25) {
+        service.steps = 28;
+      }
       service.cfg = 4.0;
-    } else if (service.isTurboEnabled && service.steps > 8) {
-      service.steps = 6;
+    } else {
+      if (service.steps > 8) {
+        service.steps = 6;
+      }
       service.cfg = 1.0;
     }
     saveSetting("turbo", service.isTurboEnabled ? "true" : "false");
