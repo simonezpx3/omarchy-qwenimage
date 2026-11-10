@@ -220,6 +220,7 @@ Item {
     service.aspectRatio = "1:1";
     service.resMode = "standard";
     service.steps = 25;
+    service.cfg = service.isTurboEnabled ? 1.0 : 4.0;
     service.seedLocked = false;
     service.seedVal = -1;
     service.referencePath = "";

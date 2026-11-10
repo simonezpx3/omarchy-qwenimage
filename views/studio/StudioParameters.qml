@@ -10,6 +10,7 @@ ColumnLayout {
 
   property var root: null
   property var panelRoot: null
+  property bool advancedExpanded: false
 
   // 3. Aspect Ratio Selection (Declarative Repeater from 21:9 to 9:16 + AUTO REF)
   RowLayout {
@@ -129,102 +130,199 @@ ColumnLayout {
     }
   }
 
-  // 6. Seed Control & Steps (with Steps Slider Hover Help)
+  // 6. Advanced Drawer Toggle (AC4)
   RowLayout {
     Layout.fillWidth: true
-    spacing: Commons.Style.spacing.sm
+    spacing: Commons.Style.spacing.xs
 
     Button {
-      text: panelRoot && panelRoot.seedLocked ? String(panelRoot.seedVal) : (root ? root.tr("seed_auto") : "AUTO")
+      id: advToggleBtn
+      text: (paramsRoot.advancedExpanded ? "ADVANCED ▾" : "ADVANCED ▸") + " // CFG " + (panelRoot ? panelRoot.cfg.toFixed(1) : "4.0") + " · " + (panelRoot && panelRoot.seedLocked ? "SEED " + panelRoot.seedVal : "AUTO SEED")
       fontSize: Commons.Style.font.caption
       bordered: true
-      selected: panelRoot && panelRoot.seedLocked
-      Layout.preferredWidth: Commons.Style.space(110)
+      selected: paramsRoot.advancedExpanded
+      foreground: selected ? "#4ade80" : Commons.Color.muted
+      accent: "#4ade80"
+      Layout.fillWidth: true
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
-      onHotChanged: {
-        if (hot && panelRoot && root) {
-          if (panelRoot.seedLocked) {
-            root.setHelp("SEED: " + panelRoot.seedVal + " (" + root.tr("help_seed_locked") + ")", true);
-          } else {
-            root.setHelp(root.tr("help_seed_auto"), true);
-          }
-        } else if (!hot && root) {
-          root.setHelp("", false);
-        }
-      }
-      onClicked: {
-        if (panelRoot) {
-          panelRoot.seedLocked = !panelRoot.seedLocked;
-          if (!panelRoot.seedLocked) {
-            panelRoot.seedVal = -1;
-          } else if (panelRoot.seedVal <= 0) {
-            panelRoot.seedVal = Math.floor(Math.random() * 1000000000);
-          }
-        }
-      }
+      onHotChanged: if (root) root.setHelp(root.tr("help_advanced_params"), hot)
+      onClicked: paramsRoot.advancedExpanded = !paramsRoot.advancedExpanded
     }
+  }
 
-    Text {
-      id: stepsLabel
-      textFormat: Text.PlainText
-      text: (root ? root.tr("steps") : "STEPS: ") + (panelRoot ? panelRoot.steps : 25)
-      font.family: Commons.Style.font.family
-      font.pixelSize: Commons.Style.font.caption
-      color: Commons.Color.foreground
-      Layout.preferredWidth: Commons.Style.space(68)
+  // 7. Advanced Drawer Content (AC4 - CFG, Seed, Steps)
+  ColumnLayout {
+    Layout.fillWidth: true
+    spacing: Commons.Style.spacing.xs
+    visible: paramsRoot.advancedExpanded
 
-      HoverHandler {
-        onHoveredChanged: if (root) root.setHelp(root.tr("help_steps"), hovered)
-      }
-    }
-
-    Item {
-      id: stepsSliderContainer
+    // Row A: CFG Scale Slider
+    RowLayout {
       Layout.fillWidth: true
-      Layout.minimumWidth: Commons.Style.space(80)
-      implicitHeight: stepsSlider.implicitHeight
-      clip: true
+      spacing: Commons.Style.spacing.sm
 
-      PanelSlider {
-        id: stepsSlider
-        anchors.fill: parent
-        bar: panelRoot ? panelRoot.bar : null
-        minimum: panelRoot && panelRoot.isTurboEnabled ? 4 : 20
-        maximum: 50
-        integer: true
-        step: 1
-        value: panelRoot ? panelRoot.steps : 25
-        onMoved: function(val) {
-          if (panelRoot) panelRoot.steps = Math.round(val);
+      Text {
+        id: cfgLabel
+        textFormat: Text.PlainText
+        text: "CFG: " + (panelRoot ? panelRoot.cfg.toFixed(1) : "4.0")
+        font.family: Commons.Style.font.family
+        font.pixelSize: Commons.Style.font.caption
+        color: Commons.Color.foreground
+        Layout.preferredWidth: Commons.Style.space(68)
+
+        HoverHandler {
+          onHoveredChanged: if (root) root.setHelp(root.tr("help_cfg"), hovered)
         }
+      }
+
+      Item {
+        id: cfgSliderContainer
+        Layout.fillWidth: true
+        Layout.minimumWidth: Commons.Style.space(80)
+        implicitHeight: cfgSlider.implicitHeight
+        clip: true
+
+        PanelSlider {
+          id: cfgSlider
+          anchors.fill: parent
+          bar: panelRoot ? panelRoot.bar : null
+          minimum: 1.0
+          maximum: 9.0
+          step: 0.5
+          value: panelRoot ? panelRoot.cfg : 4.0
+          onMoved: function(val) {
+            if (panelRoot) panelRoot.cfg = Math.round(val * 10) / 10;
+          }
+
+          HoverHandler {
+            onHoveredChanged: if (root) root.setHelp(root.tr("help_cfg"), hovered)
+          }
+        }
+      }
+
+      // Quick CFG Presets (Turbo: 1.0 | Subtle: 2.5 | Standard: 4.0 | Bold: 6.0)
+      RowLayout {
+        spacing: Commons.Style.spacing.xs
+        Layout.alignment: Qt.AlignVCenter
+        Repeater {
+          model: [1.0, 2.5, 4.0, 6.0]
+          delegate: Button {
+            text: String(modelData)
+            fontSize: Commons.Style.font.caption
+            bordered: true
+            selected: panelRoot && Math.abs(panelRoot.cfg - modelData) < 0.1
+            active: panelRoot && Math.abs(panelRoot.cfg - modelData) < 0.1
+            foreground: selected ? "#4ade80" : Commons.Color.muted
+            accent: "#4ade80"
+            Layout.preferredWidth: Commons.Style.space(28)
+            Layout.preferredHeight: Commons.Style.space(20)
+            horizontalPadding: Commons.Style.space(3)
+            verticalPadding: Commons.Style.space(1)
+            onClicked: if (panelRoot) panelRoot.cfg = modelData
+            onHotChanged: if (root) root.setHelp("CFG: " + modelData, hot)
+          }
+        }
+      }
+    }
+
+    // Row B: Seed Control & Steps (with Steps Slider Hover Help)
+    RowLayout {
+      Layout.fillWidth: true
+      spacing: Commons.Style.spacing.sm
+
+      Button {
+        text: panelRoot && panelRoot.seedLocked ? String(panelRoot.seedVal) : (root ? root.tr("seed_auto") : "AUTO")
+        fontSize: Commons.Style.font.caption
+        bordered: true
+        selected: panelRoot && panelRoot.seedLocked
+        Layout.preferredWidth: Commons.Style.space(110)
+        Layout.preferredHeight: Commons.Style.space(20)
+        verticalPadding: Commons.Style.space(1)
+        onHotChanged: {
+          if (hot && panelRoot && root) {
+            if (panelRoot.seedLocked) {
+              root.setHelp("SEED: " + panelRoot.seedVal + " (" + root.tr("help_seed_locked") + ")", true);
+            } else {
+              root.setHelp(root.tr("help_seed_auto"), true);
+            }
+          } else if (!hot && root) {
+            root.setHelp("", false);
+          }
+        }
+        onClicked: {
+          if (panelRoot) {
+            panelRoot.seedLocked = !panelRoot.seedLocked;
+            if (!panelRoot.seedLocked) {
+              panelRoot.seedVal = -1;
+            } else if (panelRoot.seedVal <= 0) {
+              panelRoot.seedVal = Math.floor(Math.random() * 1000000000);
+            }
+          }
+        }
+      }
+
+      Text {
+        id: stepsLabel
+        textFormat: Text.PlainText
+        text: (root ? root.tr("steps") : "STEPS: ") + (panelRoot ? panelRoot.steps : 25)
+        font.family: Commons.Style.font.family
+        font.pixelSize: Commons.Style.font.caption
+        color: Commons.Color.foreground
+        Layout.preferredWidth: Commons.Style.space(68)
 
         HoverHandler {
           onHoveredChanged: if (root) root.setHelp(root.tr("help_steps"), hovered)
         }
       }
-    }
 
-    // Quick Step Presets (Turbo: 4, 6, 8 | Standard: 20, 25, 35)
-    RowLayout {
-      spacing: Commons.Style.spacing.xs
-      Layout.alignment: Qt.AlignVCenter
-      Repeater {
-        model: panelRoot && panelRoot.isTurboEnabled ? [4, 6, 8] : [20, 25, 35]
-        delegate: Button {
-          text: String(modelData)
-          fontSize: Commons.Style.font.caption
-          bordered: true
-          selected: panelRoot && panelRoot.steps === modelData
-          active: panelRoot && panelRoot.steps === modelData
-          foreground: selected ? "#4ade80" : Commons.Color.muted
-          accent: "#4ade80"
-          Layout.preferredWidth: Commons.Style.space(28)
-          Layout.preferredHeight: Commons.Style.space(20)
-          horizontalPadding: Commons.Style.space(3)
-          verticalPadding: Commons.Style.space(1)
-          onClicked: if (panelRoot) panelRoot.steps = modelData
-          onHotChanged: if (root) root.setHelp(root.tr("help_steps_" + modelData), hot)
+      Item {
+        id: stepsSliderContainer
+        Layout.fillWidth: true
+        Layout.minimumWidth: Commons.Style.space(80)
+        implicitHeight: stepsSlider.implicitHeight
+        clip: true
+
+        PanelSlider {
+          id: stepsSlider
+          anchors.fill: parent
+          bar: panelRoot ? panelRoot.bar : null
+          minimum: panelRoot && panelRoot.isTurboEnabled ? 4 : 20
+          maximum: 50
+          integer: true
+          step: 1
+          value: panelRoot ? panelRoot.steps : 25
+          onMoved: function(val) {
+            if (panelRoot) panelRoot.steps = Math.round(val);
+          }
+
+          HoverHandler {
+            onHoveredChanged: if (root) root.setHelp(root.tr("help_steps"), hovered)
+          }
+        }
+      }
+
+      // Quick Step Presets (Turbo: 4, 6, 8 | Standard: 20, 25, 35)
+      RowLayout {
+        spacing: Commons.Style.spacing.xs
+        Layout.alignment: Qt.AlignVCenter
+        Repeater {
+          model: panelRoot && panelRoot.isTurboEnabled ? [4, 6, 8] : [20, 25, 35]
+          delegate: Button {
+            text: String(modelData)
+            fontSize: Commons.Style.font.caption
+            bordered: true
+            selected: panelRoot && panelRoot.steps === modelData
+            active: panelRoot && panelRoot.steps === modelData
+            foreground: selected ? "#4ade80" : Commons.Color.muted
+            accent: "#4ade80"
+            Layout.preferredWidth: Commons.Style.space(28)
+            Layout.preferredHeight: Commons.Style.space(20)
+            horizontalPadding: Commons.Style.space(3)
+            verticalPadding: Commons.Style.space(1)
+            onClicked: if (panelRoot) panelRoot.steps = modelData
+            onHotChanged: if (root) root.setHelp(root.tr("help_steps_" + modelData), hot)
+          }
         }
       }
     }

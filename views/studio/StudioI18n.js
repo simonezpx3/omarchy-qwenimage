@@ -152,6 +152,14 @@ var strings = {
     "cs": "MAX (2560): Uzamčeno pro ochranu VRAM (vyžaduje GPU s 20+ GB VRAM).",
     "en": "MAX (2560): Locked to protect VRAM (requires GPU with 20+ GB VRAM)."
   },
+  "help_advanced_params": {
+    "cs": "POKROČILÉ PARAMETRY: Rozbalí expertní nastavení CFG škály, fixního seedu a počtu vzorkovacích kroků.",
+    "en": "ADVANCED PARAMETERS: Expands expert controls for CFG scale, fixed seed, and sampling steps."
+  },
+  "help_cfg": {
+    "cs": "CFG ŠKÁLA (Classifier-Free Guidance): Síla lpění na textovém promptu (výchozí: 4.0, Turbo: 1.0).",
+    "en": "CFG SCALE (Classifier-Free Guidance): Prompt adherence strength (default: 4.0, Turbo: 1.0)."
+  },
   "help_seed": {
     "cs": "SEED: Přepíná mezi náhodným generováním nového díla a fixací konkrétního seedu.",
     "en": "SEED: Toggles between random seed generation and locking a specific seed."
