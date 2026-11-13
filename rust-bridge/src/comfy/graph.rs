@@ -231,7 +231,7 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
 
         if let Some(n4) = val.get_mut("4").and_then(|n| n.get_mut("inputs")) {
             n4["prompt"] = json!(prompt_text);
-            n4["negative_prompt"] = json!(if has_turbo { "" } else { cfg.negative_prompt });
+            n4["negative_prompt"] = json!(if has_turbo && cfg.steps != 9 { "" } else { cfg.negative_prompt });
             n4["resolution"] = json!(res_val);
         }
         if let Some(n5) = val.get_mut("5").and_then(|n| n.get_mut("inputs")) {
@@ -386,8 +386,8 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
         let latent_node = if has_ref_image { json!(["5b", 0]) } else { json!(["5", 0]) };
         let use_hybrid_9 = cfg.steps == 9;
         let turbo_nodes = if use_hybrid_9 {
-            // Viggle v0.3 9-step hybrid schedule: 7 Turbo steps + 2 clean base refinement steps
-            "1.0, 0.9583, 0.9167, 0.875, 0.75, 0.5, 0.25, 0.1667, 0.0833"
+            // Viggle v0.3 6+3 hybrid schedule: 6 official Turbo steps + 3 Base CFGGuider refinement steps
+            "1.0, 0.9375, 0.875, 0.75, 0.5, 0.25, 0.1875, 0.125, 0.0625"
         } else if cfg.is_human || cfg.steps == 7 {
             // Official 7-step schedule: adds 0.9583 and 0.9167 for anatomical stability
             "1.0, 0.9583, 0.9167, 0.875, 0.75, 0.5, 0.25"
@@ -403,11 +403,13 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
             }
         });
         if use_hybrid_9 {
+            let hybrid_cfg = if cfg.cfg > 1.05 { ((cfg.cfg as f64) * 10.0).round() / 10.0 } else { 2.2 };
+            let neg_cond = if has_ref_image { json!(["4b", 0]) } else { json!(["4", 1]) };
             graph["20s"] = json!({
                 "class_type": "SplitSigmas",
                 "inputs": {
                     "sigmas": ["20", 0],
-                    "step": 7
+                    "step": 6
                 }
             });
             graph["6a"] = json!({
@@ -421,10 +423,12 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
                 }
             });
             graph["24"] = json!({
-                "class_type": "BasicGuider",
+                "class_type": "CFGGuider",
                 "inputs": {
                     "model": current_model,
-                    "conditioning": ["4", 0]
+                    "positive": ["4", 0],
+                    "negative": neg_cond,
+                    "cfg": hybrid_cfg
                 }
             });
             graph["25"] = json!({

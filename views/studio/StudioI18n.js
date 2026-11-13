@@ -280,6 +280,14 @@ var strings = {
     "cs": "GENITALIA LORA: Čtyřstavový adaptér intimní anatomické fidelity (OFF = výchozí, LIGHT = 0.50, MEDIUM = 0.75, HEAVY = 1.0).",
     "en": "GENITALIA LORA: 4-state intimate anatomy fidelity adapter (OFF = default, LIGHT = 0.50, MEDIUM = 0.75, HEAVY = 1.0)."
   },
+  "help_anatomy_lora_idle": {
+    "cs": "GENITALIA LORA (IDLE): V promptu není explicitní nahota — pro oblečenou scénu se neaplikuje (zvolená úroveň zůstává uložená).",
+    "en": "GENITALIA LORA (IDLE): No explicit nudity in prompt — skipped for clothed scenes (selected level stays saved)."
+  },
+  "help_anatomy_lora_deferred": {
+    "cs": "GENITALIA LORA: Aktivace se vyhodnotí automaticky v backendu až po překladu do EN a případném AUTO EXPAND.",
+    "en": "GENITALIA LORA: Activation is evaluated automatically in backend after EN translation and optional AUTO EXPAND."
+  },
   "help_anatomy_guard": {
     "cs": "ANATOMY GUARD: Ochrana anatomie lidského těla (AUTO = aktivní při detekci člověka, ON = vždy vynucená vč. zákazu Draft a min. 25 kroků, OFF = bez zásahů).",
     "en": "ANATOMY GUARD: Human body anatomy safeguard (AUTO = active when human detected, ON = always forced incl. Draft upgrade & min 25 steps, OFF = manual)."

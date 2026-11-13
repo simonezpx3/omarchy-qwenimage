@@ -224,10 +224,10 @@ fn test_anime_and_heretic_tri_state_levels() {
 fn test_turbo_9step_hybrid_and_active_vae() {
     let cfg = comfy::GenerationConfig {
         prompt: "two warriors side-by-side holding swords",
-        negative_prompt: "",
+        negative_prompt: "bad anatomy, fused fingers",
         ratio: "16:10",
         steps: 9,
-        cfg: 1.0,
+        cfg: 2.2,
         seed: 42,
         image_ref: None,
         mask_ref: None,
@@ -242,12 +242,16 @@ fn test_turbo_9step_hybrid_and_active_vae() {
 
     let (graph, _, _, _) = comfy::build_generation_graph(&cfg).expect("9-step hybrid graph should succeed");
     assert_eq!(graph["3"]["inputs"]["vae_name"], "qwen_image_2.1_vae_active.safetensors");
-    assert_eq!(graph["20"]["inputs"]["nodes"], "1.0, 0.9583, 0.9167, 0.875, 0.75, 0.5, 0.25, 0.1667, 0.0833");
+    assert_eq!(graph["4"]["inputs"]["negative_prompt"], "bad anatomy, fused fingers");
+    assert_eq!(graph["20"]["inputs"]["nodes"], "1.0, 0.9375, 0.875, 0.75, 0.5, 0.25, 0.1875, 0.125, 0.0625");
     assert_eq!(graph["20s"]["class_type"], "SplitSigmas");
-    assert_eq!(graph["20s"]["inputs"]["step"], 7);
+    assert_eq!(graph["20s"]["inputs"]["step"], 6);
     assert_eq!(graph["6a"]["class_type"], "SamplerCustomAdvanced");
     assert_eq!(graph["6a"]["inputs"]["guider"], serde_json::json!(["17", 0]));
     assert_eq!(graph["6a"]["inputs"]["sigmas"], serde_json::json!(["20s", 0]));
+    assert_eq!(graph["24"]["class_type"], "CFGGuider");
+    assert_eq!(graph["24"]["inputs"]["negative"], serde_json::json!(["4", 1]));
+    assert_eq!(graph["24"]["inputs"]["cfg"], 2.2);
     assert_eq!(graph["6"]["class_type"], "SamplerCustomAdvanced");
     assert_eq!(graph["6"]["inputs"]["noise"], serde_json::json!(["25", 0]));
     assert_eq!(graph["25"]["class_type"], "DisableNoise");

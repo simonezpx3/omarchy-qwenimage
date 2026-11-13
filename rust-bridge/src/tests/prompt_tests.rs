@@ -148,6 +148,25 @@ fn test_detect_human_subject_word_boundaries() {
 }
 
 #[test]
+fn test_detect_explicit_nudity_gate() {
+    // Clothed / bikini / armored scenes must NOT trigger Genitalia-Anatomy LoRA
+    assert!(!detect_explicit_nudity("two silver-haired women in strappy bikini holding swords on a beach"));
+    assert!(!detect_explicit_nudity("warrior woman in plate armor, bare feet, realistic athletic bust"));
+    assert!(!detect_explicit_nudity("woman in red swimsuit on a yacht"));
+    assert!(!detect_explicit_nudity("portrait of a dressed woman in winter coat"));
+    assert!(!detect_explicit_nudity("faktura za nákup oblečení"));
+
+    // Explicit nudity / NSFW anatomy in EN & CS MUST allow Genitalia-Anatomy LoRA
+    assert!(detect_explicit_nudity("nude woman sitting by the window"));
+    assert!(detect_explicit_nudity("naked figure on silk sheets"));
+    assert!(detect_explicit_nudity("topless beach portrait"));
+    assert!(detect_explicit_nudity("detailed genitals and realistic anatomy, nsfw"));
+    assert!(detect_explicit_nudity("fotorealistický akt nahé dívky"));
+    assert!(detect_explicit_nudity("úplně nahá žena v ateliéru"));
+    assert!(detect_explicit_nudity("model with bare breasts in studio light"));
+}
+
+#[test]
 fn test_resolve_raw_image_path() {
     let dir = std::env::temp_dir();
     let base = dir.join("qis_test_raw_image_base.png");

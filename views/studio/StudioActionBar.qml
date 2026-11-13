@@ -124,21 +124,40 @@ ColumnLayout {
 
     // Genitalia Anatomy Fidelity LoRA Switcher (4-State: OFF -> LIGHT -> MEDIUM -> HEAVY)
     Button {
+      readonly property string anatomyLevel: panelRoot ? panelRoot.anatomyMode : "off"
+      readonly property bool anatomyActive: anatomyLevel !== "off"
+      readonly property bool anatomyDeferred: anatomyActive && panelRoot && panelRoot.isAnatomyGateDeferred && !panelRoot.isNudityInPrompt
+      readonly property bool anatomyIdle: anatomyActive && !anatomyDeferred && panelRoot && !panelRoot.isNudityInPrompt
+      readonly property string anatomyHelpKey: anatomyIdle ? "help_anatomy_lora_idle" : (anatomyDeferred ? "help_anatomy_lora_deferred" : "help_anatomy_lora")
       text: {
-        var mode = panelRoot ? panelRoot.anatomyMode : "off";
-        if (mode === "heavy" || mode === "full") return "GENITALIA: HEAVY";
-        if (mode === "medium") return "GENITALIA: MEDIUM";
-        if (mode === "light" || mode === "soft") return "GENITALIA: LIGHT";
-        return "GENITALIA: OFF";
+        var base = "GENITALIA: OFF";
+        if (anatomyLevel === "heavy" || anatomyLevel === "full") base = "GENITALIA: HEAVY";
+        else if (anatomyLevel === "medium") base = "GENITALIA: MEDIUM";
+        else if (anatomyLevel === "light" || anatomyLevel === "soft") base = "GENITALIA: LIGHT";
+        return anatomyIdle ? (base + " (IDLE)") : base;
       }
       fontSize: Commons.Style.font.caption
       bordered: false
-      selected: panelRoot && panelRoot.anatomyMode !== "off"
-      foreground: selected ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.foreground, 0.72)
+      selected: anatomyActive && !anatomyIdle
+      opacity: anatomyIdle ? 0.52 : 1.0
+      foreground: selected
+        ? Commons.Color.accent
+        : (anatomyIdle
+            ? Commons.Util.alpha(Commons.Color.foreground, 0.55)
+            : Commons.Util.alpha(Commons.Color.foreground, 0.72))
       accent: Commons.Color.accent
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
-      onHotChanged: if (root) root.setHelp(root.tr("help_anatomy_lora"), hot)
+      onHotChanged: if (root) {
+        if (hot) {
+          root.setHelp(root.tr(anatomyHelpKey), true);
+        } else {
+          root.setHelp(root.tr("help_anatomy_lora_idle"), false);
+          root.setHelp(root.tr("help_anatomy_lora_deferred"), false);
+          root.setHelp(root.tr("help_anatomy_lora"), false);
+        }
+      }
+      onAnatomyHelpKeyChanged: if (hot && root) root.setHelp(root.tr(anatomyHelpKey), true)
       onClicked: if (panelRoot) panelRoot.cycleAnatomyMode()
     }
 

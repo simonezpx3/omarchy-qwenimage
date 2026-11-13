@@ -56,13 +56,14 @@ Item {
       if (service.steps < 22) {
         service.steps = 25;
       }
-      service.cfg = 2.5;
+      service.cfg = 3.2;
     } else {
       if (service.steps > 9) {
         service.steps = 6;
       }
       service.cfg = 1.0;
     }
+    service.autoTuneSummary = "";
     saveSetting("turbo", service.isTurboEnabled ? "true" : "false");
   }
 

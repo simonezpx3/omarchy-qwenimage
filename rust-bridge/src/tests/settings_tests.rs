@@ -117,7 +117,7 @@ fn test_analyze_prompt_tuning_profiles() {
     let scenic_qual = prompt_tune::analyze_prompt_tuning("alpine mountain lake at sunrise", "quality", false, 0.65);
     assert!(!scenic_qual.turbo);
     assert_eq!(scenic_qual.steps, 22);
-    assert_eq!(scenic_qual.cfg, 2.2);
+    assert_eq!(scenic_qual.cfg, 3.0);
 
     let portrait_bal = prompt_tune::analyze_prompt_tuning("cinematic portrait of a woman", "balanced", false, 0.65);
     assert!(portrait_bal.turbo);
@@ -126,25 +126,61 @@ fn test_analyze_prompt_tuning_profiles() {
     let hands_bal = prompt_tune::analyze_prompt_tuning("close-up of detailed hands and fingers holding a ring", "balanced", false, 0.65);
     assert!(!hands_bal.turbo);
     assert_eq!(hands_bal.steps, 22);
-    assert_eq!(hands_bal.cfg, 2.2);
+    assert_eq!(hands_bal.cfg, 3.0);
 
-    let full_body_bal = prompt_tune::analyze_prompt_tuning("wide cinematic full-shot composition, two silver-haired women sitting side-by-side holding swords, bare feet", "balanced", false, 0.65);
-    assert!(full_body_bal.turbo);
-    assert_eq!(full_body_bal.steps, 9);
-    assert_eq!(full_body_bal.cfg, 1.0);
+    let full_body_single_bal = prompt_tune::analyze_prompt_tuning("full-body portrait of a silver-haired woman holding a sword", "balanced", false, 0.65);
+    assert!(full_body_single_bal.turbo);
+    assert_eq!(full_body_single_bal.steps, 9);
+    assert_eq!(full_body_single_bal.cfg, 2.2);
 
-    let full_body_qual = prompt_tune::analyze_prompt_tuning("wide cinematic full-shot composition, two silver-haired women sitting side-by-side holding swords, bare feet", "quality", false, 0.65);
-    assert!(!full_body_qual.turbo);
-    assert_eq!(full_body_qual.steps, 26);
-    assert_eq!(full_body_qual.cfg, 2.5);
+    let multi_scene_bal = prompt_tune::analyze_prompt_tuning("wide cinematic full-shot composition, two silver-haired women sitting side-by-side holding swords, bare feet", "balanced", false, 0.65);
+    assert!(!multi_scene_bal.turbo);
+    assert_eq!(multi_scene_bal.category, "human_multi_scene");
+    assert_eq!(multi_scene_bal.steps, 22);
+    assert_eq!(multi_scene_bal.cfg, 3.2);
+
+    let multi_scene_qual = prompt_tune::analyze_prompt_tuning("wide cinematic full-shot composition, two silver-haired women sitting side-by-side holding swords, bare feet", "quality", false, 0.65);
+    assert!(!multi_scene_qual.turbo);
+    assert_eq!(multi_scene_qual.category, "human_multi_scene");
+    assert_eq!(multi_scene_qual.steps, 26);
+    assert_eq!(multi_scene_qual.cfg, 3.8);
 
     let text_bal = prompt_tune::analyze_prompt_tuning("retro neon sign with text OPEN LATE", "balanced", false, 0.65);
     assert!(!text_bal.turbo);
     assert_eq!(text_bal.steps, 26);
-    assert_eq!(text_bal.cfg, 2.8);
+    assert_eq!(text_bal.cfg, 3.2);
 
     let i2i_subtle = prompt_tune::analyze_prompt_tuning("change jacket color", "balanced", true, 0.45);
     assert!(!i2i_subtle.turbo);
     assert_eq!(i2i_subtle.steps, 20);
-    assert_eq!(i2i_subtle.cfg, 2.0);
+    assert_eq!(i2i_subtle.cfg, 2.2);
+}
+
+#[test]
+fn test_resolve_effective_anatomy_soft_gate() {
+    use crate::comfy::LoraLevel;
+
+    // Clothed / bikini scene skips active anatomy LoRA
+    let (eff_clothed, gated_clothed) = generate::resolve_effective_anatomy(
+        LoraLevel::Heavy,
+        "two warriors in minimalist bikini holding swords on a beach",
+    );
+    assert_eq!(eff_clothed, LoraLevel::Off);
+    assert!(gated_clothed);
+
+    // Explicit nudity keeps requested LoRA level
+    let (eff_nude, gated_nude) = generate::resolve_effective_anatomy(
+        LoraLevel::Medium,
+        "nude portrait in soft studio lighting",
+    );
+    assert_eq!(eff_nude, LoraLevel::Medium);
+    assert!(!gated_nude);
+
+    // Already Off stays Off without flagging gated_off
+    let (eff_off, gated_off) = generate::resolve_effective_anatomy(
+        LoraLevel::Off,
+        "clothed woman in coat",
+    );
+    assert_eq!(eff_off, LoraLevel::Off);
+    assert!(!gated_off);
 }

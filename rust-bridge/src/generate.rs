@@ -121,6 +121,21 @@ pub(crate) fn resolve_anatomy_guard_params(
     (is_human, final_negative, final_steps, final_res_mode)
 }
 
+/// Gates Genitalia-Anatomy LoRA off for clothed/non-nude prompts while keeping user preference intact.
+pub(crate) fn resolve_effective_anatomy(
+    anatomy: crate::comfy::LoraLevel,
+    prompt: &str,
+) -> (crate::comfy::LoraLevel, bool) {
+    if !anatomy.is_active() {
+        return (crate::comfy::LoraLevel::Off, false);
+    }
+    if crate::prompts::detect_explicit_nudity(prompt) {
+        (anatomy, false)
+    } else {
+        (crate::comfy::LoraLevel::Off, true)
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn cmd_generate(
     prompt: &str,
@@ -269,7 +284,17 @@ pub(crate) fn cmd_generate(
         res_mode.unwrap_or("standard"),
     );
     final_negative = final_negative_guarded;
-    let final_cfg = if active_turbo { 1.0 } else { cfg };
+    let final_cfg = if active_turbo && final_steps == 9 {
+        if cfg > 1.05 { cfg } else { 2.2 }
+    } else if active_turbo {
+        1.0
+    } else {
+        cfg
+    };
+    let (effective_anatomy, anatomy_gated_off) = resolve_effective_anatomy(anatomy, &final_prompt);
+    if anatomy_gated_off {
+        eprintln!("\x1b[38;2;180;180;180mGENITALIA GATE // V promptu není explicitní nahota — Genitalia-Anatomy LoRA pro tento běh přeskočena\x1b[0m");
+    }
 
     // Ensure all Ollama models are stopped so VRAM is 100% available for ComfyUI DiT
     let (_ollama_mb, models) = get_ollama_status();
@@ -297,7 +322,7 @@ pub(crate) fn cmd_generate(
         anime,
         turbo: active_turbo,
         uncensored,
-        anatomy,
+        anatomy: effective_anatomy,
         res_mode: &final_res_mode,
         is_human,
     };
@@ -359,6 +384,8 @@ pub(crate) fn cmd_generate(
                 "turbo": active_turbo,
                 "anatomical_fallback": anatomical_fallback,
                 "anatomy_guard": anatomy_guard,
+                "anatomy_effective": effective_anatomy.as_str(),
+                "anatomy_gated": anatomy_gated_off,
                 "elapsed": (elapsed * 10.0).round() / 10.0
             })
         );

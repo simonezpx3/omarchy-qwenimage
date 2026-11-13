@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "internal" as Internal
+import "internal/PromptUtils.js" as PromptUtils
 
 Item {
   id: root
@@ -140,24 +141,9 @@ Item {
   readonly property bool isUncensoredEnabled: hereticMode !== "off"
   readonly property bool isAnatomyLoRAEnabled: anatomyMode !== "off"
 
-  readonly property bool isHumanSubjectInPrompt: {
-    var p = promptText.toLowerCase();
-    var kw = [
-      "woman", "women", "man", "men", "girl", "girls", "boy", "boys",
-      "person", "people", "human", "body", "nude", "naked", "erotic",
-      "portrait", "skin", "breasts", "legs", "face", "buttocks", "ass",
-      "waist", "hips", "thighs", "female", "male", "model", "hand", "hands",
-      "finger", "fingers", "child", "children", "character", "warrior", "elf",
-      "slim", "petite", "slender",
-      "dívka", "dívky", "žena", "ženy", "muž", "muži", "tělo", "nahá", "nahý",
-      "nahé", "akt", "ruce", "ruka", "prsty", "prst", "obličej", "tvář", "postava"
-    ];
-    var words = p.split(/[\s,.;:!?_"'`\(\)\[\]\{\}\/\\~-]+/).filter(Boolean);
-    for (var i = 0; i < words.length; ++i) {
-      if (kw.indexOf(words[i]) !== -1) return true;
-    }
-    return false;
-  }
+  readonly property bool isHumanSubjectInPrompt: PromptUtils.detectHumanSubject(promptText)
+  readonly property bool isNudityInPrompt: PromptUtils.detectExplicitNudity(promptText)
+  readonly property bool isAnatomyGateDeferred: PromptUtils.isAnatomyGateDeferred(promptText, isAutoExpandEnabled)
 
   function setting(name, fallback) {
     var value = settings ? settings[name] : undefined;

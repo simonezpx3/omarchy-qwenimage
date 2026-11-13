@@ -419,6 +419,44 @@ pub(crate) fn detect_human_subject(prompt: &str) -> bool {
     words.iter().any(|w| HUMAN_TOKENS.contains(w))
 }
 
+/// Detects explicit nudity or intimate anatomy terms so Genitalia-Anatomy LoRA is skipped on clothed scenes.
+pub(crate) fn detect_explicit_nudity(prompt: &str) -> bool {
+    let p = prompt.to_lowercase();
+    const EXPLICIT_NUDITY_TOKENS: &[&str] = &[
+        "nude", "nudity", "naked", "topless", "bottomless", "nsfw", "explicit", "uncensored",
+        "genitals", "genitalia", "vulva", "vagina", "pussy", "clitoris", "labia",
+        "penis", "cock", "dick", "testicles", "nipple", "nipples", "areola", "areolas",
+        "pubic", "crotch", "groin", "intercourse", "sex", "porn", "erotic", "hentai",
+        "undressed", "unclothed", "barebreasted",
+        // Czech explicit nudity / anatomy tokens
+        "nahá", "nahý", "nahé", "nahota", "nahou", "nahého", "akt", "akty",
+        "genitálie", "přirození", "bradavky", "bradavka", "rozkrok", "roznožená",
+        "svlečená", "svlečený", "erotická", "erotický", "erotické",
+    ];
+
+    let words: Vec<&str> = p
+        .split(|c: char| !c.is_alphanumeric() && c != '_')
+        .filter(|w| !w.is_empty())
+        .collect();
+
+    if words.iter().any(|w| EXPLICIT_NUDITY_TOKENS.contains(w)) {
+        return true;
+    }
+
+    const EXPLICIT_PHRASES: &[&str] = &[
+        "full frontal",
+        "bare breasts",
+        "exposed breasts",
+        "spread legs",
+        "no clothes",
+        "without clothes",
+        "bez oblečení",
+        "úplně nahá",
+        "úplně nahý",
+    ];
+    EXPLICIT_PHRASES.iter().any(|phrase| p.contains(phrase))
+}
+
 pub(crate) fn strip_foreign_prompt_tags(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut in_tag = false;
