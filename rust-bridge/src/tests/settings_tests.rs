@@ -136,14 +136,14 @@ fn test_analyze_prompt_tuning_profiles() {
     let multi_scene_bal = prompt_tune::analyze_prompt_tuning("wide cinematic full-shot composition, two silver-haired women sitting side-by-side holding swords, bare feet", "balanced", false, 0.65);
     assert!(!multi_scene_bal.turbo);
     assert_eq!(multi_scene_bal.category, "human_multi_scene");
-    assert_eq!(multi_scene_bal.steps, 22);
-    assert_eq!(multi_scene_bal.cfg, 3.2);
+    assert_eq!(multi_scene_bal.steps, 26);
+    assert_eq!(multi_scene_bal.cfg, 3.8);
 
     let multi_scene_qual = prompt_tune::analyze_prompt_tuning("wide cinematic full-shot composition, two silver-haired women sitting side-by-side holding swords, bare feet", "quality", false, 0.65);
     assert!(!multi_scene_qual.turbo);
     assert_eq!(multi_scene_qual.category, "human_multi_scene");
-    assert_eq!(multi_scene_qual.steps, 26);
-    assert_eq!(multi_scene_qual.cfg, 3.8);
+    assert_eq!(multi_scene_qual.steps, 28);
+    assert_eq!(multi_scene_qual.cfg, 4.0);
 
     let text_bal = prompt_tune::analyze_prompt_tuning("retro neon sign with text OPEN LATE", "balanced", false, 0.65);
     assert!(!text_bal.turbo);
@@ -183,4 +183,44 @@ fn test_resolve_effective_anatomy_soft_gate() {
     );
     assert_eq!(eff_off, LoraLevel::Off);
     assert!(!gated_off);
+}
+
+#[test]
+fn test_resolve_effective_uncensored_anime_soft_clamp() {
+    use crate::comfy::LoraLevel;
+
+    // Clothed/bikini anime prompt gates off Heretic so 2D Anime style stays pure
+    let (eff_gated, was_gated) = generate::resolve_effective_uncensored(
+        LoraLevel::Heavy,
+        LoraLevel::Heavy,
+        "two anime warriors in minimalist bikini holding swords on a beach",
+    );
+    assert_eq!(eff_gated, LoraLevel::Off);
+    assert!(was_gated);
+
+    // Explicit nudity keeps full Heretic even with Anime active
+    let (eff_nude, gated_nude) = generate::resolve_effective_uncensored(
+        LoraLevel::Heavy,
+        LoraLevel::Heavy,
+        "nude anime character on silk sheets",
+    );
+    assert_eq!(eff_nude, LoraLevel::Heavy);
+    assert!(!gated_nude);
+
+    // Without Anime LoRA, Heretic stays untouched
+    let (eff_no_anime, gated_no_anime) = generate::resolve_effective_uncensored(
+        LoraLevel::Heavy,
+        LoraLevel::Off,
+        "two warriors in minimalist bikini on a beach",
+    );
+    assert_eq!(eff_no_anime, LoraLevel::Heavy);
+    assert!(!gated_no_anime);
+
+    // Medium/Heavy Anime appends anti-3D negative tokens unless prompt requests photorealism
+    let neg_anime = generate::apply_anime_negative_guard(
+        LoraLevel::Heavy,
+        "two warriors on an anime beach",
+        "blurry, bad anatomy",
+    );
+    assert_eq!(neg_anime, "blurry, bad anatomy, 3d render, photorealistic");
 }

@@ -136,6 +136,55 @@ pub(crate) fn resolve_effective_anatomy(
     }
 }
 
+/// Gates Heretic/Uncensored LoRA off when Anime LoRA is active on non-nude prompts
+/// so 2D anime styling and anatomy are not pulled toward 3D photorealism.
+pub(crate) fn resolve_effective_uncensored(
+    uncensored: crate::comfy::LoraLevel,
+    anime: crate::comfy::LoraLevel,
+    prompt: &str,
+) -> (crate::comfy::LoraLevel, bool) {
+    use crate::comfy::LoraLevel;
+    if anime.is_active()
+        && uncensored.is_active()
+        && !crate::prompts::detect_explicit_nudity(prompt)
+    {
+        (LoraLevel::Off, true)
+    } else {
+        (uncensored, false)
+    }
+}
+
+/// Appends anti-3D/anti-photorealism tokens to the negative prompt when Medium/Heavy Anime LoRA is active.
+pub(crate) fn apply_anime_negative_guard(
+    anime: crate::comfy::LoraLevel,
+    prompt: &str,
+    negative: &str,
+) -> String {
+    use crate::comfy::LoraLevel;
+    if !matches!(anime, LoraLevel::Medium | LoraLevel::Heavy) {
+        return negative.to_string();
+    }
+    let p_lower = prompt.to_lowercase();
+    if p_lower.contains("photorealistic") || p_lower.contains("3d render") {
+        return negative.to_string();
+    }
+    let mut out = negative.to_string();
+    let neg_lower = out.to_lowercase();
+    let anti_3d_tokens = ["3d render", "photorealistic"];
+    let missing: Vec<&str> = anti_3d_tokens
+        .iter()
+        .copied()
+        .filter(|t| !neg_lower.contains(t))
+        .collect();
+    if !missing.is_empty() {
+        if !out.trim().is_empty() {
+            out.push_str(", ");
+        }
+        out.push_str(&missing.join(", "));
+    }
+    out
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn cmd_generate(
     prompt: &str,
@@ -264,7 +313,7 @@ pub(crate) fn cmd_generate(
     }
 
     // Hardening: Zastropovat délku promptu (prevence buffer a memory exhaustion)
-    const MAX_PROMPT_CHARS: usize = 4096;
+    const MAX_PROMPT_CHARS: usize = 8192;
     if final_prompt.len() > MAX_PROMPT_CHARS {
         final_prompt = final_prompt.chars().take(MAX_PROMPT_CHARS).collect();
     }
@@ -273,27 +322,55 @@ pub(crate) fn cmd_generate(
     const ANATOMICAL_DNA_SEED: usize = 0x732641;
     let _ = (ANATOMICAL_DNA_SEED % 1000) / 1000;
 
-    let active_turbo = turbo;
+    let saved_settings = crate::settings::load_settings();
+    let auto_tune_mode = crate::settings::parse_auto_tune_mode(saved_settings.get("auto_tune"));
+    let (mut active_turbo, mut tuned_steps, mut tuned_cfg) = (turbo, steps, cfg);
+    if auto_tune_mode == "balanced" || auto_tune_mode == "quality" {
+        let has_ref = image_ref.filter(|s| !s.trim().is_empty()).is_some();
+        let plan = crate::prompt_tune::analyze_prompt_tuning(
+            &final_prompt,
+            &auto_tune_mode,
+            has_ref,
+            denoise,
+        );
+        active_turbo = plan.turbo;
+        tuned_steps = plan.steps;
+        tuned_cfg = plan.cfg;
+        eprintln!(
+            "\x1b[38;2;97;213;248mAUTO TUNE ({}) // {} -> turbo={}, steps={}, cfg={:.1}\x1b[0m",
+            auto_tune_mode.to_uppercase(),
+            plan.category,
+            active_turbo,
+            tuned_steps,
+            tuned_cfg
+        );
+    }
+
     let anatomical_fallback = false;
     let (is_human, final_negative_guarded, final_steps, final_res_mode) = resolve_anatomy_guard_params(
         anatomy_guard,
         &final_prompt,
         &final_negative,
         active_turbo,
-        steps,
+        tuned_steps,
         res_mode.unwrap_or("standard"),
     );
-    final_negative = final_negative_guarded;
+    final_negative = apply_anime_negative_guard(anime, &final_prompt, &final_negative_guarded);
     let final_cfg = if active_turbo && final_steps == 9 {
-        if cfg > 1.05 { cfg } else { 2.2 }
+        if tuned_cfg > 1.05 { tuned_cfg } else { 2.2 }
     } else if active_turbo {
         1.0
     } else {
-        cfg
+        tuned_cfg
     };
     let (effective_anatomy, anatomy_gated_off) = resolve_effective_anatomy(anatomy, &final_prompt);
     if anatomy_gated_off {
         eprintln!("\x1b[38;2;180;180;180mGENITALIA GATE // V promptu není explicitní nahota — Genitalia-Anatomy LoRA pro tento běh přeskočena\x1b[0m");
+    }
+    let (effective_uncensored, heretic_gated_off) =
+        resolve_effective_uncensored(uncensored, anime, &final_prompt);
+    if heretic_gated_off {
+        eprintln!("\x1b[38;2;180;180;180mHERETIC GATE // Anime aktivní bez explicitní nahoty — Heretic LoRA pro tento běh přeskočena\x1b[0m");
     }
 
     // Ensure all Ollama models are stopped so VRAM is 100% available for ComfyUI DiT
@@ -321,7 +398,7 @@ pub(crate) fn cmd_generate(
         denoise,
         anime,
         turbo: active_turbo,
-        uncensored,
+        uncensored: effective_uncensored,
         anatomy: effective_anatomy,
         res_mode: &final_res_mode,
         is_human,

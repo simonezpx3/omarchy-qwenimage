@@ -46,11 +46,24 @@ class ViggleTurboSigmas:
 
 
 def lora_fwd(x, ab):
-    return F.linear(F.linear(x, ab[0].to(x.dtype)), ab[1].to(x.dtype))
+    a = ab[0].to(device=x.device, dtype=x.dtype, non_blocking=True)
+    b = ab[1].to(device=x.device, dtype=x.dtype, non_blocking=True)
+    mid = F.linear(x, a)
+    del a
+    res = F.linear(mid, b)
+    del mid, b
+    return res
+
+
+def _apply_hook(out, delta):
+    try:
+        return out.add_(delta)
+    except (RuntimeError, Exception):
+        return out + delta
 
 
 def add_hook(mod, ab):
-    return mod.register_forward_hook(lambda m, inp, out: out + lora_fwd(inp[0], ab))
+    return mod.register_forward_hook(lambda m, inp, out: _apply_hook(out, lora_fwd(inp[0], ab)))
 
 
 def add_mlp_hooks(mlp, gate, up, down):
@@ -93,9 +106,17 @@ def add_mlp_hooks(mlp, gate, up, down):
 
 def run_with_lora(lora, executor, *args, **kwargs):
     dm = executor.class_obj
-    for ab in lora.values():
-        if ab[0].device != args[0].device:
-            ab[0], ab[1] = ab[0].to(args[0].device), ab[1].to(args[0].device)
+    target_dev = args[0].device
+    preload_on_gpu = False
+    if target_dev.type == "cuda":
+        try:
+            preload_on_gpu = torch.cuda.get_device_properties(target_dev).total_memory > 10 * (1024 ** 3)
+        except Exception:
+            preload_on_gpu = False
+    if preload_on_gpu:
+        for ab in lora.values():
+            if ab[0].device != target_dev:
+                ab[0], ab[1] = ab[0].to(target_dev), ab[1].to(target_dev)
     hooks = []
     for name, ab in lora.items():
         parent, _, leaf = name.rpartition(".")
@@ -113,6 +134,14 @@ def run_with_lora(lora, executor, *args, **kwargs):
     finally:
         for hk in hooks:
             hk.remove()
+        for ab in lora.values():
+            if ab[0].device.type != "cpu":
+                ab[0], ab[1] = ab[0].to("cpu"), ab[1].to("cpu")
+        try:
+            import comfy.model_management
+            comfy.model_management.soft_empty_cache()
+        except Exception:
+            pass
 
 
 class ViggleTurboLora:

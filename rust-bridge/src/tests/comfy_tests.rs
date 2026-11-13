@@ -402,6 +402,12 @@ fn test_dynamic_vram_reserve_budget_matrix() {
     let (res_8_2lora, purge_8_2lora) = comfy::calculate_dynamic_vram_reserve(&vram_8gb, false, 2, 1280, 720);
     assert_eq!(res_8_2lora, 1.6);
     assert!(purge_8_2lora);
+    let (res_8_turbo_1lora, purge_8_turbo_1lora) = comfy::calculate_dynamic_vram_reserve(&vram_8gb, true, 1, 1536, 944);
+    assert_eq!(res_8_turbo_1lora, 1.4);
+    assert!(purge_8_turbo_1lora);
+    let (res_8_turbo_2lora, purge_8_turbo_2lora) = comfy::calculate_dynamic_vram_reserve(&vram_8gb, true, 2, 1536, 944);
+    assert_eq!(res_8_turbo_2lora, 1.6);
+    assert!(purge_8_turbo_2lora);
 
     // 4. Memory-Constrained fallback on any GPU (even high-end cards under external load)
     let vram_constrained_24gb = VramInfo {

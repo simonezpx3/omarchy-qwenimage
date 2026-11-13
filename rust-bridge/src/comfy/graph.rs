@@ -137,7 +137,8 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     };
 
     let mut prompt_text = cfg.prompt.to_string();
-    if has_anime && !prompt_text.to_lowercase().contains("anime") {
+    let p_lower = prompt_text.to_lowercase();
+    if has_anime && !p_lower.contains("cel shading") && !p_lower.contains("visual novel") {
         match cfg.anime {
             LoraLevel::Heavy => {
                 prompt_text = format!("masterpiece, detailed anime visual novel illustration, cel shading, {}", prompt_text);
@@ -566,7 +567,7 @@ pub fn calculate_dynamic_vram_reserve(
 
     // Mid-range cards (12 GB - 15 GB, e.g. RTX 3060 12GB, 4070) with unconstrained free headroom:
     if vram.total_mb >= 11500 && !is_vram_constrained {
-        if has_turbo {
+        if has_turbo && active_lora_count == 0 {
             return (0.5, false);
         } else if active_lora_count >= 2 {
             return (1.2, true);
@@ -580,10 +581,8 @@ pub fn calculate_dynamic_vram_reserve(
     // Constrained profile (<= 8 GB cards OR low free VRAM < 3.5 GB on any GPU):
     // Reserve controls minimum_inference_memory() = 0.8 + reserve.
     // If LoRA is active, GGUF dequantization + 192 MB SwiGLU forward pass requires 1.3 - 1.6 GB headroom.
-    // In Turbo/standard mode, side-branch LoRA + VAE decode requires 0.9 - 1.0 GB headroom with cache purging.
-    if has_turbo {
-        (if is_high_res { 1.0 } else { 0.9 }, true)
-    } else if active_lora_count >= 2 {
+    // In Turbo/standard mode without extra LoRA, side-branch LoRA + VAE decode requires 0.9 - 1.0 GB headroom.
+    if active_lora_count >= 2 {
         (if is_high_res { 1.6 } else { 1.5 }, true)
     } else if active_lora_count == 1 {
         (if is_high_res { 1.4 } else { 1.3 }, true)
