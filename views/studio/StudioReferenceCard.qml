@@ -136,7 +136,7 @@ Rectangle {
       Button {
         text: root ? root.tr("paste") : "PASTE"
         fontSize: Commons.Style.font.caption
-        bordered: true
+        bordered: false
         Layout.fillWidth: true
         Layout.preferredHeight: Commons.Style.space(20)
         verticalPadding: Commons.Style.space(1)
@@ -147,7 +147,7 @@ Rectangle {
       Button {
         text: root ? root.tr("snip") : "SNIP"
         fontSize: Commons.Style.font.caption
-        bordered: true
+        bordered: false
         Layout.fillWidth: true
         Layout.preferredHeight: Commons.Style.space(20)
         verticalPadding: Commons.Style.space(1)
@@ -158,7 +158,7 @@ Rectangle {
       Button {
         text: root ? root.tr("clear") : "CLEAR"
         fontSize: Commons.Style.font.caption
-        bordered: true
+        bordered: false
         Layout.fillWidth: true
         Layout.preferredHeight: Commons.Style.space(20)
         verticalPadding: Commons.Style.space(1)
@@ -170,7 +170,7 @@ Rectangle {
       Button {
         text: (panelRoot && panelRoot.isInterrogating) ? ((root ? root.tr("tagging") : "TAGGING...") + " (" + (root ? root.wd14ElapsedSeconds : 0) + "s)") : (root ? root.tr("interrogate_wd14") : "TAGY WD14")
         fontSize: Commons.Style.font.caption
-        bordered: true
+        bordered: false
         Layout.fillWidth: true
         Layout.preferredHeight: Commons.Style.space(20)
         verticalPadding: Commons.Style.space(1)
@@ -185,7 +185,7 @@ Rectangle {
       Button {
         text: (panelRoot && panelRoot.isVisionLoading) ? ((root ? root.tr("analyzing") : "ANALYZING...") + " (" + (root ? root.visionElapsedSeconds : 0) + "s)") : (root ? root.tr("vision_prompt") : "VISION PROMPT")
         fontSize: Commons.Style.font.caption
-        bordered: true
+        bordered: false
         Layout.fillWidth: true
         Layout.preferredHeight: Commons.Style.space(20)
         verticalPadding: Commons.Style.space(1)

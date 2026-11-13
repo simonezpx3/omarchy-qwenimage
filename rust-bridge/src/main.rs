@@ -2,6 +2,7 @@ mod common;
 mod comfy;
 mod prompts_db;
 mod vram;
+mod prompt_lang;
 mod prompts;
 mod civitai;
 mod gallery;
@@ -31,7 +32,7 @@ use std::process::Command;
 
 const COMFY_URL: &str = "http://127.0.0.1:8188";
 
-fn detect_qwen_model() -> String {
+fn detect_qwen_model() -> (bool, String) {
     let comfy_models = comfy::get_comfy_dir().join("models/diffusion_models");
     if let Ok(entries) = fs::read_dir(comfy_models) {
         for entry in entries.flatten() {
@@ -41,14 +42,14 @@ fn detect_qwen_model() -> String {
                 if lower.contains("qwen") && (lower.ends_with(".gguf") || lower.ends_with(".safetensors")) {
                     let clean = file_name.trim_end_matches(".gguf").trim_end_matches(".safetensors");
                     if clean.contains("2.1") && clean.contains("Q4_K_M") {
-                        return "Qwen-Image 2.1 Heretic (DiT Q4)".to_string();
+                        return (true, "Qwen-Image 2.1 Heretic (DiT Q4)".to_string());
                     }
-                    return clean.replace('_', " ");
+                    return (true, clean.replace('_', " "));
                 }
             }
         }
     }
-    "Qwen-Image 2.1 Heretic".to_string()
+    (false, "Missing DiT".to_string())
 }
 
 fn get_driver_version() -> String {
@@ -99,7 +100,7 @@ fn get_hyprland_version() -> String {
 fn get_stack_versions(comfy_online: bool, ollama_online: bool) -> serde_json::Value {
     let mut comfy_ver = if comfy_online { "Online".to_string() } else { "Offline".to_string() };
     let mut pytorch_ver = String::new();
-    let qwen_model = detect_qwen_model();
+    let (_qwen_ok, qwen_model) = detect_qwen_model();
 
     let agent = get_http_agent(1);
 
@@ -185,6 +186,7 @@ fn cmd_status() {
         "max_res_dim": max_dim,
         "supported_res_modes": modes,
         "services": {
+            "qwen": detect_qwen_model().0,
             "comfyui": online,
             "gpu": !gaming,
             "ollama": ollama_ok,
@@ -383,8 +385,16 @@ fn main() {
             let limit = args.get(2).and_then(|l| l.parse::<usize>().ok()).unwrap_or(30);
             cmd_history(limit);
         }
+        "delete" | "rm" => {
+            if args.len() >= 3 {
+                cmd_delete_history(&args[2]);
+            } else {
+                println!("{}", serde_json::json!({"status": "error", "message": "Missing image path"}));
+            }
+        }
         "generate" => {
             let mut res_mode: Option<String> = None;
+            let mut mask_ref: Option<String> = None;
             let mut anime = comfy::LoraLevel::Off;
             let mut turbo = false;
             let mut uncensored = comfy::LoraLevel::Off;
@@ -442,6 +452,20 @@ fn main() {
                 } else if args[idx] == "--expand" || args[idx] == "--auto-expand" {
                     expand = true;
                     idx += 1;
+                } else if let Some(val) = args[idx].strip_prefix("--mask=") {
+                    if !val.trim().is_empty() {
+                        mask_ref = Some(val.to_string());
+                    }
+                    idx += 1;
+                } else if args[idx] == "--mask" {
+                    if let Some(next) = args.get(idx + 1) {
+                        if !next.trim().is_empty() {
+                            mask_ref = Some(next.clone());
+                        }
+                        idx += 2;
+                        continue;
+                    }
+                    idx += 1;
                 } else if args[idx] == "--res" || args[idx] == "--res-mode" {
                     if let Some(next) = args.get(idx + 1) {
                         res_mode = Some(next.clone());
@@ -464,7 +488,7 @@ fn main() {
             let image_ref = pos_args.get(6).copied().filter(|s| !s.trim().is_empty());
             let denoise = pos_args.get(7).and_then(|s| s.parse::<f32>().ok()).unwrap_or(0.85).clamp(0.05, 0.95);
 
-            cmd_generate(prompt, ratio, steps, cfg, seed, negative, image_ref, denoise, anime, turbo, uncensored, anatomy, res_mode.as_deref(), expand);
+            cmd_generate(prompt, ratio, steps, cfg, seed, negative, image_ref, mask_ref.as_deref(), denoise, anime, turbo, uncensored, anatomy, res_mode.as_deref(), expand);
         }
         "interrupt" | "cancel" => {
             let ok = comfy::interrupt_comfyui();

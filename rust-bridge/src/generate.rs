@@ -67,6 +67,7 @@ pub(crate) fn cmd_generate(
     seed: i64,
     negative: &str,
     image_ref: Option<&str>,
+    mask_ref: Option<&str>,
     denoise: f32,
     anime: crate::comfy::LoraLevel,
     turbo: bool,
@@ -136,7 +137,7 @@ pub(crate) fn cmd_generate(
     let mut final_prompt = sanitize_diffusion_prompt(prompt);
     let mut final_negative = sanitize_diffusion_prompt(negative);
 
-    if is_czech_text(&final_prompt) {
+    if needs_english_translation(&final_prompt) {
         if let Ok(translated) = cmd_translate_internal(&final_prompt) {
             if translated.len() > 3 {
                 final_prompt = sanitize_diffusion_prompt(&translated);
@@ -245,6 +246,7 @@ pub(crate) fn cmd_generate(
         cfg: final_cfg,
         seed,
         image_ref,
+        mask_ref,
         denoise,
         anime,
         turbo: active_turbo,

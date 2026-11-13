@@ -518,3 +518,30 @@ pub(crate) fn cmd_history(limit: usize) {
 
     println!("{}", serde_json::json!({"status": "ok", "items": items, "total": items.len()}));
 }
+
+pub(crate) fn delete_history_file_in_dir(raw_path: &str, gallery_dir: &Path) -> Result<String, String> {
+    let trimmed = raw_path.trim().strip_prefix("file://").unwrap_or(raw_path.trim());
+    if trimmed.is_empty() {
+        return Err("Empty path".to_string());
+    }
+    let canon_dir = fs::canonicalize(gallery_dir)
+        .map_err(|e| format!("Gallery dir unavailable: {}", e))?;
+    let canon_target = fs::canonicalize(Path::new(trimmed))
+        .map_err(|e| format!("File not found: {}", e))?;
+    if !canon_target.starts_with(&canon_dir) {
+        return Err("Refusing to delete file outside gallery directory".to_string());
+    }
+    if !canon_target.is_file() {
+        return Err("Target is not a regular file".to_string());
+    }
+    fs::remove_file(&canon_target)
+        .map_err(|e| format!("Failed to delete file: {}", e))?;
+    Ok(canon_target.to_string_lossy().to_string())
+}
+
+pub(crate) fn cmd_delete_history(raw_path: &str) {
+    match delete_history_file_in_dir(raw_path, &get_gallery_dir()) {
+        Ok(deleted) => println!("{}", serde_json::json!({"status": "ok", "deleted": deleted})),
+        Err(msg) => println!("{}", serde_json::json!({"status": "error", "message": msg})),
+    }
+}

@@ -53,6 +53,7 @@ Item {
       service.supportedResModes = data.supported_res_modes;
     }
     if (data.services) {
+      service.svcQwen = !!data.services.qwen;
       service.svcComfy = !!data.services.comfyui;
       service.svcGpu = !!data.services.gpu;
       service.svcOllama = !!data.services.ollama;

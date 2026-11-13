@@ -161,6 +161,37 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
             n6["cfg"] = json!(if has_turbo { 1.0 } else if cfg.cfg <= 1.05 { 4.0 } else { cfg.cfg });
             n6["denoise"] = json!(cfg.denoise);
         }
+
+        // Inpainting: LoadImageMask + switch VAEEncode ("5b") -> VAEEncodeForInpaint
+        if let Some(mask_path) = cfg.mask_ref.filter(|s| !s.trim().is_empty()) {
+            let mp = Path::new(mask_path);
+            if !mp.exists() {
+                return Err(format!("Inpaint mask image not found: {}", mask_path));
+            }
+            let m_stem = mp.file_stem().and_then(|s| s.to_str()).unwrap_or("mask");
+            let m_ext = mp.extension().and_then(|e| e.to_str()).unwrap_or("png");
+            let m_clean: String = m_stem.chars().filter(|c| c.is_alphanumeric() || *c == '_' || *c == '-').take(48).collect();
+            let mask_filename = format!("mask_{}.{}", if m_clean.is_empty() { "inpaint" } else { &m_clean }, m_ext);
+            let mask_dest = comfy_in_dir.join(&mask_filename);
+            let _ = fs::copy(mp, mask_dest);
+
+            val["9m"] = json!({
+                "class_type": "LoadImageMask",
+                "inputs": {
+                    "image": mask_filename,
+                    "channel": "alpha"
+                }
+            });
+            val["5b"] = json!({
+                "class_type": "VAEEncodeForInpaint",
+                "inputs": {
+                    "pixels": ["5", 0],
+                    "vae": ["3", 0],
+                    "mask": ["9m", 0],
+                    "grow_mask_by": 6
+                }
+            });
+        }
         val
     } else {
         let mut val: Value = serde_json::from_str(TEMPLATE_T2I).map_err(|e| format!("Failed to parse T2I template: {}", e))?;

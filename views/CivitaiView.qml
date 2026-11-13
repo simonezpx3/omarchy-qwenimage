@@ -60,12 +60,12 @@ Item {
         delegate: Button {
           text: modelData.label
           fontSize: Commons.Style.font.caption
-          bordered: true
+          bordered: false
           Layout.preferredHeight: Commons.Style.space(20)
           verticalPadding: Commons.Style.space(1)
           selected: root.activeSource === modelData.key
-          foreground: selected ? "#4ade80" : Commons.Color.muted
-          accent: "#4ade80"
+          foreground: selected ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.foreground, 0.72)
+          accent: Commons.Color.accent
           onClicked: root.selectSource(modelData.key)
         }
       }
@@ -193,7 +193,7 @@ Item {
       Button {
         text: root.isLoading ? "FETCHING..." : "FETCH PROMPTS"
         fontSize: Commons.Style.font.caption
-        bordered: true
+        bordered: false
         active: true
         Layout.preferredHeight: Commons.Style.space(20)
         verticalPadding: Commons.Style.space(1)
@@ -315,12 +315,12 @@ Item {
       Button {
         text: panelRoot && panelRoot.isNsfwEnabled ? "NSFW: ON" : "NSFW: OFF"
         fontSize: Commons.Style.font.caption
-        bordered: true
+        bordered: false
         Layout.preferredHeight: Commons.Style.space(20)
         verticalPadding: Commons.Style.space(1)
         selected: panelRoot && panelRoot.isNsfwEnabled
-        foreground: selected ? "#4ade80" : Commons.Color.muted
-        accent: "#4ade80"
+        foreground: selected ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.foreground, 0.72)
+        accent: Commons.Color.accent
         onClicked: if (panelRoot) panelRoot.toggleNsfw()
       }
 
@@ -329,7 +329,7 @@ Item {
       Button {
         text: "BACK TO STUDIO"
         fontSize: Commons.Style.font.caption
-        bordered: true
+        bordered: false
         active: true
         Layout.preferredHeight: Commons.Style.space(20)
         verticalPadding: Commons.Style.space(1)

@@ -3,69 +3,7 @@ use std::io::{BufRead, BufReader};
 
 use crate::common::{get_http_agent, SA_SIGNATURE_DNA};
 use crate::comfy;
-
-pub(crate) fn is_czech_text(s: &str) -> bool {
-    let mut cz_chars = 0;
-    for c in s.chars() {
-        if "ěščřžýáíéúůťďňóĚŠČŘŽÝÁÍÉÚŮŤĎŇÓ".contains(c) {
-            cz_chars += 1;
-        }
-    }
-    if cz_chars >= 2 {
-        return true;
-    }
-
-    let cz_words = [
-        "a", "i", "v", "s", "z", "k", "o", "u", "se", "si", "na", "do", "od", "po", "za", "pro",
-        "ve", "ze", "ke", "ku", "to", "ta", "ten", "ti", "ty", "je", "jsou", "byl", "byla", "bylo",
-        "bude", "budou", "jako", "jak", "ale", "nebo", "ani", "když", "protože", "který", "která",
-        "které", "kteří", "co", "kdo", "kde", "kam", "odkud", "kdy", "proč", "jaký", "jaká", "jaké",
-        "obraz", "fotka", "žena", "muž", "dívka", "chlapec", "auto", "les", "strom", "dům", "město",
-        "kočka", "pes", "styl", "barva", "světlo", "stín", "detail", "pozadí", "popředí", "krásný",
-        "krásná", "krásné", "velký", "velká", "malý", "malá", "černý", "bílý", "červený", "modrý",
-        "zelený", "žlutý", "zlatý", "stříbrný", "portrét", "krajina", "digitální", "malba", "kresba",
-    ];
-
-    let en_words = [
-        "the", "and", "in", "of", "to", "a", "is", "that", "for", "it", "as", "was", "with",
-        "on", "at", "by", "this", "be", "are", "from", "or", "an", "not", "but", "what", "all",
-        "were", "when", "we", "there", "can", "an", "your", "which", "their", "if", "do", "will",
-        "each", "about", "how", "up", "out", "them", "then", "she", "many", "some", "so", "these",
-        "would", "other", "into", "has", "more", "her", "two", "like", "him", "see", "time",
-        "could", "no", "make", "than", "first", "been", "its", "who", "now", "people", "my",
-        "made", "over", "did", "down", "only", "way", "find", "use", "may", "water", "long",
-        "very", "after", "words", "called", "just", "where", "most", "know", "portrait", "photo",
-        "photograph", "cinematic", "lighting", "ultra", "realistic", "detailed", "render",
-        "digital", "art", "style", "illustration", "concept", "octane", "unreal", "engine",
-    ];
-
-    let lower = s.to_lowercase();
-    let words: Vec<&str> = lower
-        .split(|c: char| !c.is_alphanumeric())
-        .filter(|w| !w.is_empty())
-        .collect();
-
-    if words.is_empty() {
-        return false;
-    }
-
-    let mut cz_count = 0;
-    let mut en_count = 0;
-
-    for w in &words {
-        if cz_words.contains(w) {
-            cz_count += 1;
-        }
-        if en_words.contains(w) {
-            en_count += 1;
-        }
-    }
-
-    if cz_chars > 0 && en_count == 0 {
-        return true;
-    }
-    cz_count > en_count
-}
+pub(crate) use crate::prompt_lang::{contains_cyrillic, is_czech_text, needs_english_translation};
 
 pub(crate) fn strip_reasoning_and_fences(content: &str) -> String {
     let mut s = content.trim();
@@ -154,7 +92,10 @@ fn query_local_openai(
 }
 
 pub(crate) fn cmd_translate_internal(text: &str) -> Result<String, String> {
-    let sys_prompt = "You are an expert diffusion prompt engineer. If the input is in Czech, accurately translate and expand it into descriptive, photorealistic English tags and scene modifiers suitable for DiT diffusion models (Qwen-Image). If the input is in English, enhance it with lighting, composition, and aesthetic modifiers. Output ONLY the final enhanced English prompt string, without any quotation marks, preamble, or conversational text.";
+    if contains_cyrillic(text) {
+        return Err("Russian/Cyrillic input is not supported (No RU policy).".to_string());
+    }
+    let sys_prompt = "You are an expert diffusion prompt engineer. If the input is not in English (e.g., Czech, German, French, Spanish, Japanese, etc.), accurately translate and expand it into descriptive, photorealistic English tags and scene modifiers suitable for DiT diffusion models (Qwen-Image). If the input is already in English, enhance it with lighting, composition, and aesthetic modifiers. Output ONLY the final enhanced English prompt string, without any quotation marks, preamble, or conversational text.";
 
     // Tier 1: Probe fast local OpenAI-compatible server (port 8081/8080/10001)
     if let Some(content) = query_local_openai(sys_prompt, text, 0.4, 300) {
@@ -332,6 +273,9 @@ pub(crate) fn optimize_prompt_internal(text: &str) -> Result<(String, String, St
     let trimmed = text.trim();
     if trimmed.is_empty() {
         return Ok((String::new(), String::new(), "16:10".to_string()));
+    }
+    if contains_cyrillic(trimmed) {
+        return Err("Russian/Cyrillic input is not supported (No RU policy).".to_string());
     }
 
     let default_neg = "worst quality, low quality, blurry, deformed, bad anatomy, bad hands, missing fingers, extra limbs, fused fingers, deformed hands";

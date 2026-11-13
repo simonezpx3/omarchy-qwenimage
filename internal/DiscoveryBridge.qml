@@ -48,7 +48,7 @@ Item {
     histProc.running = true;
   }
 
-  function restoreFromHistory(path, prompt, seed, ratio, negative) {
+  function restoreFromHistory(path, prompt, seed, ratio, negative, steps, loras) {
     if (!service) return;
     if (prompt) service.promptText = prompt;
     if (negative !== undefined && negative !== null && negative !== "") {
@@ -59,6 +59,14 @@ Item {
       service.seedLocked = true;
     }
     if (ratio) service.aspectRatio = ratio;
+    if (steps !== undefined && steps !== null && Number(steps) > 0) {
+      service.steps = Number(steps);
+    }
+    if (loras) {
+      if (loras.anime !== undefined) service.animeMode = loras.anime;
+      if (loras.uncensored !== undefined) service.uncensoredMode = loras.uncensored;
+      if (loras.anatomy !== undefined) service.anatomyMode = loras.anatomy;
+    }
     service.generatedPath = path;
     service.baseGeneratedPath = path;
   }

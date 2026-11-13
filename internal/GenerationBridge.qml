@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "PromptUtils.js" as PromptUtils
 
 Item {
   id: root
@@ -8,16 +9,7 @@ Item {
   property var service: null
 
   function sanitizePromptText(text) {
-    if (!text) return "";
-    var s = String(text);
-    s = s.replace(/[\uFFF9-\uFFFB\uFFFD]/g, "");
-    s = s.replace(/[\uFEFF\u200B-\u200D\u2060\u00AD]/g, "");
-    s = s.replace(/[\u202A-\u202E\u2066-\u2069\u200E\u200F]/g, "");
-    s = s.replace(/[\uE000-\uF8FF]/g, "");
-    s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "");
-    s = s.replace(/[ \t]+/g, " ");
-    s = s.replace(/,\s*,+/g, ", ");
-    return s.trim();
+    return PromptUtils.sanitizePromptText(text);
   }
 
   function recallPrompt(delta) {
@@ -78,6 +70,13 @@ Item {
       args.push(service.referencePath);
       var clampedDenoise = Math.min(0.95, Math.max(0.05, service.denoise));
       args.push(String(clampedDenoise));
+      if (service.inpaintMode && service.activeMaskCanvas) {
+        var tmpMask = "/tmp/qis_inpaint_mask_" + Date.now() + ".png";
+        if (service.activeMaskCanvas.save(tmpMask)) {
+          args.push("--mask");
+          args.push(tmpMask);
+        }
+      }
     }
 
     if (service.animeMode && service.animeMode !== "off") {

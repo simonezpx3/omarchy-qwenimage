@@ -12,6 +12,15 @@ ColumnLayout {
 
   property var root: null
   property var panelRoot: null
+  property real zoomScale: 1.0
+  property real panX: 0.0
+  property real panY: 0.0
+
+  function resetZoom() {
+    zoomScale = 1.0;
+    panX = 0.0;
+    panY = 0.0;
+  }
 
   // Image Canvas Card Frame
   Rectangle {
@@ -19,8 +28,8 @@ ColumnLayout {
     Layout.fillWidth: true
     Layout.fillHeight: true
     Layout.minimumHeight: Commons.Style.space(380)
-    color: Commons.Util.alpha(Commons.Color.background, 0.85)
-    border.color: Commons.Color.menu.border
+    color: Commons.Util.alpha(Commons.Color.foreground, 0.03)
+    border.color: Commons.Util.alpha(Commons.Color.menu.border, 0.35)
     border.width: 1
     radius: Commons.Style.cornerRadius
     clip: true
@@ -54,6 +63,58 @@ ColumnLayout {
           font.bold: true
           color: Commons.Color.accent
         }
+
+        // Zoom percentage & FIT reset button
+        Text {
+          textFormat: Text.PlainText
+          visible: Boolean(panelRoot && panelRoot.generatedPath !== "" && Math.abs(canvasRoot.zoomScale - 1.0) > 0.02)
+          text: Math.round(canvasRoot.zoomScale * 100) + "%"
+          font.family: Commons.Style.font.family
+          font.features: { "tnum": 1 }
+          font.pixelSize: Commons.Style.font.caption
+          color: Commons.Util.alpha(Commons.Color.foreground, 0.7)
+        }
+
+        Button {
+          text: "FIT"
+          fontSize: Commons.Style.font.caption
+          bordered: false
+          visible: Boolean(panelRoot && panelRoot.generatedPath !== "" && (Math.abs(canvasRoot.zoomScale - 1.0) > 0.02 || Math.abs(canvasRoot.panX) > 1.0 || Math.abs(canvasRoot.panY) > 1.0))
+          Layout.preferredHeight: Commons.Style.space(18)
+          verticalPadding: Commons.Style.space(1)
+          horizontalPadding: Commons.Style.space(6)
+          onHotChanged: if (root) root.setHelp(root.tr("help_canvas_fit"), hot)
+          onClicked: canvasRoot.resetZoom()
+        }
+
+        Button {
+          text: panelRoot && panelRoot.inpaintMode ? "MASK: ON" : "MASK"
+          fontSize: Commons.Style.font.caption
+          bordered: false
+          selected: Boolean(panelRoot && panelRoot.inpaintMode)
+          foreground: selected ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.foreground, 0.72)
+          accent: Commons.Color.accent
+          visible: Boolean(panelRoot && !panelRoot.isGenerating && (panelRoot.referencePath !== "" || panelRoot.generatedPath !== ""))
+          Layout.preferredHeight: Commons.Style.space(18)
+          verticalPadding: Commons.Style.space(1)
+          horizontalPadding: Commons.Style.space(6)
+          onHotChanged: if (root) root.setHelp(root.tr("help_mask_toggle"), hot)
+          onClicked: {
+            if (!panelRoot) return;
+            if (!panelRoot.inpaintMode && panelRoot.referencePath === "" && panelRoot.generatedPath !== "") {
+              panelRoot.setReferenceImage(panelRoot.generatedPath);
+            }
+            panelRoot.inpaintMode = !panelRoot.inpaintMode;
+          }
+        }
+      }
+
+      // Inline Inpainting Mask Toolbar
+      StudioMaskToolbar {
+        visible: Boolean(panelRoot && panelRoot.inpaintMode && !panelRoot.isGenerating)
+        root: canvasRoot.root
+        panelRoot: canvasRoot.panelRoot
+        maskCanvas: maskCanvas
       }
 
       Rectangle {
@@ -62,14 +123,13 @@ ColumnLayout {
         color: Qt.rgba(Commons.Color.menu.border.r, Commons.Color.menu.border.g, Commons.Color.menu.border.b, 0.25)
       }
 
-      // Visual Canvas Display Area
+      // Visual Canvas Display Area (borderless inside canvasFrame to avoid box-in-a-box clutter)
       Rectangle {
         id: canvasBox
         Layout.fillWidth: true
         Layout.fillHeight: true
-        color: Commons.Util.alpha(Commons.Color.background, 0.65)
-        border.color: Commons.Color.menu.border
-        border.width: 1
+        color: Commons.Util.alpha(Commons.Color.background, 0.45)
+        border.width: 0
         radius: Commons.Style.cornerRadius
         clip: true
 
@@ -124,16 +184,92 @@ ColumnLayout {
           }
         }
 
-        Image {
-          id: mainPreview
+        Item {
+          id: zoomContainer
           anchors.fill: parent
           anchors.margins: Commons.Style.spacing.xxs
-          fillMode: Image.PreserveAspectFit
-          sourceSize: Qt.size(Math.min(Math.max(width * (Screen.devicePixelRatio > 0 ? Screen.devicePixelRatio : 1.0), 1280), 2560), 0)
-          source: panelRoot && panelRoot.generatedPath !== "" ? ("file://" + encodeURI(panelRoot.generatedPath)) : ""
-          cache: false
-          asynchronous: true
           visible: Boolean(!(panelRoot && panelRoot.isGenerating && panelRoot.livePreviewPath !== ""))
+
+          Image {
+            id: mainPreview
+            width: zoomContainer.width
+            height: zoomContainer.height
+            x: canvasRoot.panX
+            y: canvasRoot.panY
+            scale: canvasRoot.zoomScale
+            transformOrigin: Item.Center
+            fillMode: Image.PreserveAspectFit
+            sourceSize: Qt.size(Math.min(Math.max(width * (Screen.devicePixelRatio > 0 ? Screen.devicePixelRatio : 1.0), 1280), 2560), 0)
+            source: panelRoot && panelRoot.generatedPath !== "" ? ("file://" + encodeURI(panelRoot.generatedPath)) : ""
+            cache: false
+            asynchronous: true
+            onSourceChanged: canvasRoot.resetZoom()
+          }
+
+          // Interactive Inpainting Mask Layer
+          StudioMaskCanvas {
+            id: maskCanvas
+            x: mainPreview.x
+            y: mainPreview.y
+            width: mainPreview.width
+            height: mainPreview.height
+            scale: mainPreview.scale
+            transformOrigin: Item.Center
+            visible: Boolean(panelRoot && panelRoot.inpaintMode && !panelRoot.isGenerating)
+            panelRoot: canvasRoot.panelRoot
+          }
+
+          WheelHandler {
+            enabled: Boolean(panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating)
+            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+            onWheel: function(event) {
+              var factor = event.angleDelta.y > 0 ? 1.15 : (1.0 / 1.15);
+              var next = Math.max(0.5, Math.min(4.0, canvasRoot.zoomScale * factor));
+              canvasRoot.zoomScale = next;
+              if (next <= 1.01) {
+                canvasRoot.panX = 0.0;
+                canvasRoot.panY = 0.0;
+              }
+            }
+          }
+
+          DragHandler {
+            id: panHandler
+            target: null
+            acceptedButtons: Qt.RightButton | Qt.MiddleButton
+            enabled: Boolean(panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating && canvasRoot.zoomScale > 1.01)
+            property real startPanX: 0
+            property real startPanY: 0
+            onActiveChanged: {
+              if (active) {
+                startPanX = canvasRoot.panX;
+                startPanY = canvasRoot.panY;
+              }
+            }
+            onTranslationChanged: {
+              if (active) {
+                var maxOffsetX = zoomContainer.width * (canvasRoot.zoomScale - 1.0) * 0.5;
+                var maxOffsetY = zoomContainer.height * (canvasRoot.zoomScale - 1.0) * 0.5;
+                canvasRoot.panX = Math.max(-maxOffsetX, Math.min(maxOffsetX, startPanX + translation.x));
+                canvasRoot.panY = Math.max(-maxOffsetY, Math.min(maxOffsetY, startPanY + translation.y));
+              }
+            }
+          }
+
+          HoverHandler {
+            enabled: Boolean(panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating)
+            onHoveredChanged: {
+              if (!root) return;
+              var maskMsg = root.tr("help_canvas_image_mask");
+              var viewMsg = root.tr("help_canvas_image");
+              if (hovered) {
+                root.setHelp((panelRoot && panelRoot.inpaintMode) ? maskMsg : viewMsg, true);
+              } else {
+                root.setHelp(maskMsg, false);
+                root.setHelp(viewMsg, false);
+              }
+            }
+          }
         }
 
         // Live TAEQI / Diffusion Preview Image
@@ -149,28 +285,6 @@ ColumnLayout {
           cache: false
           asynchronous: true
           visible: Boolean(panelRoot && panelRoot.isGenerating && panelRoot.livePreviewPath !== "")
-        }
-
-        // Left-click on canvas buffer: open generated image fullscreen
-        MouseArea {
-          id: canvasClickArea
-          anchors.fill: parent
-          acceptedButtons: Qt.LeftButton
-          hoverEnabled: true
-          readonly property bool canOpenFullscreen: Boolean(panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating)
-          cursorShape: canOpenFullscreen ? Qt.PointingHandCursor : Qt.ArrowCursor
-          onEntered: if (canOpenFullscreen && root) root.setHelp(root.tr("help_canvas_fullscreen"), true)
-          onExited: if (root) root.setHelp(root.tr("help_canvas_fullscreen"), false)
-          onCanOpenFullscreenChanged: {
-            if (containsMouse && root) {
-              root.setHelp(root.tr("help_canvas_fullscreen"), canOpenFullscreen);
-            }
-          }
-          onClicked: function(mouse) {
-            if (mouse.button === Qt.LeftButton && canOpenFullscreen) {
-              panelRoot.openFullscreenViewer(panelRoot.generatedPath);
-            }
-          }
         }
 
         // Live Diffusion Step Badge

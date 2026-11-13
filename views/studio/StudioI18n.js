@@ -87,7 +87,7 @@ var strings = {
   "set_wallpaper": { "cs": "JAKO TAPETU", "en": "SET AS WALLPAPER" },
   "compare_ab": { "cs": "SROVNAT A/B", "en": "COMPARE A/B" },
   "copy_clipboard": { "cs": "DO SCHRÁNKY", "en": "COPY CLIPBOARD" },
-  "open_viewer": { "cs": "PROHLÍŽEČ", "en": "OPEN IN VIEWER" },
+  "open_viewer": { "cs": "VIEW", "en": "VIEW" },
 
   // Bottom Bar
   "civitai_prompts": { "cs": "PROMPTY & INSPIRACE", "en": "PROMPTS & INSPIRATION" },
@@ -303,6 +303,54 @@ var strings = {
   "help_generate": {
     "cs": "GENERATE: Spustí generování obrazu na lokální GPU za 0 tokenů.",
     "en": "GENERATE: Starts image generation on local GPU at 0 tokens."
+  },
+  "help_canvas_fit": {
+    "cs": "FIT: Obnoví výchozí přiblížení (100 %) a vycentruje náhled v plátně.",
+    "en": "FIT: Resets canvas zoom (100%) and re-centers the preview."
+  },
+  "help_mask_toggle": {
+    "cs": "MASK: Zapne nebo vypne kreslení inpainting masky přímo na obrázek.",
+    "en": "MASK: Toggles inpainting mask painting directly on the canvas."
+  },
+  "help_mask_brush": {
+    "cs": "BRUSH: Štětec pro kreslení oblasti masky určené k přegenerování (inpainting).",
+    "en": "BRUSH: Paint mask areas to be regenerated during inpainting."
+  },
+  "help_mask_erase": {
+    "cs": "ERASE: Guma pro smazání chybně nakreslených částí masky.",
+    "en": "ERASE: Eraser tool to remove painted mask strokes."
+  },
+  "help_mask_size": {
+    "cs": "VELIKOST ŠTĚTCE: Nastaví průměr stopy štětce nebo gumy v pixelech.",
+    "en": "BRUSH SIZE: Sets the mask brush or eraser diameter in pixels."
+  },
+  "help_mask_clear": {
+    "cs": "CLEAR MASK: Okamžitě smaže celou nakreslenou inpainting masku.",
+    "en": "CLEAR MASK: Clears the entire painted inpainting mask."
+  },
+  "help_canvas_clear": {
+    "cs": "CLEAR: Vyčistí aktuální vygenerovaný obrázek z plátna a vypne režim masky.",
+    "en": "CLEAR: Clears the current generated image from canvas and exits mask mode."
+  },
+  "help_seed_dec": {
+    "cs": "SEED -1: Sníží aktuální seed o 1 a uzamkne ho pro jemné variace.",
+    "en": "SEED -1: Decrements the current seed by 1 and locks it for variations."
+  },
+  "help_seed_inc": {
+    "cs": "SEED +1: Zvýší aktuální seed o 1 a uzamkne ho pro jemné variace.",
+    "en": "SEED +1: Increments the current seed by 1 and locks it for variations."
+  },
+  "help_seed_rnd": {
+    "cs": "SEED RND: Vygeneruje nový náhodný seed a rovnou ho uzamkne.",
+    "en": "SEED RND: Picks a new random seed and locks it."
+  },
+  "help_canvas_image": {
+    "cs": "NÁHLED OBRÁZKU: Kolečkem myši přiblížíte/oddálíte (50–400 %), pravým nebo prostředním tažením posouváte.",
+    "en": "IMAGE PREVIEW: Scroll to zoom (50–400%), right or middle-drag to pan when zoomed."
+  },
+  "help_canvas_image_mask": {
+    "cs": "PLÁTNO (MASKA): Levým tlačítkem kreslíte/mažete masku, kolečkem zoomujete, pravým nebo prostředním tažením posouváte.",
+    "en": "CANVAS (MASK): Left-drag to paint/erase mask, scroll to zoom, right or middle-drag to pan."
   }
 };
 

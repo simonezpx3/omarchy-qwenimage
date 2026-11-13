@@ -21,7 +21,7 @@ ColumnLayout {
       readonly property bool isBusy: Boolean(panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale_esrgan")
       text: isBusy ? ("ESRGAN " + (root ? root.genElapsedSeconds : 0) + "s") : "4X ESRGAN"
       fontSize: Commons.Style.font.caption
-      bordered: true
+      bordered: false
       Layout.fillWidth: true
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
@@ -37,7 +37,7 @@ ColumnLayout {
       readonly property bool isBusy: Boolean(panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale_ultra")
       text: isBusy ? ("ULTRA " + (root ? root.genElapsedSeconds : 0) + "s") : "4X ULTRA"
       fontSize: Commons.Style.font.caption
-      bordered: true
+      bordered: false
       Layout.fillWidth: true
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
@@ -53,7 +53,7 @@ ColumnLayout {
       readonly property bool isBusy: Boolean(panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale_anime")
       text: isBusy ? ("ANIME " + (root ? root.genElapsedSeconds : 0) + "s") : "4X ANIME"
       fontSize: Commons.Style.font.caption
-      bordered: true
+      bordered: false
       Layout.fillWidth: true
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
@@ -69,7 +69,7 @@ ColumnLayout {
       readonly property bool isBusy: Boolean(panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === 0.5)
       text: isBusy ? ("0.5X " + (root ? root.genElapsedSeconds : 0) + "s") : "0.5X"
       fontSize: Commons.Style.font.caption
-      bordered: true
+      bordered: false
       Layout.fillWidth: true
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
@@ -85,7 +85,7 @@ ColumnLayout {
       readonly property bool isBusy: Boolean(panelRoot && panelRoot.isGenerating && panelRoot.generatingMode === "scale" && panelRoot.currentScaleFactor === -1.0)
       text: isBusy ? ("FIT 1K " + (root ? root.genElapsedSeconds : 0) + "s") : "FIT 1K"
       fontSize: Commons.Style.font.caption
-      bordered: true
+      bordered: false
       Layout.fillWidth: true
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
@@ -106,7 +106,7 @@ ColumnLayout {
     Button {
       text: root ? root.tr("set_wallpaper") : "SET AS WALLPAPER"
       fontSize: Commons.Style.font.caption
-      bordered: true
+      bordered: false
       Layout.fillWidth: true
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
@@ -118,7 +118,7 @@ ColumnLayout {
     Button {
       text: root ? root.tr("compare_ab") : "COMPARE A/B"
       fontSize: Commons.Style.font.caption
-      bordered: true
+      bordered: false
       Layout.fillWidth: true
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
@@ -130,7 +130,7 @@ ColumnLayout {
     Button {
       text: root ? root.tr("copy_clipboard") : "COPY CLIPBOARD"
       fontSize: Commons.Style.font.caption
-      bordered: true
+      bordered: false
       Layout.fillWidth: true
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
@@ -140,15 +140,35 @@ ColumnLayout {
     }
 
     Button {
-      text: root ? root.tr("open_viewer") : "OPEN IN VIEWER"
+      text: root ? root.tr("open_viewer") : "VIEW"
       fontSize: Commons.Style.font.caption
-      bordered: true
+      bordered: false
       Layout.fillWidth: true
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
       enabled: panelRoot && panelRoot.generatedPath !== ""
       onHotChanged: if (root) root.setHelp(root.tr("help_open_viewer"), hot)
       onClicked: if (panelRoot) panelRoot.openImageViewer(panelRoot.generatedPath)
+    }
+
+    Button {
+      text: "CLEAR"
+      fontSize: Commons.Style.font.caption
+      bordered: false
+      foreground: Commons.Color.urgent
+      Layout.fillWidth: true
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
+      enabled: Boolean(panelRoot && panelRoot.generatedPath !== "" && !panelRoot.isGenerating)
+      onHotChanged: if (root) root.setHelp(root.tr("help_canvas_clear"), hot)
+      onClicked: {
+        if (!panelRoot) return;
+        panelRoot.generatedPath = "";
+        panelRoot.baseGeneratedPath = "";
+        panelRoot.generatedWidth = 0;
+        panelRoot.generatedHeight = 0;
+        panelRoot.inpaintMode = false;
+      }
     }
   }
 }

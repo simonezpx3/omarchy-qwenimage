@@ -68,7 +68,7 @@ ColumnLayout {
           visible: promptInput.text.trim() !== ""
           text: (panelRoot && panelRoot.isOptimizingPrompt) ? (root.tr("optimizing") + " " + root.optElapsedSeconds + "s") : (root ? root.tr("optimize") : "OPTIMIZE")
           fontSize: Commons.Style.font.caption
-          bordered: true
+          bordered: false
           Layout.preferredHeight: Commons.Style.space(20)
           verticalPadding: Commons.Style.space(1)
           active: panelRoot && panelRoot.isOptimizingPrompt
@@ -80,12 +80,12 @@ ColumnLayout {
         Button {
           text: (panelRoot && panelRoot.isAutoExpandEnabled) ? (root ? root.tr("auto_expand_on") : "Expand: ON") : (root ? root.tr("auto_expand_off") : "Expand: OFF")
           fontSize: Commons.Style.font.caption
-          bordered: true
+          bordered: false
           Layout.preferredHeight: Commons.Style.space(20)
           verticalPadding: Commons.Style.space(1)
           selected: panelRoot && panelRoot.isAutoExpandEnabled
-          foreground: selected ? "#4ade80" : Commons.Color.muted
-          accent: "#4ade80"
+          foreground: selected ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.foreground, 0.72)
+          accent: Commons.Color.accent
           onHotChanged: if (root) root.setHelp(root.tr("help_auto_expand"), hot)
           onClicked: if (panelRoot) panelRoot.toggleAutoExpand()
         }

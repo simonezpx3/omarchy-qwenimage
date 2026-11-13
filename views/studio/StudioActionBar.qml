@@ -72,10 +72,10 @@ ColumnLayout {
     Button {
       text: panelRoot && panelRoot.isTurboEnabled ? "TURBO: ON" : "TURBO: OFF"
       fontSize: Commons.Style.font.caption
-      bordered: true
+      bordered: false
       selected: panelRoot && panelRoot.isTurboEnabled
-      foreground: selected ? "#4ade80" : Commons.Color.muted
-      accent: "#4ade80"
+      foreground: selected ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.foreground, 0.72)
+      accent: Commons.Color.accent
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_turbo_lora"), hot)
@@ -92,10 +92,10 @@ ColumnLayout {
         return "ANIME: OFF";
       }
       fontSize: Commons.Style.font.caption
-      bordered: true
+      bordered: false
       selected: panelRoot && panelRoot.animeMode !== "off"
-      foreground: selected ? "#4ade80" : Commons.Color.muted
-      accent: "#4ade80"
+      foreground: selected ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.foreground, 0.72)
+      accent: Commons.Color.accent
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_anime_lora"), hot)
@@ -112,10 +112,10 @@ ColumnLayout {
         return "HERETIC: OFF";
       }
       fontSize: Commons.Style.font.caption
-      bordered: true
+      bordered: false
       selected: panelRoot && panelRoot.hereticMode !== "off"
-      foreground: selected ? "#4ade80" : Commons.Color.muted
-      accent: "#4ade80"
+      foreground: selected ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.foreground, 0.72)
+      accent: Commons.Color.accent
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_uncensored_lora"), hot)
@@ -132,10 +132,10 @@ ColumnLayout {
         return "ANATOMY: OFF";
       }
       fontSize: Commons.Style.font.caption
-      bordered: true
+      bordered: false
       selected: panelRoot && panelRoot.anatomyMode !== "off"
-      foreground: selected ? "#4ade80" : Commons.Color.muted
-      accent: "#4ade80"
+      foreground: selected ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.foreground, 0.72)
+      accent: Commons.Color.accent
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_anatomy_lora"), hot)
@@ -144,11 +144,11 @@ ColumnLayout {
 
     Item { Layout.fillWidth: true }
 
-    // Reset button (framed standard style, height 20)
+    // Reset button (quiet flat style, height 20)
     Button {
       text: root ? root.tr("reset") : "RESET"
       fontSize: Commons.Style.font.caption
-      bordered: true
+      bordered: false
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_reset"), hot)

@@ -42,6 +42,7 @@ Panel {
   readonly property string versionQwen: svc ? svc.versionQwen : ""
   readonly property string versionComfy: svc ? svc.versionComfy : ""
   readonly property string versionOllama: svc ? svc.versionOllama : ""
+  readonly property bool svcQwen: svc ? svc.svcQwen : false
   readonly property bool svcComfy: svc ? svc.svcComfy : false
   readonly property bool svcOllama: svc ? svc.svcOllama : false
   readonly property bool svcWd14: svc ? svc.svcWd14 : false
@@ -131,8 +132,8 @@ Panel {
     owner: root
     bar: root.bar
     centerOnBar: true
-    contentWidth: panel.fittedContentWidth(Commons.Style.space(980))
-    contentHeight: panel.fittedContentHeight(Commons.Style.space(720))
+    contentWidth: panel.fittedContentWidth(Commons.Style.space(1020))
+    contentHeight: panel.fittedContentHeight(Commons.Style.space(740))
 
     PanelKeyCatcher {
       id: keyCatcher
@@ -242,28 +243,6 @@ Panel {
           Component {
             id: historyComponent
             HistoryView { panelRoot: root.svc }
-          }
-        }
-
-        PanelSeparator { Layout.fillWidth: true }
-
-        // FOOTER BAR WITH VERSION AND ESCAPE HINT
-        Item {
-          Layout.fillWidth: true
-          implicitHeight: Commons.Style.space(16)
-
-          Row {
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: Commons.Style.space(6)
-
-            Text {
-              textFormat: Text.PlainText
-              text: root.pluginVersion
-              font.family: root.bar ? root.bar.fontFamily : Commons.Style.font.family
-              font.pixelSize: Commons.Style.font.caption
-              color: Commons.Util.alpha(root.bar ? root.bar.foreground : Commons.Color.foreground, 0.55)
-            }
           }
         }
       }

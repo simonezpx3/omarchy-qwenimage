@@ -12,6 +12,7 @@ RowLayout {
   readonly property string versionQwen: panelRoot ? panelRoot.versionQwen : ""
   readonly property string versionComfy: panelRoot ? panelRoot.versionComfy : ""
   readonly property string versionOllama: panelRoot ? panelRoot.versionOllama : ""
+  readonly property bool svcQwen: panelRoot ? panelRoot.svcQwen : false
   readonly property bool svcComfy: panelRoot ? panelRoot.svcComfy : false
   readonly property bool svcOllama: panelRoot ? panelRoot.svcOllama : false
   readonly property bool svcWd14: panelRoot ? panelRoot.svcWd14 : false
@@ -72,55 +73,80 @@ RowLayout {
       font.family: Commons.Style.font.family
       font.pixelSize: Commons.Style.font.body
       font.bold: true
-      color: "#ffffff"
+      color: Commons.Color.foreground
+      Layout.alignment: Qt.AlignVCenter
+    }
+
+    Text {
+      textFormat: Text.PlainText
+      visible: Boolean(panelRoot && panelRoot.pluginVersion !== "")
+      text: panelRoot ? panelRoot.pluginVersion : ""
+      font.family: Commons.Style.font.family
+      font.features: { "tnum": 1 }
+      font.pixelSize: Commons.Style.font.caption
+      color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
       Layout.alignment: Qt.AlignVCenter
     }
   }
 
-  // Segmented Navigation Tabs (AC1 - Styled identical to detector pills, height 20)
-  RowLayout {
-    spacing: Commons.Style.spacing.xs
+  Rectangle {
+    width: 1
+    implicitHeight: Commons.Style.space(16)
+    color: Commons.Util.alpha(Commons.Color.menu.border, 0.35)
+    Layout.alignment: Qt.AlignVCenter
+  }
 
-    Repeater {
-      model: [
-        { key: "studio", label: "STUDIO" },
-        { key: "civitai", label: "INSPIRATION" },
-        { key: "history", label: "HISTORY" }
-      ]
+  // Segmented Navigation Tabs inside a quiet unified pill
+  Rectangle {
+    height: Commons.Style.space(24)
+    implicitWidth: tabsRow.implicitWidth + Commons.Style.space(4)
+    radius: Commons.Style.cornerRadius
+    color: Commons.Util.alpha(Commons.Color.foreground, 0.04)
+    border.color: Commons.Util.alpha(Commons.Color.menu.border, 0.35)
+    border.width: 1
 
-      delegate: Rectangle {
-        readonly property bool isSelected: headerRoot.currentView === modelData.key
-        property bool isHovered: false
+    RowLayout {
+      id: tabsRow
+      anchors.centerIn: parent
+      spacing: Commons.Style.space(2)
 
-        height: Commons.Style.space(20)
-        implicitWidth: tabText.implicitWidth + Commons.Style.spacing.xs * 2
-        radius: Commons.Style.cornerRadius
-        color: isSelected
-          ? Commons.Util.alpha(Commons.Color.accent, 0.22)
-          : (isHovered ? Commons.Util.alpha(Commons.Color.foreground, 0.1) : Commons.Util.alpha(Commons.Color.background, 0.35))
-        border.color: isSelected
-          ? Commons.Color.accent
-          : (isHovered ? Commons.Util.alpha(Commons.Color.menu.border, 0.8) : Commons.Util.alpha(Commons.Color.menu.border, 0.45))
-        border.width: 1
+      Repeater {
+        model: [
+          { key: "studio", label: "STUDIO" },
+          { key: "civitai", label: "INSPIRATION" },
+          { key: "history", label: "HISTORY" }
+        ]
 
-        Text {
-          id: tabText
-          anchors.centerIn: parent
-          textFormat: Text.PlainText
-          text: modelData.label
-          font.family: Commons.Style.font.family
-          font.pixelSize: Commons.Style.font.caption
-          font.bold: isSelected
-          color: isSelected ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.foreground, 0.8)
-        }
+        delegate: Rectangle {
+          readonly property bool isSelected: headerRoot.currentView === modelData.key
+          property bool isHovered: false
 
-        MouseArea {
-          anchors.fill: parent
-          hoverEnabled: true
-          cursorShape: Qt.PointingHandCursor
-          onEntered: parent.isHovered = true
-          onExited: parent.isHovered = false
-          onClicked: headerRoot.setView(modelData.key)
+          height: Commons.Style.space(18)
+          implicitWidth: tabText.implicitWidth + Commons.Style.spacing.sm * 1.5
+          radius: Math.max(2, Commons.Style.cornerRadius - 2)
+          color: isSelected
+            ? Commons.Util.alpha(Commons.Color.accent, 0.18)
+            : (isHovered ? Commons.Util.alpha(Commons.Color.foreground, 0.07) : "transparent")
+
+          Text {
+            id: tabText
+            anchors.centerIn: parent
+            textFormat: Text.PlainText
+            text: modelData.label
+            font.family: Commons.Style.font.family
+            font.pixelSize: Commons.Style.font.caption
+            font.bold: isSelected
+            color: isSelected ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.foreground, 0.68)
+          }
+
+          MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onEntered: parent.isHovered = true
+            onExited: parent.isHovered = false
+            onClicked: headerRoot.setView(modelData.key)
+          }
         }
       }
     }
@@ -128,152 +154,95 @@ RowLayout {
 
   Item { Layout.fillWidth: true }
 
-  // Service Health & Model Badges row (Compact detector size, height 20)
-  RowLayout {
-    spacing: Commons.Style.spacing.xs
-
-    // 0. Active Qwen Model Version Badge (matched to WD14 / positiveColor)
-    Rectangle {
-      height: Commons.Style.space(20)
-      implicitWidth: qwenModelRow.implicitWidth + Commons.Style.spacing.xs * 2
-      color: Commons.Util.alpha(headerRoot.positiveColor, 0.15)
-      border.color: Commons.Util.alpha(headerRoot.positiveColor, 0.6)
-      border.width: 1
-      radius: Commons.Style.cornerRadius
-
-      RowLayout {
-        id: qwenModelRow
-        anchors.centerIn: parent
-        spacing: 4
-        Text {
-          textFormat: Text.PlainText
-          text: "QWEN //"
-          font.family: Commons.Style.font.family
-          font.pixelSize: Commons.Style.font.caption
-          color: headerRoot.positiveColor
-        }
-        Text {
-          textFormat: Text.PlainText
-          text: {
-            var v = headerRoot.versionQwen || "";
-            return v.replace("Qwen-Image ", "").replace("Heretic ", "");
-          }
-          font.family: Commons.Style.font.family
-          font.pixelSize: Commons.Style.font.caption
-          font.bold: true
-          color: headerRoot.positiveColor
-          elide: Text.ElideRight
-          Layout.maximumWidth: Commons.Style.space(130)
-        }
-      }
-    }
-
-    // 1. COMFYUI
-    Rectangle {
-      height: Commons.Style.space(20)
-      implicitWidth: comfyRow.implicitWidth + Commons.Style.spacing.xs * 2
-      color: headerRoot.svcComfy ? Commons.Util.alpha(headerRoot.positiveColor, 0.15) : Commons.Util.alpha(Commons.Color.urgent, 0.15)
-      border.color: headerRoot.svcComfy ? Commons.Util.alpha(headerRoot.positiveColor, 0.6) : Commons.Util.alpha(Commons.Color.urgent, 0.6)
-      border.width: 1
-      radius: Commons.Style.cornerRadius
-
-      RowLayout {
-        id: comfyRow
-        anchors.centerIn: parent
-        spacing: 4
-        Text {
-          textFormat: Text.PlainText
-          text: "●"
-          font.pixelSize: Commons.Style.font.caption
-          color: headerRoot.svcComfy ? headerRoot.positiveColor : Commons.Color.urgent
-        }
-        Text {
-          textFormat: Text.PlainText
-          text: "COMFYUI"
-          font.family: Commons.Style.font.family
-          font.pixelSize: Commons.Style.font.caption
-          font.bold: true
-          color: headerRoot.svcComfy ? headerRoot.positiveColor : Commons.Color.urgent
-        }
-      }
-    }
-
-    // 2. OLLAMA
-    Rectangle {
-      height: Commons.Style.space(20)
-      implicitWidth: ollamaRow.implicitWidth + Commons.Style.spacing.xs * 2
-      color: headerRoot.svcOllama ? Commons.Util.alpha(headerRoot.positiveColor, 0.15) : Commons.Util.alpha(Commons.Color.urgent, 0.15)
-      border.color: headerRoot.svcOllama ? Commons.Util.alpha(headerRoot.positiveColor, 0.6) : Commons.Util.alpha(Commons.Color.urgent, 0.6)
-      border.width: 1
-      radius: Commons.Style.cornerRadius
-
-      RowLayout {
-        id: ollamaRow
-        anchors.centerIn: parent
-        spacing: 4
-        Text {
-          textFormat: Text.PlainText
-          text: "●"
-          font.pixelSize: Commons.Style.font.caption
-          color: headerRoot.svcOllama ? headerRoot.positiveColor : Commons.Color.urgent
-        }
-        Text {
-          textFormat: Text.PlainText
-          text: "OLLAMA"
-          font.family: Commons.Style.font.family
-          font.pixelSize: Commons.Style.font.caption
-          font.bold: true
-          color: headerRoot.svcOllama ? headerRoot.positiveColor : Commons.Color.urgent
-        }
-      }
-    }
-
-    // 3. WD14 ONNX
-    Rectangle {
-      height: Commons.Style.space(20)
-      implicitWidth: wd14Row.implicitWidth + Commons.Style.spacing.xs * 2
-      color: headerRoot.svcWd14 ? Commons.Util.alpha(headerRoot.positiveColor, 0.15) : Commons.Util.alpha(Commons.Color.urgent, 0.15)
-      border.color: headerRoot.svcWd14 ? Commons.Util.alpha(headerRoot.positiveColor, 0.6) : Commons.Util.alpha(Commons.Color.urgent, 0.6)
-      border.width: 1
-      radius: Commons.Style.cornerRadius
-
-      RowLayout {
-        id: wd14Row
-        anchors.centerIn: parent
-        spacing: 4
-        Text {
-          textFormat: Text.PlainText
-          text: "●"
-          font.pixelSize: Commons.Style.font.caption
-          color: headerRoot.svcWd14 ? headerRoot.positiveColor : Commons.Color.urgent
-        }
-        Text {
-          textFormat: Text.PlainText
-          text: "WD14"
-          font.family: Commons.Style.font.family
-          font.pixelSize: Commons.Style.font.caption
-          font.bold: true
-          color: headerRoot.svcWd14 ? headerRoot.positiveColor : Commons.Color.urgent
-        }
-      }
-    }
-  }
-
-  // Subtle vertical divider between health badges and VRAM
+  // Unified Service & Model Health Strip
   Rectangle {
-    width: 1
-    implicitHeight: Commons.Style.space(16)
-    color: Commons.Util.alpha(Commons.Color.menu.border, 0.5)
-    Layout.alignment: Qt.AlignVCenter
-  }
+    height: Commons.Style.space(22)
+    implicitWidth: healthStripRow.implicitWidth + Commons.Style.spacing.sm * 1.5
+    radius: Commons.Style.cornerRadius
+    color: Commons.Util.alpha(Commons.Color.foreground, 0.04)
+    border.color: Commons.Util.alpha(Commons.Color.menu.border, 0.35)
+    border.width: 1
 
-  Text {
-    textFormat: Text.PlainText
-    text: (headerRoot.vramUsed / 1024).toFixed(1) + " / " + (headerRoot.vramTotal / 1024).toFixed(1) + " GB (" + headerRoot.vramPct + "%)"
-    font.family: Commons.Style.font.family
-    font.features: { "tnum": 1 }
-    font.pixelSize: Commons.Style.font.caption
-    color: Commons.Color.foreground
-    Layout.alignment: Qt.AlignVCenter
+    RowLayout {
+      id: healthStripRow
+      anchors.centerIn: parent
+      spacing: Commons.Style.spacing.sm
+
+      Repeater {
+        model: [
+          {
+            name: headerRoot.svcQwen
+              ? (headerRoot.versionQwen || "Qwen-Image 2.1")
+              : "NO DIT",
+            ok: headerRoot.svcQwen
+          },
+          { name: "COMFY", ok: headerRoot.svcComfy },
+          { name: "OLLAMA", ok: headerRoot.svcOllama },
+          { name: "WD14", ok: headerRoot.svcWd14 }
+        ]
+
+        delegate: RowLayout {
+          required property var modelData
+          spacing: 4
+
+          Text {
+            textFormat: Text.PlainText
+            text: "●"
+            font.pixelSize: Commons.Style.font.caption
+            color: modelData.ok ? headerRoot.positiveColor : Commons.Color.urgent
+          }
+
+          Text {
+            textFormat: Text.PlainText
+            text: modelData.name
+            font.family: Commons.Style.font.family
+            font.pixelSize: Commons.Style.font.caption
+            font.bold: !modelData.ok
+            color: modelData.ok ? Commons.Util.alpha(Commons.Color.foreground, 0.72) : Commons.Color.urgent
+          }
+        }
+      }
+      // Internal divider + compact VRAM gauge inside the unified capsule
+      Rectangle {
+        width: 1
+        implicitHeight: Commons.Style.space(12)
+        color: Commons.Util.alpha(Commons.Color.menu.border, 0.35)
+        Layout.alignment: Qt.AlignVCenter
+      }
+
+      RowLayout {
+        spacing: Commons.Style.space(6)
+        Layout.alignment: Qt.AlignVCenter
+
+        readonly property color vramColor: headerRoot.vramPct >= 90
+          ? Commons.Color.urgent
+          : (headerRoot.vramPct >= 75 ? "#f59e0b" : headerRoot.positiveColor)
+
+        Rectangle {
+          width: Commons.Style.space(32)
+          height: Commons.Style.space(4)
+          radius: height / 2
+          color: Commons.Util.alpha(Commons.Color.foreground, 0.14)
+          Layout.alignment: Qt.AlignVCenter
+
+          Rectangle {
+            width: Math.max(2, parent.width * Math.min(1.0, Math.max(0.0, headerRoot.vramPct / 100.0)))
+            height: parent.height
+            radius: parent.radius
+            color: parent.parent.vramColor
+          }
+        }
+
+        Text {
+          textFormat: Text.PlainText
+          text: (headerRoot.vramUsed / 1024).toFixed(1) + "/" + Math.round(headerRoot.vramTotal / 1024) + "G"
+          font.family: Commons.Style.font.family
+          font.features: { "tnum": 1 }
+          font.pixelSize: Commons.Style.font.caption
+          color: headerRoot.vramPct >= 90 ? Commons.Color.urgent : Commons.Util.alpha(Commons.Color.foreground, 0.72)
+          Layout.alignment: Qt.AlignVCenter
+        }
+      }
+    }
   }
 }

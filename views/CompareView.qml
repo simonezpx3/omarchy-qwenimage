@@ -219,7 +219,7 @@ Item {
       Button {
         text: "APPLY AS FINAL"
         fontSize: Commons.Style.font.caption
-        bordered: true
+        bordered: false
         selected: true
         Layout.preferredHeight: Commons.Style.space(20)
         verticalPadding: Commons.Style.space(1)
@@ -234,7 +234,7 @@ Item {
       Button {
         text: "DISCARD VARIATION"
         fontSize: Commons.Style.font.caption
-        bordered: true
+        bordered: false
         Layout.preferredHeight: Commons.Style.space(20)
         verticalPadding: Commons.Style.space(1)
         onClicked: {
@@ -245,7 +245,7 @@ Item {
       Button {
         text: "SET AS WALLPAPER"
         fontSize: Commons.Style.font.caption
-        bordered: true
+        bordered: false
         Layout.preferredHeight: Commons.Style.space(20)
         verticalPadding: Commons.Style.space(1)
         enabled: panelRoot && panelRoot.generatedPath !== ""
@@ -259,7 +259,7 @@ Item {
       Button {
         text: "BACK TO STUDIO"
         fontSize: Commons.Style.font.caption
-        bordered: true
+        bordered: false
         active: true
         Layout.preferredHeight: Commons.Style.space(20)
         verticalPadding: Commons.Style.space(1)

@@ -31,6 +31,13 @@ Item {
     openFullscreenViewer(path);
   }
 
+  function deleteHistoryItem(path) {
+    if (!service || !path || !service.bridgeBin) return;
+    deleteProc.running = false;
+    deleteProc.command = [service.bridgeBin, "delete", path];
+    deleteProc.running = true;
+  }
+
   function openFullscreenViewer(path) {
     if (!path) return;
     var cleanPath = path;
@@ -201,6 +208,24 @@ Item {
           var res = JSON.parse(str);
           if (res.status === "ok" && res.path) {
             service.setReferenceImage(res.path);
+          }
+        } catch (e) {}
+      }
+    }
+  }
+
+  Process {
+    id: deleteProc
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        if (!service) return;
+        var str = (text || "").trim();
+        if (str.length === 0 || str.length > 65536) return;
+        try {
+          var res = JSON.parse(str);
+          if (res.status === "ok" && typeof service.fetchHistory === "function") {
+            service.fetchHistory();
           }
         } catch (e) {}
       }

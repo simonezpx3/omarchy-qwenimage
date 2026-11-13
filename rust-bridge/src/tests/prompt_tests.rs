@@ -36,6 +36,17 @@ fn test_is_czech_text() {
 }
 
 #[test]
+fn test_needs_english_translation() {
+    assert!(needs_english_translation("Krásná dívka na pláži"));
+    assert!(needs_english_translation("Eine schöne Frau im Wald mit Licht"));
+    assert!(needs_english_translation("Une belle femme dans la forêt"));
+    assert!(needs_english_translation("富士山と桜の風景"));
+    assert!(!needs_english_translation("Красивая девушка в лесу"));
+    assert!(!needs_english_translation("A stunning portrait of an astronaut on Mars with cinematic lighting"));
+    assert!(!needs_english_translation("futuristic cyberpunk vehicle neon"));
+}
+
+#[test]
 fn test_detect_human_subject() {
     assert!(detect_human_subject("portrait of a beautiful woman"));
     assert!(detect_human_subject("nude model in soft studio light"));

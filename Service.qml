@@ -30,7 +30,7 @@ Item {
       return v ? String(v).replace(/^v/i, "").trim() : "";
     }
 
-    readonly property string effectiveVersion: localVersion !== "" ? localVersion : (bridgeVersion !== "" ? bridgeVersion : "1.2.8")
+    readonly property string effectiveVersion: localVersion !== "" ? localVersion : (bridgeVersion !== "" ? bridgeVersion : "1.3.0")
   }
 
   function setBridgeVersion(v) {
@@ -63,6 +63,10 @@ Item {
   property bool seedLocked: false
   property var seedVal: -1
   property string referencePath: ""
+  property bool inpaintMode: false
+  property int maskBrushSize: 35
+  property bool maskEraser: false
+  property var activeMaskCanvas: null
   property string referenceMatchedRatio: ""
   property int referenceRevision: 0
   property real denoise: 0.65
@@ -92,6 +96,7 @@ Item {
   property bool isBusy: isGenerating
 
   // Service Health Badges
+  property bool svcQwen: false
   property bool svcComfy: false
   property bool svcGpu: true
   property bool svcOllama: false
@@ -191,6 +196,7 @@ Item {
   function copyTextToClipboard(text) { mediaActions.copyTextToClipboard(text); }
   function openImageViewer(path) { mediaActions.openImageViewer(path); }
   function openFullscreenViewer(path) { mediaActions.openFullscreenViewer(path); }
+  function deleteHistoryItem(path) { mediaActions.deleteHistoryItem(path); }
   function openPicturesFolder() { mediaActions.openPicturesFolder(); }
   function paste() { mediaActions.pasteFromClipboard(); }
   function pasteFromClipboard() { mediaActions.pasteFromClipboard(); }
@@ -222,8 +228,8 @@ Item {
   function fetchPrompts(source, query) { discoveryBridge.fetchPrompts(source, query); }
   function fetchCivitaiPrompts(query) { discoveryBridge.fetchCivitaiPrompts(query); }
   function fetchHistory() { discoveryBridge.fetchHistory(); }
-  function restoreFromHistory(path, prompt, seed, ratio, negative) {
-    discoveryBridge.restoreFromHistory(path, prompt, seed, ratio, negative);
+  function restoreFromHistory(path, prompt, seed, ratio, negative, steps, loras) {
+    discoveryBridge.restoreFromHistory(path, prompt, seed, ratio, negative, steps, loras);
   }
 
   function loadLocalManifestAsync() {

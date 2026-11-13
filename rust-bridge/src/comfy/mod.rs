@@ -171,6 +171,7 @@ pub struct GenerationConfig<'a> {
     pub cfg: f32,
     pub seed: i64,
     pub image_ref: Option<&'a str>,
+    pub mask_ref: Option<&'a str>,
     pub denoise: f32,
     pub anime: LoraLevel,
     pub turbo: bool,

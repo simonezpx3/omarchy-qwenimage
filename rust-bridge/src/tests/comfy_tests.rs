@@ -42,6 +42,7 @@ fn test_build_generation_graph_declarative() {
         cfg: 4.0,
         seed: 42,
         image_ref: None,
+        mask_ref: None,
         denoise: 0.85,
         anime: comfy::LoraLevel::Off,
         turbo: false,
@@ -75,6 +76,7 @@ fn test_turbo_graph_and_cfg_guard() {
         cfg: 4.0,
         seed: 12345,
         image_ref: None,
+        mask_ref: None,
         denoise: 0.85,
         anime: comfy::LoraLevel::Off,
         turbo: true,
@@ -110,6 +112,7 @@ fn test_turbo_i2i_split_sigmas_denoise() {
         cfg: 4.0,
         seed: 777,
         image_ref: Some(&ref_str),
+        mask_ref: None,
         denoise: 0.65,
         anime: comfy::LoraLevel::Off,
         turbo: true,
@@ -138,6 +141,7 @@ fn test_anatomy_lora_graph_wiring() {
         cfg: 4.0,
         seed: 999,
         image_ref: None,
+        mask_ref: None,
         denoise: 0.85,
         anime: comfy::LoraLevel::Off,
         turbo: false,
@@ -177,6 +181,7 @@ fn test_anime_and_heretic_tri_state_levels() {
         cfg: 4.0,
         seed: 101,
         image_ref: None,
+        mask_ref: None,
         denoise: 0.85,
         anime: comfy::LoraLevel::Light,
         turbo: false,
@@ -382,6 +387,7 @@ fn test_vram_budget_node_in_graph_and_easycache_lora_bypass() {
         cfg: 4.0,
         seed: 42,
         image_ref: None,
+        mask_ref: None,
         denoise: 0.85,
         anime: comfy::LoraLevel::Medium,
         turbo: false,
@@ -415,4 +421,67 @@ fn test_vram_budget_node_in_graph_and_easycache_lora_bypass() {
     assert!(graph_i2i.get("10").is_none(), "EasyCache must NEVER be active during I2I/edit mode");
     assert_eq!(graph_i2i["6"]["inputs"]["cfg"].as_f64().unwrap(), 4.0, "Non-turbo I2I must use CFG >= 4.0");
     let _ = std::fs::remove_file(&ref_img);
+}
+
+#[test]
+fn test_inpaint_graph_wiring() {
+    let dir = std::env::temp_dir();
+    let ref_img = dir.join("qis_test_inpaint_ref.png");
+    let mask_img = dir.join("qis_test_inpaint_mask.png");
+    let _ = std::fs::write(&ref_img, b"fake_png_ref");
+    let _ = std::fs::write(&mask_img, b"fake_png_mask");
+
+    let cfg = comfy::GenerationConfig {
+        prompt: "replace jacket with red leather jacket",
+        negative_prompt: "blurry",
+        ratio: "1:1",
+        steps: 25,
+        cfg: 4.0,
+        seed: 777,
+        image_ref: Some(ref_img.to_str().unwrap()),
+        mask_ref: Some(mask_img.to_str().unwrap()),
+        denoise: 0.85,
+        anime: comfy::LoraLevel::Off,
+        turbo: false,
+        uncensored: comfy::LoraLevel::Off,
+        anatomy: comfy::LoraLevel::Off,
+        res_mode: "standard",
+        is_human: true,
+    };
+
+    let (graph, _, _, _) = comfy::build_generation_graph(&cfg).expect("inpaint graph should build");
+    assert_eq!(graph["9m"]["class_type"], "LoadImageMask");
+    assert_eq!(graph["9m"]["inputs"]["channel"], "alpha");
+    assert_eq!(graph["5b"]["class_type"], "VAEEncodeForInpaint");
+    assert_eq!(graph["5b"]["inputs"]["mask"], serde_json::json!(["9m", 0]));
+    assert_eq!(graph["5b"]["inputs"]["pixels"], serde_json::json!(["5", 0]));
+    assert_eq!(graph["4"]["class_type"], "TextEncodeQwenImageEditPlus");
+    assert_eq!(graph["4"]["inputs"]["image1"], serde_json::json!(["5", 0]));
+    assert!(graph.get("23").is_some(), "QISVramBudget node 23 must remain active");
+
+    let _ = std::fs::remove_file(&ref_img);
+    let _ = std::fs::remove_file(&mask_img);
+}
+
+#[test]
+fn test_delete_history_gallery_scope_guard() {
+    let base = std::env::temp_dir().join("qis_test_delete_scope");
+    let gallery = base.join("gallery");
+    let _ = std::fs::create_dir_all(&gallery);
+    let inside = gallery.join("ok.png");
+    let outside = base.join("outside.png");
+    let _ = std::fs::write(&inside, b"inside");
+    let _ = std::fs::write(&outside, b"outside");
+
+    let err = crate::gallery::delete_history_file_in_dir(outside.to_str().unwrap(), &gallery)
+        .expect_err("must reject file outside gallery");
+    assert!(err.contains("outside gallery"));
+    assert!(outside.exists(), "outside file must remain untouched");
+
+    let deleted = crate::gallery::delete_history_file_in_dir(inside.to_str().unwrap(), &gallery)
+        .expect("must delete file inside gallery");
+    assert!(deleted.ends_with("ok.png"));
+    assert!(!inside.exists(), "inside file must be deleted");
+
+    let _ = std::fs::remove_dir_all(&base);
 }

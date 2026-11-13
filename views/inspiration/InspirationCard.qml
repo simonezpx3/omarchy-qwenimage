@@ -15,8 +15,8 @@ Rectangle {
   readonly property var itemData: (modelData && modelData.prompt !== undefined) ? modelData : ((modelData && modelData.modelData) ? modelData.modelData : (typeof model !== "undefined" && model && model.modelData ? model.modelData : null))
 
   implicitHeight: Math.max(Commons.Style.space(150), rowContent.implicitHeight + Commons.Style.spacing.sm * 2)
-  color: cardArea.containsMouse ? Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.06) : Commons.Color.menu.background
-  border.color: cardArea.containsMouse ? Commons.Color.accent : Commons.Color.menu.border
+  color: cardArea.containsMouse ? Commons.Util.alpha(Commons.Color.accent, 0.06) : Commons.Util.alpha(Commons.Color.foreground, 0.04)
+  border.color: cardArea.containsMouse ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.menu.border, 0.35)
   border.width: 1
   radius: Commons.Style.cornerRadius
 
@@ -192,25 +192,27 @@ Rectangle {
         }
 
         Button {
-          text: "USE PROMPT"
+          text: "USE"
           fontSize: Commons.Style.font.caption
           bordered: true
           selected: true
-          foreground: "#4ade80"
-          accent: "#4ade80"
+          foreground: Commons.Color.accent
+          accent: Commons.Color.accent
           Layout.preferredHeight: Commons.Style.space(20)
           verticalPadding: Commons.Style.space(1)
+          horizontalPadding: Commons.Style.space(6)
           onClicked: cardDelegate.applyPrompt(false)
         }
 
         Button {
-          text: "COPY RAW"
+          text: "COPY"
           fontSize: Commons.Style.font.caption
-          bordered: true
-          foreground: Commons.Color.muted
+          bordered: false
+          foreground: Commons.Util.alpha(Commons.Color.foreground, 0.72)
           accent: Commons.Color.accent
           Layout.preferredHeight: Commons.Style.space(20)
           verticalPadding: Commons.Style.space(1)
+          horizontalPadding: Commons.Style.space(6)
           onClicked: {
             if (panelRoot) panelRoot.copyTextToClipboard((itemData && itemData.prompt) || "");
           }

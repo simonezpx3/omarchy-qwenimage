@@ -18,18 +18,50 @@ Item {
 
   ColumnLayout {
     anchors.fill: parent
-    spacing: Commons.Style.spacing.md
+    spacing: Commons.Style.spacing.sm
 
-    PanelSectionHeader {
-      text: "GENERATION HISTORY & SAVED ARCHIVE (~/Pictures/Qwen-Image/)"
+    // Top Utility Bar (aligned with CivitaiView header)
+    RowLayout {
+      Layout.fillWidth: true
+      spacing: Commons.Style.spacing.xs
+
+      Text {
+        textFormat: Text.PlainText
+        text: "~/Pictures/Qwen-Image/"
+        font.family: Commons.Style.font.family
+        font.pixelSize: Commons.Style.font.caption
+        color: Commons.Util.alpha(Commons.Color.foreground, 0.55)
+        Layout.fillWidth: true
+        elide: Text.ElideRight
+      }
+
+      Button {
+        text: "OPEN FOLDER"
+        fontSize: Commons.Style.font.caption
+        bordered: false
+        Layout.preferredHeight: Commons.Style.space(20)
+        verticalPadding: Commons.Style.space(1)
+        onClicked: {
+          if (panelRoot) panelRoot.openPicturesFolder();
+        }
+      }
+
+      Button {
+        text: "REFRESH"
+        fontSize: Commons.Style.font.caption
+        bordered: false
+        Layout.preferredHeight: Commons.Style.space(20)
+        verticalPadding: Commons.Style.space(1)
+        onClicked: root.refreshHistory()
+      }
     }
 
-    // List of saved images
+    // List of saved images (quiet surface matching Inspiration)
     Rectangle {
       Layout.fillWidth: true
       Layout.fillHeight: true
-      color: Commons.Color.background
-      border.color: Commons.Color.menu.border
+      color: Commons.Util.alpha(Commons.Color.foreground, 0.03)
+      border.color: Commons.Util.alpha(Commons.Color.menu.border, 0.35)
       border.width: 1
       radius: Commons.Style.cornerRadius
       clip: true
@@ -52,8 +84,8 @@ Item {
           width: historyList.width - Commons.Style.spacing.sm * 2
           implicitHeight: Math.max(Commons.Style.space(130), rowContent.implicitHeight + Commons.Style.spacing.sm * 2)
           height: implicitHeight
-          color: cardArea.containsMouse ? Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.06) : Commons.Color.menu.background
-          border.color: cardArea.containsMouse ? Commons.Color.accent : Commons.Color.menu.border
+          color: cardArea.containsMouse ? Commons.Util.alpha(Commons.Color.accent, 0.06) : Commons.Util.alpha(Commons.Color.foreground, 0.04)
+          border.color: cardArea.containsMouse ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.menu.border, 0.35)
           border.width: 1
           radius: Commons.Style.cornerRadius
 
@@ -65,12 +97,9 @@ Item {
             z: 0
             onClicked: {
               if (panelRoot) {
-                panelRoot.restoreFromHistory(modelData.path, modelData.prompt, modelData.seed, modelData.ratio, modelData.negative_prompt);
+                panelRoot.restoreFromHistory(modelData.path, modelData.prompt, modelData.seed, modelData.ratio, modelData.negative_prompt, modelData.steps, modelData.loras);
                 panelRoot.currentView = "studio";
               }
-            }
-            onDoubleClicked: {
-              if (panelRoot) panelRoot.openFullscreenViewer(modelData.path);
             }
           }
 
@@ -103,12 +132,6 @@ Item {
                 cache: true
                 asynchronous: true
               }
-
-              MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: if (panelRoot) panelRoot.openFullscreenViewer(modelData.path)
-              }
             }
 
             // 2. Metadata, Prompt description & Action Buttons Header (Inspiration layout)
@@ -117,30 +140,10 @@ Item {
               Layout.fillHeight: true
               spacing: Commons.Style.spacing.xs
 
-              // Top row: Badge + Filename/Metadata + Action Buttons
+              // Top row: Filename/Metadata + Action Buttons
               RowLayout {
                 Layout.fillWidth: true
                 spacing: Commons.Style.spacing.xs
-
-                Rectangle {
-                  height: Commons.Style.space(18)
-                  implicitWidth: tagText.implicitWidth + Commons.Style.spacing.xs * 2
-                  color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.15)
-                  border.color: Commons.Color.accent
-                  border.width: 1
-                  radius: Commons.Style.cornerRadius
-
-                  Text {
-                    id: tagText
-                    textFormat: Text.PlainText
-                    anchors.centerIn: parent
-                    text: "SAVED"
-                    font.family: Commons.Style.font.family
-                    font.pixelSize: 10
-                    font.bold: true
-                    color: Commons.Color.accent
-                  }
-                }
 
                 Text {
                   text: (modelData.filename ? (modelData.filename + " | ") : "")
@@ -161,14 +164,14 @@ Item {
                   fontSize: Commons.Style.font.caption
                   bordered: true
                   selected: true
-                  foreground: "#4ade80"
-                  accent: "#4ade80"
+                  foreground: Commons.Color.accent
+                  accent: Commons.Color.accent
                   Layout.preferredHeight: Commons.Style.space(20)
                   verticalPadding: Commons.Style.space(1)
                   horizontalPadding: Commons.Style.space(6)
                   onClicked: {
                     if (panelRoot) {
-                      panelRoot.restoreFromHistory(modelData.path, modelData.prompt, modelData.seed, modelData.ratio, modelData.negative_prompt);
+                      panelRoot.restoreFromHistory(modelData.path, modelData.prompt, modelData.seed, modelData.ratio, modelData.negative_prompt, modelData.steps, modelData.loras);
                       panelRoot.currentView = "studio";
                     }
                   }
@@ -177,8 +180,8 @@ Item {
                 Button {
                   text: "BUFFER"
                   fontSize: Commons.Style.font.caption
-                  bordered: true
-                  foreground: Commons.Color.muted
+                  bordered: false
+                  foreground: Commons.Util.alpha(Commons.Color.foreground, 0.72)
                   accent: Commons.Color.accent
                   Layout.preferredHeight: Commons.Style.space(20)
                   verticalPadding: Commons.Style.space(1)
@@ -194,8 +197,8 @@ Item {
                 Button {
                   text: "WALLPAPER"
                   fontSize: Commons.Style.font.caption
-                  bordered: true
-                  foreground: Commons.Color.muted
+                  bordered: false
+                  foreground: Commons.Util.alpha(Commons.Color.foreground, 0.72)
                   accent: Commons.Color.accent
                   Layout.preferredHeight: Commons.Style.space(20)
                   verticalPadding: Commons.Style.space(1)
@@ -206,13 +209,42 @@ Item {
                 Button {
                   text: "VIEW"
                   fontSize: Commons.Style.font.caption
-                  bordered: true
-                  foreground: Commons.Color.muted
+                  bordered: false
+                  foreground: Commons.Util.alpha(Commons.Color.foreground, 0.72)
                   accent: Commons.Color.accent
                   Layout.preferredHeight: Commons.Style.space(20)
                   verticalPadding: Commons.Style.space(1)
                   horizontalPadding: Commons.Style.space(6)
                   onClicked: if (panelRoot) panelRoot.openFullscreenViewer(modelData.path)
+                }
+
+                Button {
+                  id: deleteBtn
+                  property bool confirmArmed: false
+                  Timer {
+                    id: confirmResetTimer
+                    interval: 3000
+                    repeat: false
+                    onTriggered: deleteBtn.confirmArmed = false
+                  }
+                  text: confirmArmed ? "CONFIRM?" : "DELETE"
+                  fontSize: Commons.Style.font.caption
+                  bordered: confirmArmed
+                  foreground: Commons.Color.urgent
+                  accent: Commons.Color.urgent
+                  Layout.preferredHeight: Commons.Style.space(20)
+                  verticalPadding: Commons.Style.space(1)
+                  horizontalPadding: Commons.Style.space(6)
+                  onClicked: {
+                    if (!confirmArmed) {
+                      confirmArmed = true;
+                      confirmResetTimer.restart();
+                    } else {
+                      confirmArmed = false;
+                      confirmResetTimer.stop();
+                      if (panelRoot) panelRoot.deleteHistoryItem(modelData.path);
+                    }
+                  }
                 }
               }
 
@@ -310,48 +342,6 @@ Item {
           font.family: Commons.Style.font.family
           font.pixelSize: Commons.Style.font.body
           color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
-        }
-      }
-    }
-
-    PanelSeparator { Layout.fillWidth: true }
-
-    // Bottom Navigation Row
-    RowLayout {
-      Layout.fillWidth: true
-      spacing: Commons.Style.spacing.sm
-
-      Button {
-        text: "OPEN FOLDER"
-        fontSize: Commons.Style.font.caption
-        bordered: true
-        Layout.preferredHeight: Commons.Style.space(20)
-        verticalPadding: Commons.Style.space(1)
-        onClicked: {
-          if (panelRoot) panelRoot.openPicturesFolder();
-        }
-      }
-
-      Button {
-        text: "REFRESH"
-        fontSize: Commons.Style.font.caption
-        bordered: true
-        Layout.preferredHeight: Commons.Style.space(20)
-        verticalPadding: Commons.Style.space(1)
-        onClicked: root.refreshHistory()
-      }
-
-      Item { Layout.fillWidth: true }
-
-      Button {
-        text: "BACK TO STUDIO"
-        fontSize: Commons.Style.font.caption
-        bordered: true
-        active: true
-        Layout.preferredHeight: Commons.Style.space(20)
-        verticalPadding: Commons.Style.space(1)
-        onClicked: {
-          if (panelRoot) panelRoot.currentView = "studio";
         }
       }
     }
