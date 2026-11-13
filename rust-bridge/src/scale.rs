@@ -112,3 +112,51 @@ pub(crate) fn cmd_scale(input_path: &str, factor: f32) {
         serde_json::json!({"status": "error", "message": "Failed to process image"})
     );
 }
+
+pub(crate) fn cmd_upscale_ai(input_path: &str, model_choice: &str, is_anime: bool) {
+    let resolved = resolve_raw_image_path(input_path);
+    let p = Path::new(&resolved);
+    if !p.exists() {
+        println!(
+            "{}",
+            serde_json::json!({"status": "error", "message": format!("File not found: {}", resolved)})
+        );
+        return;
+    }
+
+    match crate::comfy::run_neural_upscale(&resolved, model_choice, is_anime) {
+        Ok(val) => {
+            play_chime();
+            let fn_str = val.get("filename").and_then(|s| s.as_str()).unwrap_or("image.png");
+            let w_val = val.get("width").and_then(|w| w.as_u64()).unwrap_or(0);
+            let h_val = val.get("height").and_then(|h| h.as_u64()).unwrap_or(0);
+            let model_str = val.get("model").and_then(|m| m.as_str()).unwrap_or("UltraSharp");
+            let out_path = val.get("path").and_then(|p| p.as_str()).unwrap_or("");
+
+            let model_title = match model_choice.to_lowercase().as_str() {
+                "esrgan" | "realesrgan" => "RealESRGAN 4X",
+                "ultra" | "ultrasharp" => "UltraSharp 4X",
+                "anime" | "animesharp" => "AnimeSharp 4X",
+                _ => "4X",
+            };
+            let is_cs = get_is_cs();
+            let notif_title = if is_cs {
+                format!("AI {} Upscale Dokončen", model_title)
+            } else {
+                format!("AI {} Upscale Complete", model_title)
+            };
+            let notif_body = if is_cs {
+                format!("Uloženo do Qwen-Image: {}\nModel: {} ({}x{})", fn_str, model_str, w_val, h_val)
+            } else {
+                format!("Saved to Qwen-Image: {}\nModel: {} ({}x{})", fn_str, model_str, w_val, h_val)
+            };
+            send_notification(&notif_title, &notif_body, Some(out_path));
+            println!("{}", val);
+        }
+        Err(e) => {
+            eprintln!("ComfyUI neural upscale failed ({}), falling back to SIMD Lanczos", e);
+            let factor = 4.0f32;
+            cmd_scale(&resolved, factor);
+        }
+    }
+}

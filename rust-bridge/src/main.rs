@@ -6,11 +6,13 @@ mod prompt_lang;
 mod prompt_tune;
 mod prompts;
 mod civitai;
+mod png_meta;
 mod gallery;
 mod clipboard;
 mod scale;
 mod settings;
 mod vision;
+mod guards;
 mod generate;
 
 #[cfg(test)]

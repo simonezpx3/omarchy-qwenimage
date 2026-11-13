@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
+pub mod budget;
 pub mod client;
 pub mod graph;
 pub mod tagger;
@@ -13,9 +14,9 @@ pub use client::{
 };
 pub use graph::build_generation_graph;
 #[allow(unused_imports)]
-pub use graph::calculate_dynamic_vram_reserve;
+pub use budget::calculate_dynamic_vram_reserve;
 #[allow(unused_imports)]
-pub use graph::calculate_dimensions;
+pub use budget::calculate_dimensions;
 pub use tagger::execute_wd14;
 pub use upscale::run_neural_upscale;
 

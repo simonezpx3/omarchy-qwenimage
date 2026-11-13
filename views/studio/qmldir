@@ -7,3 +7,4 @@ StudioActionBar 1.0 StudioActionBar.qml
 StudioAdvancedDrawer 1.0 StudioAdvancedDrawer.qml
 StudioMaskCanvas 1.0 StudioMaskCanvas.qml
 StudioMaskToolbar 1.0 StudioMaskToolbar.qml
+StudioCanvasOverlays 1.0 StudioCanvasOverlays.qml
