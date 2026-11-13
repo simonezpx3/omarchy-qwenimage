@@ -3,6 +3,7 @@ mod comfy;
 mod prompts_db;
 mod vram;
 mod prompt_lang;
+mod prompt_tune;
 mod prompts;
 mod civitai;
 mod gallery;
@@ -17,6 +18,7 @@ mod tests;
 
 pub(crate) use common::*;
 pub(crate) use vram::*;
+pub(crate) use prompt_tune::*;
 pub(crate) use prompts::*;
 pub(crate) use civitai::*;
 pub(crate) use gallery::*;
@@ -209,6 +211,45 @@ fn main() {
 
     match args[1].as_str() {
         "status" => cmd_status(),
+        "analyze-prompt" => {
+            let mut prompt_arg = "";
+            let mut profile = "balanced";
+            let mut has_ref = false;
+            let mut denoise = 0.65f32;
+            let mut idx = 2;
+            while idx < args.len() {
+                if let Some(val) = args[idx].strip_prefix("--profile=") {
+                    profile = val;
+                    idx += 1;
+                } else if args[idx] == "--profile" {
+                    if let Some(next) = args.get(idx + 1) {
+                        profile = next.as_str();
+                        idx += 2;
+                        continue;
+                    }
+                    idx += 1;
+                } else if args[idx] == "--has-ref" {
+                    has_ref = true;
+                    idx += 1;
+                } else if let Some(val) = args[idx].strip_prefix("--denoise=") {
+                    denoise = val.parse::<f32>().unwrap_or(0.65);
+                    idx += 1;
+                } else if args[idx] == "--denoise" {
+                    if let Some(next) = args.get(idx + 1) {
+                        denoise = next.parse::<f32>().unwrap_or(0.65);
+                        idx += 2;
+                        continue;
+                    }
+                    idx += 1;
+                } else if prompt_arg.is_empty() {
+                    prompt_arg = args[idx].as_str();
+                    idx += 1;
+                } else {
+                    idx += 1;
+                }
+            }
+            cmd_analyze_prompt(prompt_arg, profile, has_ref, denoise);
+        }
         "settings" => {
             if args.len() >= 3 && args[2] == "set" {
                 if args.len() >= 5 {
@@ -399,6 +440,7 @@ fn main() {
             let mut turbo = false;
             let mut uncensored = comfy::LoraLevel::Off;
             let mut anatomy = comfy::LoraLevel::Off;
+            let mut anatomy_guard: Option<String> = None;
             let mut expand = false;
             let mut pos_args: Vec<&str> = Vec::new();
 
@@ -449,6 +491,17 @@ fn main() {
                     }
                     anatomy = comfy::LoraLevel::Heavy;
                     idx += 1;
+                } else if let Some(val) = args[idx].strip_prefix("--anatomy-guard=").or_else(|| args[idx].strip_prefix("--human-guard=")) {
+                    anatomy_guard = Some(val.to_string());
+                    idx += 1;
+                } else if args[idx] == "--anatomy-guard" || args[idx] == "--human-guard" {
+                    if let Some(next) = args.get(idx + 1) {
+                        anatomy_guard = Some(next.clone());
+                        idx += 2;
+                        continue;
+                    }
+                    anatomy_guard = Some("on".to_string());
+                    idx += 1;
                 } else if args[idx] == "--expand" || args[idx] == "--auto-expand" {
                     expand = true;
                     idx += 1;
@@ -488,7 +541,7 @@ fn main() {
             let image_ref = pos_args.get(6).copied().filter(|s| !s.trim().is_empty());
             let denoise = pos_args.get(7).and_then(|s| s.parse::<f32>().ok()).unwrap_or(0.85).clamp(0.05, 0.95);
 
-            cmd_generate(prompt, ratio, steps, cfg, seed, negative, image_ref, mask_ref.as_deref(), denoise, anime, turbo, uncensored, anatomy, res_mode.as_deref(), expand);
+            cmd_generate(prompt, ratio, steps, cfg, seed, negative, image_ref, mask_ref.as_deref(), denoise, anime, turbo, uncensored, anatomy, res_mode.as_deref(), expand, anatomy_guard.as_deref().unwrap_or("auto"));
         }
         "interrupt" | "cancel" => {
             let ok = comfy::interrupt_comfyui();

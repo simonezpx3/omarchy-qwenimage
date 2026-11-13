@@ -399,7 +399,7 @@ pub(crate) fn cmd_tags(query: &str, limit: usize) {
 }
 
 pub(crate) fn detect_human_subject(prompt: &str) -> bool {
-    let p = prompt.to_ascii_lowercase();
+    let p = prompt.to_lowercase();
     const HUMAN_TOKENS: &[&str] = &[
         "woman", "women", "man", "men", "girl", "girls", "boy", "boys",
         "person", "people", "human", "body", "nude", "naked", "erotic",

@@ -53,12 +53,12 @@ Item {
     if (!service) return;
     service.isTurboEnabled = !service.isTurboEnabled;
     if (!service.isTurboEnabled) {
-      if (service.steps < 25) {
-        service.steps = 28;
+      if (service.steps < 22) {
+        service.steps = 25;
       }
-      service.cfg = 4.0;
+      service.cfg = 2.5;
     } else {
-      if (service.steps > 8) {
+      if (service.steps > 9) {
         service.steps = 6;
       }
       service.cfg = 1.0;
@@ -82,6 +82,91 @@ Item {
     else if (service.anatomyMode === "medium") service.anatomyMode = "heavy";
     else service.anatomyMode = "off";
     saveSetting("anatomy_mode", service.anatomyMode);
+  }
+
+  function cycleAnatomyGuardMode() {
+    if (!service) return;
+    if (service.anatomyGuardMode === "auto") service.anatomyGuardMode = "on";
+    else if (service.anatomyGuardMode === "on") service.anatomyGuardMode = "off";
+    else service.anatomyGuardMode = "auto";
+    saveSetting("anatomy_guard", service.anatomyGuardMode);
+  }
+
+  function cycleAutoTuneMode() {
+    if (!service) return;
+    if (service.autoTuneMode === "off") service.autoTuneMode = "balanced";
+    else if (service.autoTuneMode === "balanced") service.autoTuneMode = "quality";
+    else service.autoTuneMode = "off";
+    saveSetting("auto_tune", service.autoTuneMode);
+    if (service.autoTuneMode === "off") {
+      service.autoTuneSummary = "";
+    } else {
+      applyAutoTune();
+    }
+  }
+
+  function applyAutoTune() {
+    if (!service || !service.bridgeBin || service.autoTuneMode === "off") return;
+    var p = (service.promptText || "").trim();
+    if (p === "" || service.isGenerating) return;
+    var args = [service.bridgeBin, "analyze-prompt", p, "--profile", service.autoTuneMode];
+    if (service.referencePath && service.referencePath !== "") {
+      args.push("--has-ref");
+      args.push("--denoise");
+      args.push(String(service.denoise));
+    }
+    if (analyzeProc.running) {
+      analyzeProc.running = false;
+    }
+    analyzeProc.command = args;
+    analyzeProc.running = true;
+  }
+
+  Timer {
+    id: autoTuneDebounceTimer
+    interval: 350
+    repeat: false
+    onTriggered: root.applyAutoTune()
+  }
+
+  Connections {
+    target: service
+    function onPromptTextChanged() {
+      if (service && service.autoTuneMode !== "off" && !service.isGenerating) {
+        autoTuneDebounceTimer.restart();
+      }
+    }
+    function onReferencePathChanged() {
+      if (service && service.autoTuneMode !== "off" && !service.isGenerating) {
+        autoTuneDebounceTimer.restart();
+      }
+    }
+    function onDenoiseChanged() {
+      if (service && service.autoTuneMode !== "off" && service.referencePath !== "" && !service.isGenerating) {
+        autoTuneDebounceTimer.restart();
+      }
+    }
+  }
+
+  Process {
+    id: analyzeProc
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        if (!service || service.autoTuneMode === "off") return;
+        var str = (text || "").trim();
+        if (str.length === 0 || str.length > 65536) return;
+        try {
+          var res = JSON.parse(str);
+          if (res.status === "ok") {
+            if (typeof res.turbo === "boolean") service.isTurboEnabled = res.turbo;
+            if (typeof res.steps === "number") service.steps = res.steps;
+            if (typeof res.cfg === "number") service.cfg = res.cfg;
+            service.autoTuneSummary = (res.turbo ? (res.steps >= 9 ? "HYBRID " : "TURBO ") : "") + res.steps + "s · CFG " + Number(res.cfg).toFixed(1);
+          }
+        } catch (e) {}
+      }
+    }
   }
 
   function toggleAutoExpand() {
@@ -136,6 +221,15 @@ Item {
             service.anatomyMode = res.anatomy ? "heavy" : "off";
           } else if (typeof res.anatomy_lora === "boolean") {
             service.anatomyMode = res.anatomy_lora ? "heavy" : "off";
+          }
+          if (res.anatomy_guard === "on" || res.anatomy_guard === "off" || res.anatomy_guard === "auto") {
+            service.anatomyGuardMode = res.anatomy_guard;
+          }
+          if (res.auto_tune === "off" || res.auto_tune === "balanced" || res.auto_tune === "quality") {
+            service.autoTuneMode = res.auto_tune;
+            if (service.autoTuneMode !== "off" && (service.promptText || "").trim() !== "") {
+              root.applyAutoTune();
+            }
           }
           if (typeof res.auto_expand === "boolean") {
             service.isAutoExpandEnabled = res.auto_expand;

@@ -73,31 +73,59 @@ pub(crate) fn save_settings(val: &serde_json::Value) -> Result<(), std::io::Erro
     Ok(())
 }
 
-pub(crate) fn cmd_settings_get() {
-    let mut val = load_settings();
-    if !val.is_object() {
-        val = serde_json::json!({});
+pub(crate) fn parse_level(v: Option<&serde_json::Value>) -> String {
+    match v {
+        Some(serde_json::Value::String(s)) => {
+            crate::comfy::LoraLevel::from_str_opt(s).as_str().to_string()
+        }
+        Some(serde_json::Value::Bool(b)) => {
+            if *b { "heavy".to_string() } else { "off".to_string() }
+        }
+        _ => "off".to_string(),
     }
-    let obj = val.as_object_mut().unwrap();
+}
+
+pub(crate) fn parse_guard_mode(v: Option<&serde_json::Value>) -> String {
+    match v {
+        Some(serde_json::Value::String(s)) => match s.trim().to_lowercase().as_str() {
+            "on" | "force" | "forced" | "always" | "true" | "1" => "on".to_string(),
+            "off" | "disabled" | "none" | "false" | "0" => "off".to_string(),
+            _ => "auto".to_string(),
+        },
+        Some(serde_json::Value::Bool(b)) => {
+            if *b { "on".to_string() } else { "off".to_string() }
+        }
+        _ => "auto".to_string(),
+    }
+}
+
+pub(crate) fn parse_auto_tune_mode(v: Option<&serde_json::Value>) -> String {
+    match v {
+        Some(serde_json::Value::String(s)) => match s.trim().to_lowercase().as_str() {
+            "balanced" | "balance" | "auto" | "on" | "true" | "1" => "balanced".to_string(),
+            "quality" | "hq" | "high" | "2" => "quality".to_string(),
+            _ => "off".to_string(),
+        },
+        Some(serde_json::Value::Bool(b)) => {
+            if *b { "balanced".to_string() } else { "off".to_string() }
+        }
+        _ => "off".to_string(),
+    }
+}
+
+pub(crate) fn build_settings_response(val: &mut serde_json::Value) -> serde_json::Value {
+    if !val.is_object() {
+        *val = serde_json::json!({});
+    }
+    let obj = val.as_object().unwrap();
     let lang = obj.get("language").and_then(|v| v.as_str()).unwrap_or("en");
     let nsfw = obj.get("nsfw").and_then(|v| v.as_bool()).unwrap_or(false);
-
-    let parse_level = |v: Option<&serde_json::Value>| -> String {
-        match v {
-            Some(serde_json::Value::String(s)) => {
-                let sl = s.to_lowercase();
-                if sl == "soft" || sl == "full" { sl } else { "off".to_string() }
-            }
-            Some(serde_json::Value::Bool(b)) => {
-                if *b { "full".to_string() } else { "off".to_string() }
-            }
-            _ => "off".to_string(),
-        }
-    };
 
     let anime_mode = parse_level(obj.get("anime_mode").or_else(|| obj.get("anime_lora")).or_else(|| obj.get("anime")));
     let uncensored_mode = parse_level(obj.get("uncensored_mode").or_else(|| obj.get("heretic_mode")).or_else(|| obj.get("uncensored")).or_else(|| obj.get("heretic")));
     let anatomy_mode = parse_level(obj.get("anatomy_mode").or_else(|| obj.get("anatomy_lora")).or_else(|| obj.get("anatomy")));
+    let anatomy_guard = parse_guard_mode(obj.get("anatomy_guard").or_else(|| obj.get("human_guard")));
+    let auto_tune = parse_auto_tune_mode(obj.get("auto_tune"));
 
     let anime_bool = anime_mode != "off";
     let uncensored_bool = uncensored_mode != "off";
@@ -107,7 +135,7 @@ pub(crate) fn cmd_settings_get() {
     let auto_expand = obj.get("auto_expand").and_then(|v| v.as_bool()).unwrap_or(false);
     let res_mode = obj.get("res_mode").and_then(|v| v.as_str()).unwrap_or("standard");
 
-    println!("{}", serde_json::json!({
+    serde_json::json!({
         "status": "ok",
         "lang": lang,
         "nsfw": nsfw,
@@ -119,46 +147,48 @@ pub(crate) fn cmd_settings_get() {
         "heretic_mode": uncensored_mode,
         "anatomy": anatomy_bool,
         "anatomy_mode": anatomy_mode,
+        "anatomy_guard": anatomy_guard,
+        "auto_tune": auto_tune,
         "auto_expand": auto_expand,
         "res_mode": res_mode,
         "settings": val
-    }));
+    })
 }
 
-pub(crate) fn cmd_settings_set(key: &str, value: &str) {
+pub(crate) fn cmd_settings_get() {
     let mut val = load_settings();
+    println!("{}", build_settings_response(&mut val));
+}
+
+pub(crate) fn apply_setting(val: &mut serde_json::Value, key: &str, value: &str) {
     if !val.is_object() {
-        val = serde_json::json!({});
+        *val = serde_json::json!({});
     }
     if let Some(map) = val.as_object_mut() {
         match key {
             "anime_mode" | "anime_lora" | "anime" => {
-                let norm = match value.to_lowercase().as_str() {
-                    "soft" | "low" | "1" => "soft",
-                    "full" | "high" | "hard" | "true" | "2" => "full",
-                    _ => "off",
-                };
+                let norm = crate::comfy::LoraLevel::from_str_opt(value).as_str();
                 map.insert("anime_mode".to_string(), serde_json::json!(norm));
                 map.insert("anime_lora".to_string(), serde_json::json!(norm != "off"));
             }
             "uncensored_mode" | "heretic_mode" | "uncensored" | "heretic" => {
-                let norm = match value.to_lowercase().as_str() {
-                    "soft" | "low" | "1" => "soft",
-                    "full" | "high" | "hard" | "true" | "2" => "full",
-                    _ => "off",
-                };
+                let norm = crate::comfy::LoraLevel::from_str_opt(value).as_str();
                 map.insert("uncensored_mode".to_string(), serde_json::json!(norm));
                 map.insert("heretic_mode".to_string(), serde_json::json!(norm));
                 map.insert("uncensored".to_string(), serde_json::json!(norm != "off"));
             }
             "anatomy_mode" | "anatomy_lora" | "anatomy" => {
-                let norm = match value.to_lowercase().as_str() {
-                    "soft" | "low" | "1" => "soft",
-                    "full" | "high" | "hard" | "true" | "2" => "full",
-                    _ => "off",
-                };
+                let norm = crate::comfy::LoraLevel::from_str_opt(value).as_str();
                 map.insert("anatomy_mode".to_string(), serde_json::json!(norm));
                 map.insert("anatomy_lora".to_string(), serde_json::json!(norm != "off"));
+            }
+            "anatomy_guard" | "human_guard" => {
+                let norm = parse_guard_mode(Some(&serde_json::Value::String(value.to_string())));
+                map.insert("anatomy_guard".to_string(), serde_json::json!(norm));
+            }
+            "auto_tune" => {
+                let norm = parse_auto_tune_mode(Some(&serde_json::Value::String(value.to_string())));
+                map.insert("auto_tune".to_string(), serde_json::json!(norm));
             }
             "nsfw" | "turbo" | "auto_expand" => {
                 let b = value.eq_ignore_ascii_case("true") || value == "1";
@@ -175,6 +205,11 @@ pub(crate) fn cmd_settings_set(key: &str, value: &str) {
             }
         }
     }
+}
+
+pub(crate) fn cmd_settings_set(key: &str, value: &str) {
+    let mut val = load_settings();
+    apply_setting(&mut val, key, value);
     match save_settings(&val) {
         Ok(_) => println!("{}", serde_json::json!({"status": "ok", "key": key, "value": value})),
         Err(e) => println!("{}", serde_json::json!({"status": "error", "message": format!("{}", e)})),

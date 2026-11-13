@@ -155,19 +155,19 @@ fn test_anatomy_lora_graph_wiring() {
     if graph_light.get("22").is_some() {
         assert_eq!(graph_light["22"]["class_type"], "LoraLoaderModelOnly");
         assert_eq!(graph_light["22"]["inputs"]["lora_name"], "Genitalia-Anatomy-2.1-v1.safetensors");
-        assert_eq!(graph_light["22"]["inputs"]["strength_model"], 0.50);
+        assert_eq!(graph_light["22"]["inputs"]["strength_model"], 0.45);
     }
 
     cfg.anatomy = comfy::LoraLevel::Medium;
     let (graph_med, _, _, _) = comfy::build_generation_graph(&cfg).expect("anatomy graph build should succeed");
     if graph_med.get("22").is_some() {
-        assert_eq!(graph_med["22"]["inputs"]["strength_model"], 0.75);
+        assert_eq!(graph_med["22"]["inputs"]["strength_model"], 0.70);
     }
 
     cfg.anatomy = comfy::LoraLevel::Heavy;
     let (graph_heavy, _, _, _) = comfy::build_generation_graph(&cfg).expect("anatomy graph build should succeed");
     if graph_heavy.get("22").is_some() {
-        assert_eq!(graph_heavy["22"]["inputs"]["strength_model"], 1.0);
+        assert_eq!(graph_heavy["22"]["inputs"]["strength_model"], 0.85);
     }
 }
 
@@ -193,30 +193,69 @@ fn test_anime_and_heretic_tri_state_levels() {
 
     let (graph_light, _, _, _) = comfy::build_generation_graph(&cfg).expect("graph light should succeed");
     if graph_light.get("15").is_some() {
-        assert_eq!(graph_light["15"]["inputs"]["strength_model"], 0.50);
+        assert_eq!(graph_light["15"]["inputs"]["strength_model"], 0.45);
     }
     if graph_light.get("14").is_some() {
-        assert_eq!(graph_light["14"]["inputs"]["strength_model"], 0.50);
+        assert_eq!(graph_light["14"]["inputs"]["strength_model"], 0.45);
     }
 
     cfg.anime = comfy::LoraLevel::Medium;
     cfg.uncensored = comfy::LoraLevel::Medium;
     let (graph_med, _, _, _) = comfy::build_generation_graph(&cfg).expect("graph med should succeed");
     if graph_med.get("15").is_some() {
-        assert_eq!(graph_med["15"]["inputs"]["strength_model"], 0.80);
+        assert_eq!(graph_med["15"]["inputs"]["strength_model"], 0.65);
     }
     if graph_med.get("14").is_some() {
-        assert_eq!(graph_med["14"]["inputs"]["strength_model"], 0.75);
+        assert_eq!(graph_med["14"]["inputs"]["strength_model"], 0.70);
     }
 
     cfg.anime = comfy::LoraLevel::Heavy;
     cfg.uncensored = comfy::LoraLevel::Heavy;
     let (graph_heavy, _, _, _) = comfy::build_generation_graph(&cfg).expect("graph heavy should succeed");
     if graph_heavy.get("15").is_some() {
-        assert_eq!(graph_heavy["15"]["inputs"]["strength_model"], 1.05);
+        assert_eq!(graph_heavy["15"]["inputs"]["strength_model"], 0.80);
     }
     if graph_heavy.get("14").is_some() {
-        assert_eq!(graph_heavy["14"]["inputs"]["strength_model"], 1.0);
+        assert_eq!(graph_heavy["14"]["inputs"]["strength_model"], 0.85);
+    }
+}
+
+#[test]
+fn test_turbo_9step_hybrid_and_active_vae() {
+    let cfg = comfy::GenerationConfig {
+        prompt: "two warriors side-by-side holding swords",
+        negative_prompt: "",
+        ratio: "16:10",
+        steps: 9,
+        cfg: 1.0,
+        seed: 42,
+        image_ref: None,
+        mask_ref: None,
+        denoise: 0.85,
+        anime: comfy::LoraLevel::Heavy,
+        turbo: true,
+        uncensored: comfy::LoraLevel::Off,
+        anatomy: comfy::LoraLevel::Off,
+        res_mode: "standard",
+        is_human: false,
+    };
+
+    let (graph, _, _, _) = comfy::build_generation_graph(&cfg).expect("9-step hybrid graph should succeed");
+    assert_eq!(graph["3"]["inputs"]["vae_name"], "qwen_image_2.1_vae_active.safetensors");
+    assert_eq!(graph["20"]["inputs"]["nodes"], "1.0, 0.9583, 0.9167, 0.875, 0.75, 0.5, 0.25, 0.1667, 0.0833");
+    assert_eq!(graph["20s"]["class_type"], "SplitSigmas");
+    assert_eq!(graph["20s"]["inputs"]["step"], 7);
+    assert_eq!(graph["6a"]["class_type"], "SamplerCustomAdvanced");
+    assert_eq!(graph["6a"]["inputs"]["guider"], serde_json::json!(["17", 0]));
+    assert_eq!(graph["6a"]["inputs"]["sigmas"], serde_json::json!(["20s", 0]));
+    assert_eq!(graph["6"]["class_type"], "SamplerCustomAdvanced");
+    assert_eq!(graph["6"]["inputs"]["noise"], serde_json::json!(["25", 0]));
+    assert_eq!(graph["25"]["class_type"], "DisableNoise");
+    assert_eq!(graph["6"]["inputs"]["guider"], serde_json::json!(["24", 0]));
+    assert_eq!(graph["6"]["inputs"]["sigmas"], serde_json::json!(["20s", 1]));
+    assert_eq!(graph["6"]["inputs"]["latent_image"], serde_json::json!(["6a", 0]));
+    if graph.get("15").is_some() {
+        assert_eq!(graph["15"]["inputs"]["strength_model"], 0.75);
     }
 }
 

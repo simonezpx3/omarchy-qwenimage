@@ -122,14 +122,14 @@ ColumnLayout {
       onClicked: if (panelRoot) panelRoot.cycleHereticMode()
     }
 
-    // Anatomy Body LoRA Switcher (4-State: OFF -> LIGHT -> MEDIUM -> HEAVY)
+    // Genitalia Anatomy Fidelity LoRA Switcher (4-State: OFF -> LIGHT -> MEDIUM -> HEAVY)
     Button {
       text: {
         var mode = panelRoot ? panelRoot.anatomyMode : "off";
-        if (mode === "heavy" || mode === "full") return "ANATOMY: HEAVY";
-        if (mode === "medium") return "ANATOMY: MEDIUM";
-        if (mode === "light" || mode === "soft") return "ANATOMY: LIGHT";
-        return "ANATOMY: OFF";
+        if (mode === "heavy" || mode === "full") return "GENITALIA: HEAVY";
+        if (mode === "medium") return "GENITALIA: MEDIUM";
+        if (mode === "light" || mode === "soft") return "GENITALIA: LIGHT";
+        return "GENITALIA: OFF";
       }
       fontSize: Commons.Style.font.caption
       bordered: false
@@ -140,6 +140,23 @@ ColumnLayout {
       verticalPadding: Commons.Style.space(1)
       onHotChanged: if (root) root.setHelp(root.tr("help_anatomy_lora"), hot)
       onClicked: if (panelRoot) panelRoot.cycleAnatomyMode()
+    }
+
+    // Human Anatomy Safeguard Switcher (3-State: AUTO -> ON -> OFF)
+    Button {
+      readonly property string guardMode: panelRoot && panelRoot.anatomyGuardMode ? panelRoot.anatomyGuardMode : "auto"
+      text: "ANATOMY GUARD: " + guardMode.toUpperCase()
+      fontSize: Commons.Style.font.caption
+      bordered: false
+      selected: guardMode !== "off"
+      foreground: guardMode === "off"
+        ? Commons.Util.alpha(Commons.Color.urgent, 0.85)
+        : (guardMode === "on" ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.foreground, 0.82))
+      accent: Commons.Color.accent
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
+      onHotChanged: if (root) root.setHelp(root.tr("help_anatomy_guard"), hot)
+      onClicked: if (panelRoot) panelRoot.cycleAnatomyGuardMode()
     }
 
     Item { Layout.fillWidth: true }
@@ -156,6 +173,26 @@ ColumnLayout {
         panelRoot.resetForm();
         if (root) root.genElapsedSeconds = 0;
       }
+    }
+
+    // Auto-Tune Sampling Switcher (3-State: OFF -> BALANCED -> QUALITY)
+    Button {
+      readonly property string tuneMode: panelRoot && panelRoot.autoTuneMode ? panelRoot.autoTuneMode : "off"
+      text: "AUTO TUNE: " + tuneMode.toUpperCase()
+      fontSize: Commons.Style.font.caption
+      bordered: false
+      selected: tuneMode !== "off"
+      foreground: selected ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.foreground, 0.72)
+      accent: Commons.Color.accent
+      Layout.preferredHeight: Commons.Style.space(20)
+      verticalPadding: Commons.Style.space(1)
+      onHotChanged: if (root) {
+        var extra = (panelRoot && panelRoot.autoTuneMode !== "off" && panelRoot.autoTuneSummary !== "")
+          ? " [" + panelRoot.autoTuneSummary + "]"
+          : "";
+        root.setHelp(root.tr("help_auto_tune") + extra, hot);
+      }
+      onClicked: if (panelRoot) panelRoot.cycleAutoTuneMode()
     }
 
     // Primary CTA: GENERATE (height 20 matching tabs)

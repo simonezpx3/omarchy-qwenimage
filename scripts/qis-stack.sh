@@ -628,8 +628,9 @@ download_models() {
     safe_download_model "$diff_dir" "$dit_file" "$dit_url" "DiT model" "$dit_sha"
 
     # Save environment configuration for rust-bridge and runtime
-    local cfg_dir="${HOME}/.config/omarchy/plugins/simonez.qwenimage"
+    local cfg_dir="${XDG_CONFIG_HOME:-${HOME}/.config}/qwenimage"
     mkdir -p "$cfg_dir"
+    chmod 0700 "$cfg_dir"
     cat <<EOF > "${cfg_dir}/env.conf"
 # QIS Hardware & Model Environment Configuration
 QIS_VRAM_TIER=${HW_TIER}
@@ -718,28 +719,46 @@ update_qis_plugin() {
         src_dir="${HOME}/Projects/omarchy-qwenimage"
     fi
 
-    # In developer workspace, sync directly to user config
-    if [[ -d "${src_dir}" && "${src_dir}" != "${target_dir}" && -d "${target_dir}" ]]; then
+    # Detect intentional dev symlink mode (target_dir -> src_dir owned by user)
+    local norm_src norm_target is_dev_symlink=0
+    norm_src="$(readlink -f "${src_dir}" 2>/dev/null || echo "${src_dir}")"
+    norm_target="$(readlink -f "${target_dir}" 2>/dev/null || echo "${target_dir}")"
+    if [[ -L "${target_dir}" ]]; then
+        if [[ "${norm_src}" == "${norm_target}" && -O "${target_dir}" ]]; then
+            is_dev_symlink=1
+            log_info "Dev symlink režim (${target_dir} -> ${src_dir})."
+        else
+            log_err "Cílový adresář pluginu je cizí symlink: ${target_dir}. Aktualizace zrušena."
+            return 1
+        fi
+    fi
+
+    # In developer workspace, sync directly to user config (unless dev symlink already points to src_dir)
+    if (( is_dev_symlink == 0 )) && [[ -d "${src_dir}" && "${norm_src}" != "${norm_target}" && -d "${target_dir}" ]]; then
         log_info "Synchronizuji lokální repozitář (${src_dir}) do cíle (${target_dir})..."
         rsync -a --exclude='.git/' --exclude='target/' --exclude='*.tmp*' --exclude='bin/' \
             "${src_dir}/" "${target_dir}/"
-    elif command -v omarchy >/dev/null 2>&1 && omarchy plugin list --json 2>/dev/null | grep -q "simonez.qwenimage"; then
+    elif (( is_dev_symlink == 0 )) && command -v omarchy >/dev/null 2>&1 && omarchy plugin list --json 2>/dev/null | grep -q "simonez.qwenimage"; then
         log_info "Aktualizuji plugin přes oficiální správce Omarchy..."
         omarchy plugin update simonez.qwenimage --yes 2>/dev/null || true
     fi
 
     if [[ -d "${src_dir}/rust-bridge" ]] && command -v cargo >/dev/null 2>&1; then
-        local target_bin="${target_dir}/bin/qwen-bridge"
-        local target_bin_dir="${target_dir}/bin"
+        local build_dir="${target_dir}"
+        if (( is_dev_symlink == 1 )); then
+            build_dir="${src_dir}"
+        fi
+        local target_bin="${build_dir}/bin/qwen-bridge"
+        local target_bin_dir="${build_dir}/bin"
 
         # Verify target plugin directory
-        if [[ -L "${target_dir}" ]]; then
-            log_err "Cílový adresář pluginu je symlink: ${target_dir}. Aktualizace zrušena."
+        if (( is_dev_symlink == 0 )) && [[ -L "${build_dir}" ]]; then
+            log_err "Cílový adresář pluginu je symlink: ${build_dir}. Aktualizace zrušena."
             return 1
         fi
-        if [[ -e "${target_dir}" ]]; then
-            if [[ ! -d "${target_dir}" || ! -O "${target_dir}" ]]; then
-                log_err "Cílový adresář pluginu není ve vlastnictví uživatele: ${target_dir}"
+        if [[ -e "${build_dir}" ]]; then
+            if [[ ! -d "${build_dir}" || ! -O "${build_dir}" ]]; then
+                log_err "Cílový adresář pluginu není ve vlastnictví uživatele: ${build_dir}"
                 return 1
             fi
         fi
@@ -764,7 +783,11 @@ update_qis_plugin() {
             return 1
         fi
 
-        if [[ ! -f "${target_bin}" ]] || [[ "${src_dir}/rust-bridge/src/main.rs" -nt "${target_bin}" ]]; then
+        local newer_src=""
+        if [[ -f "${target_bin}" ]]; then
+            newer_src="$(find "${src_dir}/rust-bridge/src" "${src_dir}/rust-bridge/Cargo.toml" -type f -newer "${target_bin}" -print -quit 2>/dev/null || true)"
+        fi
+        if [[ ! -f "${target_bin}" ]] || [[ -n "${newer_src}" ]]; then
             log_info "Aktualizuji nativní Rust můstek..."
             (cd "${src_dir}/rust-bridge" && cargo build --release)
             local compiled_bin="${src_dir}/rust-bridge/target/release/qwen_bridge"
@@ -776,8 +799,12 @@ update_qis_plugin() {
                 mv -f "$tmp_bin" "${target_bin}"
                 chmod 0755 "${target_bin}"
 
+                local new_hash
+                new_hash="$(sha256sum "${target_bin}" | awk '{print $1}')"
+                printf '%s  qwen-bridge\n' "${new_hash}" > "${target_bin_dir}/qwen-bridge.sha256"
+
                 # Update hash in .installed_hashes if receipt exists
-                local receipt="${target_dir}/.installed_hashes"
+                local receipt="${build_dir}/.installed_hashes"
                 if [[ -f "$receipt" && ! -L "$receipt" && -O "$receipt" ]]; then
                     local new_hash
                     new_hash="$(sha256sum "${target_bin}" | awk '{print $1}')"

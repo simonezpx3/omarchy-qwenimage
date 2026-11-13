@@ -45,17 +45,25 @@ pub fn get_comfy_dir() -> PathBuf {
 
 pub(crate) fn load_env_conf() -> std::collections::HashMap<String, String> {
     let mut map = std::collections::HashMap::new();
-    let conf_path = get_home().join(".config/omarchy/plugins/simonez.qwenimage/env.conf");
-    if let Ok(content) = fs::read_to_string(conf_path) {
-        for line in content.lines() {
-            let trimmed = line.trim();
-            if trimmed.is_empty() || trimmed.starts_with('#') {
-                continue;
-            }
-            if let Some((k, v)) = trimmed.split_once('=') {
-                let key = k.trim().to_string();
-                let val = v.trim().trim_matches('"').trim_matches('\'').to_string();
-                map.insert(key, val);
+    let xdg_base = std::env::var("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| get_home().join(".config"));
+    let paths = [
+        get_home().join(".config/omarchy/plugins/simonez.qwenimage/env.conf"),
+        xdg_base.join("qwenimage/env.conf"),
+    ];
+    for conf_path in paths {
+        if let Ok(content) = fs::read_to_string(conf_path) {
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed.is_empty() || trimmed.starts_with('#') {
+                    continue;
+                }
+                if let Some((k, v)) = trimmed.split_once('=') {
+                    let key = k.trim().to_string();
+                    let val = v.trim().trim_matches('"').trim_matches('\'').to_string();
+                    map.insert(key, val);
+                }
             }
         }
     }
@@ -151,7 +159,6 @@ impl LoraLevel {
         }
     }
 
-    #[allow(dead_code)]
     pub fn as_str(&self) -> &'static str {
         match self {
             LoraLevel::Off => "off",

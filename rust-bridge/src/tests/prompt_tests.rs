@@ -51,6 +51,7 @@ fn test_detect_human_subject() {
     assert!(detect_human_subject("portrait of a beautiful woman"));
     assert!(detect_human_subject("nude model in soft studio light"));
     assert!(detect_human_subject("fotorealistický akt dívky"));
+    assert!(detect_human_subject("Žena v zahradě při západu slunce"));
     assert!(detect_human_subject("young girl holding flowers"));
     assert!(!detect_human_subject("mountain landscape at sunrise with snowy peaks"));
     assert!(!detect_human_subject("sports car drifting on wet asphalt"));

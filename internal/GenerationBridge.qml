@@ -98,6 +98,9 @@ Item {
       args.push(service.anatomyMode);
     }
 
+    args.push("--anatomy-guard");
+    args.push(service.anatomyGuardMode || "auto");
+
     if (service.isAutoExpandEnabled) {
       args.push("--expand");
     }
@@ -219,7 +222,7 @@ Item {
     service.aspectRatio = "1:1";
     service.resMode = "standard";
     service.steps = 25;
-    service.cfg = service.isTurboEnabled ? 1.0 : 4.0;
+    service.cfg = service.isTurboEnabled ? 1.0 : 2.5;
     service.seedLocked = false;
     service.seedVal = -1;
     service.referencePath = "";

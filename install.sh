@@ -311,6 +311,18 @@ else
       [[ -f "$f" && ! -L "$f" ]] && copy_safe "$f" "${TARGET_PLUGIN_DIR}/views/studio/$(basename "$f")" 0644
     done
   fi
+  if [[ -d "${SCRIPT_DIR}/views/components" ]]; then
+    ensure_safe_dir "${TARGET_PLUGIN_DIR}/views/components"
+    for f in "${SCRIPT_DIR}"/views/components/*; do
+      [[ -f "$f" && ! -L "$f" ]] && copy_safe "$f" "${TARGET_PLUGIN_DIR}/views/components/$(basename "$f")" 0644
+    done
+  fi
+  if [[ -d "${SCRIPT_DIR}/views/inspiration" ]]; then
+    ensure_safe_dir "${TARGET_PLUGIN_DIR}/views/inspiration"
+    for f in "${SCRIPT_DIR}"/views/inspiration/*; do
+      [[ -f "$f" && ! -L "$f" ]] && copy_safe "$f" "${TARGET_PLUGIN_DIR}/views/inspiration/$(basename "$f")" 0644
+    done
+  fi
   if [[ -d "${SCRIPT_DIR}/internal" ]]; then
     ensure_safe_dir "${TARGET_PLUGIN_DIR}/internal"
     for f in "${SCRIPT_DIR}"/internal/*; do
@@ -434,7 +446,10 @@ fi
 # ---------------------------------------------------------
 # 6. Settings Initialization
 # ---------------------------------------------------------
-SETTINGS_FILE="${TARGET_PLUGIN_DIR}/settings.json"
+SETTINGS_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/qwenimage"
+ensure_safe_dir "${SETTINGS_DIR}"
+chmod 0700 "${SETTINGS_DIR}"
+SETTINGS_FILE="${SETTINGS_DIR}/settings.json"
 if [[ -L "$SETTINGS_FILE" ]]; then
   log_err "File settings.json must not be a symlink: $SETTINGS_FILE"
   exit 1

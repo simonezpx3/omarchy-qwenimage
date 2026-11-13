@@ -15,7 +15,7 @@
   "3": {
     "class_type": "VAELoader",
     "inputs": {
-      "vae_name": "qwen_image_2.1_vae_bf16.safetensors"
+      "vae_name": "qwen_image_2.1_vae_active.safetensors"
     }
   },
   "4": {

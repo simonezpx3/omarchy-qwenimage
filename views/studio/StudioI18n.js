@@ -277,8 +277,12 @@ var strings = {
     "en": "HERETIC LORA: 4-state uncensored adapter (OFF = default filters, LIGHT = relaxed clothing 0.45, MEDIUM = expressive boudoir 0.70, HEAVY = fully uncensored latent 0.95)."
   },
   "help_anatomy_lora": {
-    "cs": "ANATOMY LORA: Čtyřstavová anatomická fidelita (OFF = výchozí, LIGHT = přirozené tělo 0.45, MEDIUM = detailní anatomie 0.70, HEAVY = plná anatomická fidelita 0.95).",
-    "en": "ANATOMY LORA: 4-state body anatomy fidelity (OFF = default, LIGHT = natural proportions 0.45, MEDIUM = detailed anatomy 0.70, HEAVY = full anatomical fidelity 0.95)."
+    "cs": "GENITALIA LORA: Čtyřstavový adaptér intimní anatomické fidelity (OFF = výchozí, LIGHT = 0.50, MEDIUM = 0.75, HEAVY = 1.0).",
+    "en": "GENITALIA LORA: 4-state intimate anatomy fidelity adapter (OFF = default, LIGHT = 0.50, MEDIUM = 0.75, HEAVY = 1.0)."
+  },
+  "help_anatomy_guard": {
+    "cs": "ANATOMY GUARD: Ochrana anatomie lidského těla (AUTO = aktivní při detekci člověka, ON = vždy vynucená vč. zákazu Draft a min. 25 kroků, OFF = bez zásahů).",
+    "en": "ANATOMY GUARD: Human body anatomy safeguard (AUTO = active when human detected, ON = always forced incl. Draft upgrade & min 25 steps, OFF = manual)."
   },
   "help_history": {
     "cs": "HISTORY: Otevře archiv dříve vygenerovaných děl v ~/Pictures/Qwen-Image/ s obnovením parametrů.",
@@ -287,6 +291,10 @@ var strings = {
   "help_reset": {
     "cs": "RESET: Vyčistí všechna pole a vrátí studio do výchozího stavu.",
     "en": "RESET: Clears all text fields and resets studio to default values."
+  },
+  "help_auto_tune": {
+    "cs": "AUTO TUNE: Automaticky ladí TURBO, Steps a CFG podle promptu a I2I (OFF = ruční, BALANCED = rychlost/kvalita, QUALITY = max kvalita). Rozlišení a poměr stran nemění.",
+    "en": "AUTO TUNE: Automatically tunes TURBO, Steps & CFG from prompt and I2I (OFF = manual, BALANCED = speed/quality, QUALITY = max quality). Leaves Res & Ratio untouched."
   },
   "help_reference_pick": {
     "cs": "REFERENČNÍ PŘEDLOHA: Kliknutím levým tlačítkem myši vyberete obrázek z ~/Pictures (pravým tlačítkem vložíte ze schránky).",

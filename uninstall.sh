@@ -188,15 +188,20 @@ if [[ -e "$TARGET_PLUGIN_DIR" ]]; then
     log_info "Removing generated artifacts only (bin/qwen-bridge), preserving source code..."
     rm -f "${TARGET_PLUGIN_DIR}/bin/qwen-bridge" "${TARGET_PLUGIN_DIR}/bin/qwen-bridge.sha256"
     if (( PURGE_SETTINGS == 1 )); then
-      rm -f "${TARGET_PLUGIN_DIR}/settings.json"
-      log_ok "Removed settings.json."
+      rm -f "${TARGET_PLUGIN_DIR}/settings.json" "${XDG_CONFIG_HOME:-${HOME}/.config}/qwenimage/settings.json" "${XDG_CONFIG_HOME:-${HOME}/.config}/qwenimage/env.conf"
+      log_ok "Removed settings.json and env.conf."
     fi
   elif [[ -f "${TARGET_PLUGIN_DIR}/manifest.json" || -f "${TARGET_PLUGIN_DIR}/Panel.qml" ]]; then
-    if (( PURGE_SETTINGS == 0 )) && [[ -f "${TARGET_PLUGIN_DIR}/settings.json" ]]; then
+    xdg_settings="${XDG_CONFIG_HOME:-${HOME}/.config}/qwenimage/settings.json"
+    if (( PURGE_SETTINGS == 0 )) && [[ -f "$xdg_settings" || -f "${TARGET_PLUGIN_DIR}/settings.json" ]]; then
       BACKUP_SETTINGS="${HOME}/.config/omarchy/qis-settings.json.bak"
-      cp --no-dereference "${TARGET_PLUGIN_DIR}/settings.json" "$BACKUP_SETTINGS" 2>/dev/null || true
+      src_settings="${xdg_settings}"
+      [[ ! -f "$src_settings" ]] && src_settings="${TARGET_PLUGIN_DIR}/settings.json"
+      cp --no-dereference "$src_settings" "$BACKUP_SETTINGS" 2>/dev/null || true
       chmod 0600 "$BACKUP_SETTINGS" 2>/dev/null || true
       log_info "User settings backed up to: ${BACKUP_SETTINGS}"
+    elif (( PURGE_SETTINGS == 1 )); then
+      rm -f "$xdg_settings" "${XDG_CONFIG_HOME:-${HOME}/.config}/qwenimage/env.conf"
     fi
     rm -rf "$TARGET_PLUGIN_DIR"
     log_ok "Removed plugin directory: ${TARGET_PLUGIN_DIR}"

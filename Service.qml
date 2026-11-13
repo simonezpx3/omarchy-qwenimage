@@ -59,7 +59,7 @@ Item {
   property int maxSupportedDim: 1536
   property var supportedResModes: ["draft", "standard", "high"]
   property int steps: 25
-  property real cfg: 4.0
+  property real cfg: 2.5
   property bool seedLocked: false
   property var seedVal: -1
   property string referencePath: ""
@@ -130,6 +130,9 @@ Item {
   property bool isTurboEnabled: true
   property string hereticMode: "off"    // "off" | "light" | "medium" | "heavy"
   property string anatomyMode: "off"    // "off" | "light" | "medium" | "heavy"
+  property string anatomyGuardMode: "auto" // "auto" | "on" | "off"
+  property string autoTuneMode: "off"      // "off" | "balanced" | "quality"
+  property string autoTuneSummary: ""
   property bool isAutoExpandEnabled: false
 
   // Backward compatibility properties for bindings and external widgets
@@ -187,6 +190,9 @@ Item {
   function toggleUncensored() { settingsSync.cycleHereticMode(); }
   function cycleAnatomyMode() { settingsSync.cycleAnatomyMode(); }
   function toggleAnatomyLoRA() { settingsSync.cycleAnatomyMode(); }
+  function cycleAnatomyGuardMode() { settingsSync.cycleAnatomyGuardMode(); }
+  function cycleAutoTuneMode() { settingsSync.cycleAutoTuneMode(); }
+  function applyAutoTune() { settingsSync.applyAutoTune(); }
   function toggleAutoExpand() { settingsSync.toggleAutoExpand(); }
   function setResolutionMode(mode) { settingsSync.setResolutionMode(mode); }
 
@@ -312,6 +318,12 @@ Item {
     }
     function anatomy(): void {
       root.cycleAnatomyMode();
+    }
+    function anatomyGuard(): void {
+      root.cycleAnatomyGuardMode();
+    }
+    function autoTune(): void {
+      root.cycleAutoTuneMode();
     }
   }
 }

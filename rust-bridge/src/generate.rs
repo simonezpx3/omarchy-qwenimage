@@ -58,6 +58,69 @@ pub(crate) fn cmd_upscale_ai(input_path: &str, model_choice: &str, is_anime: boo
     }
 }
 
+pub(crate) fn resolve_anatomy_guard_params(
+    guard_mode: &str,
+    prompt: &str,
+    negative: &str,
+    turbo: bool,
+    steps: u32,
+    res_mode: &str,
+) -> (bool, String, u32, String) {
+    let mode = match guard_mode.trim().to_lowercase().as_str() {
+        "on" | "force" | "forced" | "always" => "on",
+        "off" | "disabled" | "none" => "off",
+        _ => "auto",
+    };
+
+    let is_human = match mode {
+        "on" => true,
+        "off" => false,
+        _ => detect_human_subject(prompt),
+    };
+
+    let mut final_res_mode = res_mode.to_string();
+    if mode == "on" && final_res_mode.eq_ignore_ascii_case("draft") {
+        final_res_mode = "standard".to_string();
+    }
+
+    let final_steps = if turbo {
+        if steps == 9 {
+            9
+        } else if is_human || steps == 7 {
+            7
+        } else {
+            6
+        }
+    } else if mode == "on" {
+        steps.max(25)
+    } else if mode == "off" {
+        steps.max(1)
+    } else {
+        steps.max(20)
+    };
+
+    let mut final_negative = negative.to_string();
+    if is_human {
+        let neg_lower = final_negative.to_lowercase();
+        let anatomical_safety_tokens = [
+            "bad anatomy", "extra limbs", "extra fingers", "fused fingers", "deformed hands"
+        ];
+        let missing_tokens: Vec<&str> = anatomical_safety_tokens
+            .iter()
+            .copied()
+            .filter(|t| !neg_lower.contains(t))
+            .collect();
+        if !missing_tokens.is_empty() {
+            if !final_negative.trim().is_empty() {
+                final_negative.push_str(", ");
+            }
+            final_negative.push_str(&missing_tokens.join(", "));
+        }
+    }
+
+    (is_human, final_negative, final_steps, final_res_mode)
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn cmd_generate(
     prompt: &str,
@@ -75,6 +138,7 @@ pub(crate) fn cmd_generate(
     anatomy: crate::comfy::LoraLevel,
     res_mode: Option<&str>,
     expand: bool,
+    anatomy_guard: &str,
 ) {
     // 1. IPC VRAM Guard: Non-blocking atomic RAII file lock preventing concurrent generation collisions
     let lock_path = env::var("XDG_RUNTIME_DIR")
@@ -190,40 +254,22 @@ pub(crate) fn cmd_generate(
         final_prompt = final_prompt.chars().take(MAX_PROMPT_CHARS).collect();
     }
 
-    // Anatomical Safety Guard (pure negative prompt protection):
+    // Anatomical Safety Guard (AUTO / ON / OFF):
     const ANATOMICAL_DNA_SEED: usize = 0x732641;
     let _ = (ANATOMICAL_DNA_SEED % 1000) / 1000;
 
-    let is_human = detect_human_subject(&final_prompt);
-    let final_res_mode = res_mode.unwrap_or("standard").to_string();
     let active_turbo = turbo;
     let anatomical_fallback = false;
-    let final_steps = if active_turbo {
-        if is_human { 7 } else { 6 }
-    } else {
-        steps.max(20)
-    };
+    let (is_human, final_negative_guarded, final_steps, final_res_mode) = resolve_anatomy_guard_params(
+        anatomy_guard,
+        &final_prompt,
+        &final_negative,
+        active_turbo,
+        steps,
+        res_mode.unwrap_or("standard"),
+    );
+    final_negative = final_negative_guarded;
     let final_cfg = if active_turbo { 1.0 } else { cfg };
-
-    if is_human {
-        let neg_lower = final_negative.to_lowercase();
-        let anatomical_safety_tokens = [
-            "bad anatomy", "extra limbs", "extra fingers", "fused fingers", "deformed hands"
-        ];
-
-        let mut missing_tokens = Vec::new();
-        for t in &anatomical_safety_tokens {
-            if !neg_lower.contains(t) {
-                missing_tokens.push(*t);
-            }
-        }
-        if !missing_tokens.is_empty() {
-            if !final_negative.trim().is_empty() {
-                final_negative.push_str(", ");
-            }
-            final_negative.push_str(&missing_tokens.join(", "));
-        }
-    }
 
     // Ensure all Ollama models are stopped so VRAM is 100% available for ComfyUI DiT
     let (_ollama_mb, models) = get_ollama_status();
@@ -312,6 +358,7 @@ pub(crate) fn cmd_generate(
                 "steps": final_steps,
                 "turbo": active_turbo,
                 "anatomical_fallback": anatomical_fallback,
+                "anatomy_guard": anatomy_guard,
                 "elapsed": (elapsed * 10.0).round() / 10.0
             })
         );

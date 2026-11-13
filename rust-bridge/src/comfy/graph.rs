@@ -72,6 +72,34 @@ pub fn calculate_dimensions(
     (w, h)
 }
 
+fn resolve_vae_model_name() -> &'static str {
+    let vae_dir = get_comfy_dir().join("models/vae");
+    if vae_dir.join("qwen_image_2.1_vae_active.safetensors").exists() {
+        "qwen_image_2.1_vae_active.safetensors"
+    } else if vae_dir.join("texture_fix_vae_for_qwen_image_2.1_bf16.safetensors").exists() {
+        "texture_fix_vae_for_qwen_image_2.1_bf16.safetensors"
+    } else {
+        "qwen_image_2.1_vae_bf16.safetensors"
+    }
+}
+
+/// Calibrated per-LoRA strength helper keeping stacked weights within creator-safe bounds.
+fn lora_strength(level: LoraLevel, has_turbo: bool, is_anime: bool) -> f64 {
+    match (level, has_turbo, is_anime) {
+        (LoraLevel::Off, _, _) => 0.0,
+        (LoraLevel::Light, true, _) => 0.40,
+        (LoraLevel::Light, false, _) => 0.45,
+        (LoraLevel::Medium, true, true) => 0.60,
+        (LoraLevel::Medium, false, true) => 0.65,
+        (LoraLevel::Medium, true, false) => 0.65,
+        (LoraLevel::Medium, false, false) => 0.70,
+        (LoraLevel::Heavy, true, true) => 0.75,
+        (LoraLevel::Heavy, false, true) => 0.80,
+        (LoraLevel::Heavy, true, false) => 0.80,
+        (LoraLevel::Heavy, false, false) => 0.85,
+    }
+}
+
 pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32, u32), String> {
     let (width, height) = calculate_dimensions(cfg.ratio, cfg.res_mode, cfg.is_human, cfg.image_ref);
     let res_val = width.max(height);
@@ -218,22 +246,19 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
         val
     };
 
-    // Dynamically assign resolved DiT model name (Q4_K_M vs Q3_K_M vs FP8/BF16)
+    // Dynamically assign resolved DiT model name (Q4_K_M vs Q3_K_M vs FP8/BF16) and active VAE
     let dit_model_name = resolve_dit_model_name();
     if let Some(n1) = graph.get_mut("1").and_then(|n| n.get_mut("inputs")) {
         n1["unet_name"] = json!(dit_model_name);
+    }
+    if let Some(n3) = graph.get_mut("3").and_then(|n| n.get_mut("inputs")) {
+        n3["vae_name"] = json!(resolve_vae_model_name());
     }
 
     let mut current_model = json!(["1", 0]);
 
     if has_uncensored {
-        // Heretic / Uncensored LoRA: Light (0.50/0.45), Medium (0.75/0.70), Heavy (1.0/0.95)
-        let weight = match cfg.uncensored {
-            LoraLevel::Light => if has_turbo { 0.45 } else { 0.50 },
-            LoraLevel::Medium => if has_turbo { 0.70 } else { 0.75 },
-            LoraLevel::Heavy => if has_turbo { 0.95 } else { 1.0 },
-            LoraLevel::Off => 0.0,
-        };
+        let weight = lora_strength(cfg.uncensored, has_turbo, false);
         graph["14"] = json!({
             "class_type": "LoraLoaderModelOnly",
             "inputs": {
@@ -246,13 +271,8 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     }
 
     if has_anime {
-        // Anime LoRA: Light (0.50/0.45), Medium (0.80/0.75), Heavy (1.05/1.0)
-        let weight = match cfg.anime {
-            LoraLevel::Light => if has_turbo { 0.45 } else { 0.50 },
-            LoraLevel::Medium => if has_turbo { 0.75 } else { 0.80 },
-            LoraLevel::Heavy => if has_turbo { 1.0 } else { 1.05 },
-            LoraLevel::Off => 0.0,
-        };
+        // Qwen2.1_Anime_consistency: creator-recommended ceiling is 0.6–0.8
+        let weight = lora_strength(cfg.anime, has_turbo, true);
         graph["15"] = json!({
             "class_type": "LoraLoaderModelOnly",
             "inputs": {
@@ -265,13 +285,7 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     }
 
     if has_anatomy {
-        // Anatomy LoRA: Light (0.50/0.45), Medium (0.75/0.70), Heavy (1.0/0.95)
-        let weight = match cfg.anatomy {
-            LoraLevel::Light => if has_turbo { 0.45 } else { 0.50 },
-            LoraLevel::Medium => if has_turbo { 0.70 } else { 0.75 },
-            LoraLevel::Heavy => if has_turbo { 0.95 } else { 1.0 },
-            LoraLevel::Off => 0.0,
-        };
+        let weight = lora_strength(cfg.anatomy, has_turbo, false);
         graph["22"] = json!({
             "class_type": "LoraLoaderModelOnly",
             "inputs": {
@@ -370,7 +384,11 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
         });
         let has_ref_image = cfg.image_ref.filter(|s| !s.trim().is_empty()).is_some();
         let latent_node = if has_ref_image { json!(["5b", 0]) } else { json!(["5", 0]) };
-        let turbo_nodes = if cfg.is_human {
+        let use_hybrid_9 = cfg.steps == 9;
+        let turbo_nodes = if use_hybrid_9 {
+            // Viggle v0.3 9-step hybrid schedule: 7 Turbo steps + 2 clean base refinement steps
+            "1.0, 0.9583, 0.9167, 0.875, 0.75, 0.5, 0.25, 0.1667, 0.0833"
+        } else if cfg.is_human || cfg.steps == 7 {
             // Official 7-step schedule: adds 0.9583 and 0.9167 for anatomical stability
             "1.0, 0.9583, 0.9167, 0.875, 0.75, 0.5, 0.25"
         } else {
@@ -384,17 +402,57 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
                 "nodes": turbo_nodes
             }
         });
-        let sigmas_source = json!(["20", 0]);
-        graph["6"] = json!({
-            "class_type": "SamplerCustomAdvanced",
-            "inputs": {
-                "noise": ["18", 0],
-                "guider": ["17", 0],
-                "sampler": ["19", 0],
-                "sigmas": sigmas_source,
-                "latent_image": latent_node
-            }
-        });
+        if use_hybrid_9 {
+            graph["20s"] = json!({
+                "class_type": "SplitSigmas",
+                "inputs": {
+                    "sigmas": ["20", 0],
+                    "step": 7
+                }
+            });
+            graph["6a"] = json!({
+                "class_type": "SamplerCustomAdvanced",
+                "inputs": {
+                    "noise": ["18", 0],
+                    "guider": ["17", 0],
+                    "sampler": ["19", 0],
+                    "sigmas": ["20s", 0],
+                    "latent_image": latent_node
+                }
+            });
+            graph["24"] = json!({
+                "class_type": "BasicGuider",
+                "inputs": {
+                    "model": current_model,
+                    "conditioning": ["4", 0]
+                }
+            });
+            graph["25"] = json!({
+                "class_type": "DisableNoise",
+                "inputs": {}
+            });
+            graph["6"] = json!({
+                "class_type": "SamplerCustomAdvanced",
+                "inputs": {
+                    "noise": ["25", 0],
+                    "guider": ["24", 0],
+                    "sampler": ["19", 0],
+                    "sigmas": ["20s", 1],
+                    "latent_image": ["6a", 0]
+                }
+            });
+        } else {
+            graph["6"] = json!({
+                "class_type": "SamplerCustomAdvanced",
+                "inputs": {
+                    "noise": ["18", 0],
+                    "guider": ["17", 0],
+                    "sampler": ["19", 0],
+                    "sigmas": ["20", 0],
+                    "latent_image": latent_node
+                }
+            });
+        }
 
         if let Some(nodes) = graph.as_object_mut() {
             for (_nid, spec) in nodes.iter_mut() {
