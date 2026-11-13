@@ -155,19 +155,19 @@ fn test_anatomy_lora_graph_wiring() {
     if graph_light.get("22").is_some() {
         assert_eq!(graph_light["22"]["class_type"], "LoraLoaderModelOnly");
         assert_eq!(graph_light["22"]["inputs"]["lora_name"], "Genitalia-Anatomy-2.1-v1.safetensors");
-        assert_eq!(graph_light["22"]["inputs"]["strength_model"], 0.28);
+        assert_eq!(graph_light["22"]["inputs"]["strength_model"], 0.50);
     }
 
     cfg.anatomy = comfy::LoraLevel::Medium;
     let (graph_med, _, _, _) = comfy::build_generation_graph(&cfg).expect("anatomy graph build should succeed");
     if graph_med.get("22").is_some() {
-        assert_eq!(graph_med["22"]["inputs"]["strength_model"], 0.42);
+        assert_eq!(graph_med["22"]["inputs"]["strength_model"], 0.75);
     }
 
     cfg.anatomy = comfy::LoraLevel::Heavy;
     let (graph_heavy, _, _, _) = comfy::build_generation_graph(&cfg).expect("anatomy graph build should succeed");
     if graph_heavy.get("22").is_some() {
-        assert_eq!(graph_heavy["22"]["inputs"]["strength_model"], 0.62);
+        assert_eq!(graph_heavy["22"]["inputs"]["strength_model"], 1.0);
     }
 }
 
@@ -193,30 +193,30 @@ fn test_anime_and_heretic_tri_state_levels() {
 
     let (graph_light, _, _, _) = comfy::build_generation_graph(&cfg).expect("graph light should succeed");
     if graph_light.get("15").is_some() {
-        assert_eq!(graph_light["15"]["inputs"]["strength_model"], 0.30);
+        assert_eq!(graph_light["15"]["inputs"]["strength_model"], 0.50);
     }
     if graph_light.get("14").is_some() {
-        assert_eq!(graph_light["14"]["inputs"]["strength_model"], 0.28);
+        assert_eq!(graph_light["14"]["inputs"]["strength_model"], 0.50);
     }
 
     cfg.anime = comfy::LoraLevel::Medium;
     cfg.uncensored = comfy::LoraLevel::Medium;
     let (graph_med, _, _, _) = comfy::build_generation_graph(&cfg).expect("graph med should succeed");
     if graph_med.get("15").is_some() {
-        assert_eq!(graph_med["15"]["inputs"]["strength_model"], 0.48);
+        assert_eq!(graph_med["15"]["inputs"]["strength_model"], 0.80);
     }
     if graph_med.get("14").is_some() {
-        assert_eq!(graph_med["14"]["inputs"]["strength_model"], 0.40);
+        assert_eq!(graph_med["14"]["inputs"]["strength_model"], 0.75);
     }
 
     cfg.anime = comfy::LoraLevel::Heavy;
     cfg.uncensored = comfy::LoraLevel::Heavy;
     let (graph_heavy, _, _, _) = comfy::build_generation_graph(&cfg).expect("graph heavy should succeed");
     if graph_heavy.get("15").is_some() {
-        assert_eq!(graph_heavy["15"]["inputs"]["strength_model"], 0.70);
+        assert_eq!(graph_heavy["15"]["inputs"]["strength_model"], 1.05);
     }
     if graph_heavy.get("14").is_some() {
-        assert_eq!(graph_heavy["14"]["inputs"]["strength_model"], 0.52);
+        assert_eq!(graph_heavy["14"]["inputs"]["strength_model"], 1.0);
     }
 }
 
@@ -451,12 +451,20 @@ fn test_inpaint_graph_wiring() {
 
     let (graph, _, _, _) = comfy::build_generation_graph(&cfg).expect("inpaint graph should build");
     assert_eq!(graph["9m"]["class_type"], "LoadImageMask");
-    assert_eq!(graph["9m"]["inputs"]["channel"], "alpha");
-    assert_eq!(graph["5b"]["class_type"], "VAEEncodeForInpaint");
+    assert_eq!(graph["9m"]["inputs"]["channel"], "red");
+    assert_eq!(graph["5b_enc"]["class_type"], "VAEEncode");
+    assert_eq!(graph["5b_enc"]["inputs"]["pixels"], serde_json::json!(["5", 0]));
+    assert_eq!(graph["5b"]["class_type"], "SetLatentNoiseMask");
+    assert_eq!(graph["5b"]["inputs"]["samples"], serde_json::json!(["5b_enc", 0]));
     assert_eq!(graph["5b"]["inputs"]["mask"], serde_json::json!(["9m", 0]));
-    assert_eq!(graph["5b"]["inputs"]["pixels"], serde_json::json!(["5", 0]));
     assert_eq!(graph["4"]["class_type"], "TextEncodeQwenImageEditPlus");
     assert_eq!(graph["4"]["inputs"]["image1"], serde_json::json!(["5", 0]));
+    assert_eq!(graph["9f"]["class_type"], "FeatherMask");
+    assert_eq!(graph["9f"]["inputs"]["mask"], serde_json::json!(["9m", 0]));
+    assert_eq!(graph["7m"]["class_type"], "ImageCompositeMasked");
+    assert_eq!(graph["7m"]["inputs"]["destination"], serde_json::json!(["5", 0]));
+    assert_eq!(graph["7m"]["inputs"]["mask"], serde_json::json!(["9f", 0]));
+    assert_eq!(graph["8"]["inputs"]["images"], serde_json::json!(["7m", 0]));
     assert!(graph.get("23").is_some(), "QISVramBudget node 23 must remain active");
 
     let _ = std::fs::remove_file(&ref_img);

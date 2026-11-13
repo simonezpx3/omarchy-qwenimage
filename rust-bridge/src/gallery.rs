@@ -409,6 +409,54 @@ pub(crate) fn cmd_read_meta(image_path: &str) {
     }));
 }
 
+pub(crate) fn detect_prompt_nsfw(prompt: &str, chunks: &HashMap<String, String>) -> String {
+    if let Some(raw_nsfw) = chunks.get("nsfw") {
+        let trimmed = raw_nsfw.trim();
+        let lower = trimmed.to_lowercase();
+        if !lower.is_empty() && lower != "none" && lower != "false" && lower != "0" {
+            return if lower == "true" {
+                "NSFW".to_string()
+            } else {
+                trimmed.to_string()
+            };
+        }
+    }
+
+    const NSFW_KEYWORDS: &[&str] = &[
+        "nsfw",
+        "nude",
+        "nudity",
+        "naked",
+        "topless",
+        "explicit",
+        "erotic",
+        "lingerie",
+        "boudoir",
+        "uncensored",
+        "hentai",
+        "porn",
+        "nipple",
+        "nipples",
+        "breasts",
+        "genitals",
+        "bdsm",
+        "fetish",
+    ];
+
+    let is_nsfw = prompt
+        .split(|c: char| !c.is_alphanumeric())
+        .any(|token| {
+            let lower = token.to_lowercase();
+            NSFW_KEYWORDS.contains(&lower.as_str())
+        });
+
+    if is_nsfw {
+        "NSFW".to_string()
+    } else {
+        "None".to_string()
+    }
+}
+
 pub(crate) fn cmd_history(limit: usize) {
     let gallery = get_gallery_dir();
     let mut items = Vec::new();
@@ -498,6 +546,7 @@ pub(crate) fn cmd_history(limit: usize) {
                 .or_else(|| chunks.get("cfg").and_then(|c| c.parse::<f64>().ok()))
                 .unwrap_or(4.0);
             let ratio = chunks.get("ratio").cloned().unwrap_or_else(|| "1:1".to_string());
+            let nsfw = detect_prompt_nsfw(&prompt, &chunks);
 
             items.push(serde_json::json!({
                 "path": p.to_string_lossy(),
@@ -511,6 +560,7 @@ pub(crate) fn cmd_history(limit: usize) {
                 "steps": steps,
                 "cfg": cfg,
                 "ratio": ratio,
+                "nsfw": nsfw,
                 "size_mb": (size_mb * 100.0).round() / 100.0,
             }));
         }
@@ -543,5 +593,31 @@ pub(crate) fn cmd_delete_history(raw_path: &str) {
     match delete_history_file_in_dir(raw_path, &get_gallery_dir()) {
         Ok(deleted) => println!("{}", serde_json::json!({"status": "ok", "deleted": deleted})),
         Err(msg) => println!("{}", serde_json::json!({"status": "error", "message": msg})),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::detect_prompt_nsfw;
+    use std::collections::HashMap;
+
+    #[test]
+    fn detects_nsfw_from_chunk_metadata() {
+        let mut chunks = HashMap::new();
+        chunks.insert("nsfw".to_string(), "Mature".to_string());
+        assert_eq!(detect_prompt_nsfw("a quiet landscape", &chunks), "Mature");
+
+        chunks.insert("nsfw".to_string(), "true".to_string());
+        assert_eq!(detect_prompt_nsfw("a quiet landscape", &chunks), "NSFW");
+
+        chunks.insert("nsfw".to_string(), "None".to_string());
+        assert_eq!(detect_prompt_nsfw("a quiet landscape", &chunks), "None");
+    }
+
+    #[test]
+    fn detects_nsfw_from_prompt_keywords_with_word_boundaries() {
+        let chunks = HashMap::new();
+        assert_eq!(detect_prompt_nsfw("editorial boudoir portrait, soft light", &chunks), "NSFW");
+        assert_eq!(detect_prompt_nsfw("cyberpunk neon street at night", &chunks), "None");
     }
 }

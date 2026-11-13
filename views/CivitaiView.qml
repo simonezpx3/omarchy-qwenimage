@@ -52,8 +52,7 @@ Item {
           { key: "lexica", label: "LEXICA" },
           { key: "prompthero", label: "PROMPT HERO" },
           { key: "openart", label: "OPENART" },
-          { key: "liblib", label: "LIBLIB" },
-          { key: "tensora", label: "TENSORA" },
+          { key: "tensorart", label: "TENSOR.ART" },
           { key: "huggingface", label: "HUGGING FACE" }
         ]
 
@@ -202,19 +201,18 @@ Item {
       }
     }
 
-    // Results Scroll Area
-    Rectangle {
+    PanelSeparator { Layout.fillWidth: true }
+
+    // Results Scroll Area (minimalist transparent container)
+    Item {
       Layout.fillWidth: true
       Layout.fillHeight: true
-      color: Qt.tint(Commons.Color.background, Commons.Util.alpha(Commons.Color.foreground, 0.04))
-      radius: Commons.Style.cornerRadius
       clip: true
 
       ListView {
         id: promptList
         anchors.fill: parent
-        anchors.margins: Commons.Style.spacing.xs
-        spacing: Commons.Style.spacing.sm
+        spacing: 0
         model: {
           if (!panelRoot || !panelRoot.civitaiModel) return [];
           if (panelRoot.isNsfwEnabled) return panelRoot.civitaiModel;
@@ -230,8 +228,7 @@ Item {
         }
 
         delegate: InspirationCard {
-          x: Math.round((promptList.width - width) / 2)
-          width: promptList.width - Commons.Style.spacing.sm * 2
+          width: promptList.width
           modelData: model.modelData
           panelRoot: root.panelRoot
           activeSource: root.activeSource

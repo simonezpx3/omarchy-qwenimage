@@ -269,16 +269,16 @@ var strings = {
     "en": "TURBO (5s): WARNING // For human bodies and anatomy, turning TURBO off is recommended."
   },
   "help_anime_lora": {
-    "cs": "ANIME LORA: Třístavový adaptér stylu (OFF = fotorealismus, SOFT = jemná ilustrace 0.40, FULL = 2D anime cel-shading 0.65).",
-    "en": "ANIME LORA: Tri-state style adapter (OFF = photorealism, SOFT = subtle illustration 0.40, FULL = 2D anime cel-shading 0.65)."
+    "cs": "ANIME LORA: Čtyřstavový adaptér stylu (OFF = fotorealismus, LIGHT = jemná ilustrace 0.45, MEDIUM = stylizované anime 0.75, HEAVY = 2D cel-shading 1.0).",
+    "en": "ANIME LORA: 4-state style adapter (OFF = photorealism, LIGHT = subtle illustration 0.45, MEDIUM = stylized anime 0.75, HEAVY = 2D cel-shading 1.0)."
   },
   "help_uncensored_lora": {
-    "cs": "HERETIC LORA: Třístavový necenzurovaný adaptér (OFF = výchozí filtry, SOFT = uvolněné oděvy a dekolt 0.35, FULL = plně necenzurovaný latent 0.50).",
-    "en": "HERETIC LORA: Tri-state uncensored adapter (OFF = default filters, SOFT = relaxed clothing 0.35, FULL = fully uncensored latent 0.50)."
+    "cs": "HERETIC LORA: Čtyřstavový necenzurovaný adaptér (OFF = výchozí filtry, LIGHT = uvolněné oděvy 0.45, MEDIUM = odhalené křivky 0.70, HEAVY = plně necenzurovaný latent 0.95).",
+    "en": "HERETIC LORA: 4-state uncensored adapter (OFF = default filters, LIGHT = relaxed clothing 0.45, MEDIUM = expressive boudoir 0.70, HEAVY = fully uncensored latent 0.95)."
   },
   "help_anatomy_lora": {
-    "cs": "ANATOMY LORA: Třístavová anatomická fidelita (OFF = výchozí, SOFT = přirozené tělo 0.35 bez mutace okolí, FULL = plný explicitní akt 0.60).",
-    "en": "ANATOMY LORA: Tri-state body anatomy fidelity (OFF = default, SOFT = natural body proportions 0.35 without environment warping, FULL = explicit nude anatomy 0.60)."
+    "cs": "ANATOMY LORA: Čtyřstavová anatomická fidelita (OFF = výchozí, LIGHT = přirozené tělo 0.45, MEDIUM = detailní anatomie 0.70, HEAVY = plná anatomická fidelita 0.95).",
+    "en": "ANATOMY LORA: 4-state body anatomy fidelity (OFF = default, LIGHT = natural proportions 0.45, MEDIUM = detailed anatomy 0.70, HEAVY = full anatomical fidelity 0.95)."
   },
   "help_history": {
     "cs": "HISTORY: Otevře archiv dříve vygenerovaných děl v ~/Pictures/Qwen-Image/ s obnovením parametrů.",

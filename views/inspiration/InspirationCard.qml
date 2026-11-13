@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import qs.Commons as Commons
 import qs.Ui
+import "../components"
 import "InspirationHelper.js" as Helper
 
 Rectangle {
@@ -13,11 +14,12 @@ Rectangle {
   property string activeSource: "civitai"
 
   readonly property var itemData: (modelData && modelData.prompt !== undefined) ? modelData : ((modelData && modelData.modelData) ? modelData.modelData : (typeof model !== "undefined" && model && model.modelData ? model.modelData : null))
+  readonly property string itemSource: String((itemData && itemData.source) || cardDelegate.activeSource).toLowerCase()
+  readonly property color domainColor: Helper.sourceColor(itemSource, Commons.Color.background.hslLightness, Commons.Color.accent, Commons.Color.urgent)
 
-  implicitHeight: Math.max(Commons.Style.space(150), rowContent.implicitHeight + Commons.Style.spacing.sm * 2)
-  color: cardArea.containsMouse ? Commons.Util.alpha(Commons.Color.accent, 0.06) : Commons.Util.alpha(Commons.Color.foreground, 0.04)
-  border.color: cardArea.containsMouse ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.menu.border, 0.35)
-  border.width: 1
+  implicitHeight: rowContent.implicitHeight + Commons.Style.spacing.sm * 2
+  color: cardArea.containsMouse ? Commons.Util.alpha(Commons.Color.accent, 0.05) : "transparent"
+  border.width: 0
   radius: Commons.Style.cornerRadius
 
   function applyPrompt(autoGenerate) {
@@ -60,112 +62,29 @@ Rectangle {
     z: 1
     anchors.fill: parent
     anchors.margins: Commons.Style.spacing.sm
-    spacing: Commons.Style.spacing.md
+    spacing: Commons.Style.spacing.sm
 
-    // 1. Thematic Visual Prompt Card (144px width)
+    // Minimalist 3px domain accent bar
     Rectangle {
-      id: previewBox
-      Layout.preferredWidth: Commons.Style.space(144)
+      Layout.preferredWidth: 3
       Layout.fillHeight: true
-      Layout.minimumHeight: Commons.Style.space(136)
-
-      readonly property string itemSource: String((itemData && itemData.source) || cardDelegate.activeSource).toLowerCase()
-      readonly property color domainColor: Helper.sourceColor(itemSource, Commons.Color.background.hslLightness, Commons.Color.accent, Commons.Color.urgent)
-
-      color: Qt.rgba(domainColor.r, domainColor.g, domainColor.b, 0.07)
-      radius: Commons.Style.cornerRadius
-      clip: true
-      border.color: Commons.Util.alpha(domainColor, 0.35)
-      border.width: 1
-
-      ColumnLayout {
-        anchors.centerIn: parent
-        spacing: Commons.Style.spacing.xs
-
-        Rectangle {
-          Layout.alignment: Qt.AlignHCenter
-          height: Commons.Style.space(22)
-          implicitWidth: textBadgeText.implicitWidth + Commons.Style.spacing.sm * 2
-          color: Qt.rgba(previewBox.domainColor.r, previewBox.domainColor.g, previewBox.domainColor.b, 0.16)
-          border.color: previewBox.domainColor
-          border.width: 1
-          radius: Commons.Style.cornerRadius
-
-          Text {
-            id: textBadgeText
-            textFormat: Text.PlainText
-            anchors.centerIn: parent
-            text: Helper.sourceCardBadge(previewBox.itemSource)
-            font.family: Commons.Style.font.family
-            font.pixelSize: Commons.Style.font.caption
-            font.bold: true
-            color: previewBox.domainColor
-          }
-        }
-
-        Text {
-          textFormat: Text.PlainText
-          Layout.alignment: Qt.AlignHCenter
-          text: ((itemData && itemData.prompt) ? String(itemData.prompt).trim().split(/\s+/).length : 0) + " WORDS"
-          font.family: Commons.Style.font.family
-          font.pixelSize: Commons.Style.font.caption
-          font.bold: true
-          color: Commons.Color.foreground
-        }
-
-        Text {
-          textFormat: Text.PlainText
-          Layout.alignment: Qt.AlignHCenter
-          text: Helper.sourceCardSubtitle(previewBox.itemSource)
-          font.family: Commons.Style.font.family
-          font.pixelSize: Math.max(10, Commons.Style.font.caption)
-          color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
-        }
-      }
-
-      // NSFW Badge
-      Rectangle {
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.margins: Commons.Style.spacing.xxs
-        width: nsfwBadgeText.implicitWidth + Commons.Style.spacing.xs
-        height: nsfwBadgeText.implicitHeight + 2
-        radius: Commons.Style.cornerRadius
-        color: Commons.Color.urgent
-        visible: {
-          var n = String((itemData && itemData.nsfw) || "none").toLowerCase();
-          return n !== "none" && n !== "1" && n !== "false" && n !== "0" && n !== "";
-        }
-
-        Text {
-          id: nsfwBadgeText
-          textFormat: Text.PlainText
-          anchors.centerIn: parent
-          text: String((itemData && itemData.nsfw) || "").toUpperCase()
-          font.family: Commons.Style.font.family
-          font.pixelSize: 10
-          font.bold: true
-          color: Commons.Color.foreground
-        }
-      }
+      radius: 2
+      color: Commons.Util.alpha(cardDelegate.domainColor, cardArea.containsMouse ? 0.9 : 0.45)
     }
 
-    // 2. Metadata, Prompt description & Action Buttons
     ColumnLayout {
       Layout.fillWidth: true
-      Layout.fillHeight: true
-      spacing: Commons.Style.spacing.xs
+      spacing: Commons.Style.spacing.xxs
 
       RowLayout {
         Layout.fillWidth: true
         spacing: Commons.Style.spacing.xs
 
         Rectangle {
-          height: Commons.Style.space(18)
+          height: Commons.Style.space(16)
           implicitWidth: srcTagText.implicitWidth + Commons.Style.spacing.xs * 2
-          color: Qt.rgba(previewBox.domainColor.r, previewBox.domainColor.g, previewBox.domainColor.b, 0.15)
-          border.color: previewBox.domainColor
-          border.width: 1
+          color: Commons.Util.alpha(cardDelegate.domainColor, 0.12)
+          border.width: 0
           radius: Commons.Style.cornerRadius
 
           Text {
@@ -176,56 +95,32 @@ Rectangle {
             font.family: Commons.Style.font.family
             font.pixelSize: 10
             font.bold: true
-            color: previewBox.domainColor
+            color: cardDelegate.domainColor
           }
+        }
+
+        NsfwBadge {
+          level: (itemData && itemData.nsfw) ? String(itemData.nsfw) : "None"
         }
 
         Text {
-          text: "SEED: " + ((itemData && itemData.seed) || "Random") + " | CFG: " + ((itemData && itemData.cfg) || "4.0") + " | STEPS: " + ((itemData && itemData.steps) || "25") + ((itemData && itemData.sampler) ? (" | " + itemData.sampler) : "")
+          readonly property int wordCount: (itemData && itemData.prompt) ? String(itemData.prompt).trim().split(/\s+/).length : 0
+          text: wordCount + " words · Seed " + ((itemData && itemData.seed) || "Random") + " · CFG " + ((itemData && itemData.cfg) || "4.0") + " · " + ((itemData && itemData.steps) || "25") + " steps" + ((itemData && itemData.sampler) ? (" · " + itemData.sampler) : "")
           textFormat: Text.PlainText
           font.family: Commons.Style.font.family
           font.pixelSize: Commons.Style.font.caption
-          font.bold: true
-          color: Commons.Color.accent
+          color: Commons.Util.alpha(Commons.Color.foreground, 0.55)
           elide: Text.ElideRight
           Layout.fillWidth: true
-        }
-
-        Button {
-          text: "USE"
-          fontSize: Commons.Style.font.caption
-          bordered: true
-          selected: true
-          foreground: Commons.Color.accent
-          accent: Commons.Color.accent
-          Layout.preferredHeight: Commons.Style.space(20)
-          verticalPadding: Commons.Style.space(1)
-          horizontalPadding: Commons.Style.space(6)
-          onClicked: cardDelegate.applyPrompt(false)
-        }
-
-        Button {
-          text: "COPY"
-          fontSize: Commons.Style.font.caption
-          bordered: false
-          foreground: Commons.Util.alpha(Commons.Color.foreground, 0.72)
-          accent: Commons.Color.accent
-          Layout.preferredHeight: Commons.Style.space(20)
-          verticalPadding: Commons.Style.space(1)
-          horizontalPadding: Commons.Style.space(6)
-          onClicked: {
-            if (panelRoot) panelRoot.copyTextToClipboard((itemData && itemData.prompt) || "");
-          }
         }
       }
 
       Text {
         Layout.fillWidth: true
-        Layout.fillHeight: true
         text: (itemData && itemData.prompt) || "No prompt description"
         textFormat: Text.PlainText
         wrapMode: Text.Wrap
-        maximumLineCount: 4
+        maximumLineCount: 3
         elide: Text.ElideRight
         font.family: Commons.Style.font.family
         font.pixelSize: Commons.Style.font.caption
@@ -234,16 +129,48 @@ Rectangle {
 
       Text {
         Layout.fillWidth: true
-        text: "NEG: " + ((itemData && itemData.negative_prompt) || "None")
+        text: "NEG: " + ((itemData && itemData.negative_prompt) || "")
         textFormat: Text.PlainText
         wrapMode: Text.Wrap
         maximumLineCount: 1
         elide: Text.ElideRight
         font.family: Commons.Style.font.family
-        font.pixelSize: Commons.Style.font.caption
-        color: Commons.Util.alpha(Commons.Color.foreground, 0.55)
-        visible: Boolean(itemData && itemData.negative_prompt)
+        font.pixelSize: Math.max(10, Commons.Style.font.caption * 0.9)
+        color: Commons.Util.alpha(Commons.Color.foreground, 0.45)
+        visible: !!(itemData && itemData.negative_prompt && String(itemData.negative_prompt).trim() !== "" && String(itemData.negative_prompt).trim().toLowerCase() !== "none")
+      }
+
+      RowLayout {
+        Layout.fillWidth: true
+        spacing: Commons.Style.spacing.xs
+
+        Item { Layout.fillWidth: true }
+
+        CardActionButton {
+          text: "USE"
+          variant: "primary"
+          onClicked: cardDelegate.applyPrompt(false)
+        }
+
+        CardActionButton {
+          text: "COPY"
+          variant: "secondary"
+          onClicked: {
+            if (panelRoot) panelRoot.copyTextToClipboard((itemData && itemData.prompt) || "");
+          }
+        }
       }
     }
+  }
+
+  // 1px minimalist bottom hairline
+  Rectangle {
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    anchors.leftMargin: Commons.Style.spacing.sm
+    anchors.rightMargin: Commons.Style.spacing.sm
+    height: 1
+    color: Commons.Util.alpha(Commons.Color.menu.border, 0.22)
   }
 }

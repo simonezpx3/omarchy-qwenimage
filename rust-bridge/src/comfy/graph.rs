@@ -179,16 +179,21 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
                 "class_type": "LoadImageMask",
                 "inputs": {
                     "image": mask_filename,
-                    "channel": "alpha"
+                    "channel": "red"
+                }
+            });
+            val["5b_enc"] = json!({
+                "class_type": "VAEEncode",
+                "inputs": {
+                    "pixels": ["5", 0],
+                    "vae": ["3", 0]
                 }
             });
             val["5b"] = json!({
-                "class_type": "VAEEncodeForInpaint",
+                "class_type": "SetLatentNoiseMask",
                 "inputs": {
-                    "pixels": ["5", 0],
-                    "vae": ["3", 0],
-                    "mask": ["9m", 0],
-                    "grow_mask_by": 6
+                    "samples": ["5b_enc", 0],
+                    "mask": ["9m", 0]
                 }
             });
         }
@@ -222,11 +227,11 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     let mut current_model = json!(["1", 0]);
 
     if has_uncensored {
-        // Heretic / Uncensored LoRA: calibrated for Light (0.28/0.24), Medium (0.40/0.35), Heavy (0.52/0.46)
+        // Heretic / Uncensored LoRA: Light (0.50/0.45), Medium (0.75/0.70), Heavy (1.0/0.95)
         let weight = match cfg.uncensored {
-            LoraLevel::Light => if has_turbo { 0.24 } else { 0.28 },
-            LoraLevel::Medium => if has_turbo { 0.35 } else { 0.40 },
-            LoraLevel::Heavy => if has_turbo { 0.46 } else { 0.52 },
+            LoraLevel::Light => if has_turbo { 0.45 } else { 0.50 },
+            LoraLevel::Medium => if has_turbo { 0.70 } else { 0.75 },
+            LoraLevel::Heavy => if has_turbo { 0.95 } else { 1.0 },
             LoraLevel::Off => 0.0,
         };
         graph["14"] = json!({
@@ -241,11 +246,11 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     }
 
     if has_anime {
-        // Anime LoRA: Light (0.30/0.25) for subtle illustration, Medium (0.48/0.40) for stylized, Heavy (0.70/0.58) for 2D cel-shading
+        // Anime LoRA: Light (0.50/0.45), Medium (0.80/0.75), Heavy (1.05/1.0)
         let weight = match cfg.anime {
-            LoraLevel::Light => if has_turbo { 0.25 } else { 0.30 },
-            LoraLevel::Medium => if has_turbo { 0.40 } else { 0.48 },
-            LoraLevel::Heavy => if has_turbo { 0.58 } else { 0.70 },
+            LoraLevel::Light => if has_turbo { 0.45 } else { 0.50 },
+            LoraLevel::Medium => if has_turbo { 0.75 } else { 0.80 },
+            LoraLevel::Heavy => if has_turbo { 1.0 } else { 1.05 },
             LoraLevel::Off => 0.0,
         };
         graph["15"] = json!({
@@ -260,11 +265,11 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     }
 
     if has_anatomy {
-        // Anatomy LoRA: Light (0.28/0.24), Medium (0.42/0.36), Heavy (0.62/0.55)
+        // Anatomy LoRA: Light (0.50/0.45), Medium (0.75/0.70), Heavy (1.0/0.95)
         let weight = match cfg.anatomy {
-            LoraLevel::Light => if has_turbo { 0.24 } else { 0.28 },
-            LoraLevel::Medium => if has_turbo { 0.36 } else { 0.42 },
-            LoraLevel::Heavy => if has_turbo { 0.55 } else { 0.62 },
+            LoraLevel::Light => if has_turbo { 0.45 } else { 0.50 },
+            LoraLevel::Medium => if has_turbo { 0.70 } else { 0.75 },
+            LoraLevel::Heavy => if has_turbo { 0.95 } else { 1.0 },
             LoraLevel::Off => 0.0,
         };
         graph["22"] = json!({
@@ -448,6 +453,34 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
                     "vae": vae_ref
                 }
             });
+        }
+    }
+
+    // Inpainting composite: feather mask edge and keep 100% original unmasked pixels from scaled reference ("5")
+    if is_i2i && cfg.mask_ref.filter(|s| !s.trim().is_empty()).is_some() && graph.get("9m").is_some() {
+        graph["9f"] = json!({
+            "class_type": "FeatherMask",
+            "inputs": {
+                "mask": ["9m", 0],
+                "left": 16,
+                "top": 16,
+                "right": 16,
+                "bottom": 16
+            }
+        });
+        graph["7m"] = json!({
+            "class_type": "ImageCompositeMasked",
+            "inputs": {
+                "destination": ["5", 0],
+                "source": [vae_node_key, 0],
+                "x": 0,
+                "y": 0,
+                "resize_source": true,
+                "mask": ["9f", 0]
+            }
+        });
+        if let Some(save_node) = graph.get_mut("8").and_then(|n| n.get_mut("inputs")) {
+            save_node["images"] = json!(["7m", 0]);
         }
     }
 

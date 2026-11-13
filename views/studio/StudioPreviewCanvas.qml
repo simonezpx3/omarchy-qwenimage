@@ -133,10 +133,14 @@ ColumnLayout {
         radius: Commons.Style.cornerRadius
         clip: true
 
-        // Standby / Empty Canvas Overlay
-        Item {
+        // Standby / Generating Canvas Overlay
+        Rectangle {
           anchors.fill: parent
-          visible: Boolean(!panelRoot || (panelRoot.generatedPath === "" && !panelRoot.isGenerating))
+          z: 9
+          color: (panelRoot && panelRoot.isGenerating && panelRoot.generatedPath !== "")
+            ? Commons.Util.alpha(Commons.Color.background, 0.65)
+            : "transparent"
+          visible: Boolean(!panelRoot || (panelRoot.isGenerating && panelRoot.livePreviewPath === "") || (panelRoot.generatedPath === "" && !panelRoot.isGenerating))
 
           ColumnLayout {
             anchors.centerIn: parent
@@ -203,16 +207,21 @@ ColumnLayout {
             source: panelRoot && panelRoot.generatedPath !== "" ? ("file://" + encodeURI(panelRoot.generatedPath)) : ""
             cache: false
             asynchronous: true
-            onSourceChanged: canvasRoot.resetZoom()
+            onSourceChanged: {
+              canvasRoot.resetZoom();
+              if (typeof maskCanvas !== "undefined" && maskCanvas) maskCanvas.clearMask();
+            }
           }
 
-          // Interactive Inpainting Mask Layer
+          // Interactive Inpainting Mask Layer (aligned 1:1 to painted image bounds)
           StudioMaskCanvas {
             id: maskCanvas
-            x: mainPreview.x
-            y: mainPreview.y
-            width: mainPreview.width
-            height: mainPreview.height
+            readonly property real paintedW: mainPreview.paintedWidth > 0 ? mainPreview.paintedWidth : mainPreview.width
+            readonly property real paintedH: mainPreview.paintedHeight > 0 ? mainPreview.paintedHeight : mainPreview.height
+            x: mainPreview.x + (mainPreview.width - paintedW) / 2
+            y: mainPreview.y + (mainPreview.height - paintedH) / 2
+            width: paintedW
+            height: paintedH
             scale: mainPreview.scale
             transformOrigin: Item.Center
             visible: Boolean(panelRoot && panelRoot.inpaintMode && !panelRoot.isGenerating)

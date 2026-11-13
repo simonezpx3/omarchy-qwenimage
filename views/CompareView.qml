@@ -9,6 +9,15 @@ Item {
 
   property var panelRoot: null
   property real splitPosition: 0.5
+  property real zoomScale: 1.0
+  property real panX: 0.0
+  property real panY: 0.0
+
+  function resetZoom() {
+    zoomScale = 1.0;
+    panX = 0.0;
+    panY = 0.0;
+  }
 
   ColumnLayout {
     anchors.fill: parent
@@ -47,8 +56,12 @@ Item {
       // Bottom Layer: Generated Image (After)
       Image {
         id: imgAfter
-        anchors.fill: parent
-        anchors.margins: Commons.Style.spacing.xs
+        width: viewport.width
+        height: viewport.height
+        x: root.panX
+        y: root.panY
+        scale: root.zoomScale
+        transformOrigin: Item.Center
         fillMode: Image.PreserveAspectFit
         asynchronous: true
         sourceSize.width: viewport.decodeW
@@ -56,6 +69,7 @@ Item {
         retainWhileLoading: true
         source: panelRoot && panelRoot.generatedPath !== "" ? ("file://" + encodeURI(panelRoot.generatedPath)) : ""
         cache: false
+        onSourceChanged: root.resetZoom()
       }
 
       // Top Layer: Original Reference Image (Before) clipped to splitPosition
@@ -70,6 +84,10 @@ Item {
           id: imgBefore
           width: viewport.width
           height: viewport.height
+          x: root.panX
+          y: root.panY
+          scale: root.zoomScale
+          transformOrigin: Item.Center
           fillMode: Image.PreserveAspectFit
           asynchronous: true
           sourceSize.width: viewport.decodeW
@@ -142,19 +160,47 @@ Item {
         }
       }
 
-      // Mouse Drag Interaction for Split
+      // Wheel Zoom (synchronized on Before & After)
+      WheelHandler {
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        onWheel: function(event) {
+          var factor = event.angleDelta.y > 0 ? 1.15 : (1.0 / 1.15);
+          var next = Math.max(0.5, Math.min(4.0, root.zoomScale * factor));
+          root.zoomScale = next;
+          if (next <= 1.01) {
+            root.panX = 0.0;
+            root.panY = 0.0;
+          }
+        }
+      }
+
+      // Mouse Drag Interaction: Left = Split, Right/Middle = Pan, DoubleClick = Reset Zoom
       MouseArea {
         anchors.fill: parent
         hoverEnabled: true
-        cursorShape: Qt.SplitHCursor
-        onPositionChanged: function(mouse) {
-          if (pressed) {
+        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+        cursorShape: (pressedButtons & (Qt.RightButton | Qt.MiddleButton)) ? Qt.ClosedHandCursor : Qt.SplitHCursor
+        property real lastPanX: 0
+        property real lastPanY: 0
+        onPressed: function(mouse) {
+          if (mouse.button === Qt.LeftButton) {
             root.splitPosition = Math.max(0.05, Math.min(0.95, mouse.x / width));
+          } else {
+            lastPanX = mouse.x;
+            lastPanY = mouse.y;
           }
         }
-        onPressed: function(mouse) {
-          root.splitPosition = Math.max(0.05, Math.min(0.95, mouse.x / width));
+        onPositionChanged: function(mouse) {
+          if (pressedButtons & Qt.LeftButton) {
+            root.splitPosition = Math.max(0.05, Math.min(0.95, mouse.x / width));
+          } else if (pressedButtons & (Qt.RightButton | Qt.MiddleButton)) {
+            root.panX += (mouse.x - lastPanX);
+            root.panY += (mouse.y - lastPanY);
+            lastPanX = mouse.x;
+            lastPanY = mouse.y;
+          }
         }
+        onDoubleClicked: root.resetZoom()
       }
 
       // Labels inside viewport
@@ -183,32 +229,6 @@ Item {
       }
     }
 
-    // Split Slider Control Row
-    RowLayout {
-      Layout.fillWidth: true
-      spacing: Commons.Style.spacing.sm
-
-      Text {
-        textFormat: Text.PlainText
-        text: "SPLIT RATIO: " + Math.round(root.splitPosition * 100) + "%"
-        font.family: Commons.Style.font.family
-        font.pixelSize: Commons.Style.font.caption
-        color: Commons.Color.foreground
-      }
-
-      PanelSlider {
-        Layout.fillWidth: true
-        bar: panelRoot ? panelRoot.bar : null
-        minimum: 0.05
-        maximum: 0.95
-        step: 0.01
-        value: root.splitPosition
-        onMoved: function(val) {
-          root.splitPosition = val;
-        }
-      }
-    }
-
     PanelSeparator { Layout.fillWidth: true }
 
     // Bottom Action Row
@@ -217,41 +237,15 @@ Item {
       spacing: Commons.Style.spacing.sm
 
       Button {
-        text: "APPLY AS FINAL"
+        text: Math.round(root.zoomScale * 100) + "% (RESET)"
         fontSize: Commons.Style.font.caption
         bordered: false
-        selected: true
+        visible: Math.abs(root.zoomScale - 1.0) > 0.02 || Math.abs(root.panX) > 1 || Math.abs(root.panY) > 1
+        foreground: Commons.Color.accent
         Layout.preferredHeight: Commons.Style.space(20)
         verticalPadding: Commons.Style.space(1)
-        onClicked: {
-          if (panelRoot) {
-            panelRoot.referencePath = panelRoot.generatedPath;
-            panelRoot.currentView = "studio";
-          }
-        }
-      }
-
-      Button {
-        text: "DISCARD VARIATION"
-        fontSize: Commons.Style.font.caption
-        bordered: false
-        Layout.preferredHeight: Commons.Style.space(20)
-        verticalPadding: Commons.Style.space(1)
-        onClicked: {
-          if (panelRoot) panelRoot.currentView = "studio";
-        }
-      }
-
-      Button {
-        text: "SET AS WALLPAPER"
-        fontSize: Commons.Style.font.caption
-        bordered: false
-        Layout.preferredHeight: Commons.Style.space(20)
-        verticalPadding: Commons.Style.space(1)
-        enabled: panelRoot && panelRoot.generatedPath !== ""
-        onClicked: {
-          if (panelRoot) panelRoot.setAsWallpaper(panelRoot.generatedPath);
-        }
+        horizontalPadding: Commons.Style.space(6)
+        onClicked: root.resetZoom()
       }
 
       Item { Layout.fillWidth: true }
