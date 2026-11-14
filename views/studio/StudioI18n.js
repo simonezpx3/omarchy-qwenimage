@@ -110,8 +110,8 @@ var strings = {
     "en": "CANCEL: Instantly interrupts running ComfyUI diffusion process and frees GPU."
   },
   "help_prompt": {
-    "cs": "PROMPT: Zadej popis scény v angličtině (automatický transparentní překlad na lokální GPU za 0 tokenů).",
-    "en": "PROMPT: Enter scene description in English (automatic local translation on local GPU at 0 tokens)."
+    "cs": "PROMPT: Pro I2I úpravy piš přímou instrukci (např. 'change her hair to white'), ne jen tagy. Automatický EN překlad běží lokálně.",
+    "en": "PROMPT: For I2I edits write a direct instruction (e.g. 'change her hair to white'), not just tags. Auto EN translation runs locally."
   },
   "help_negative": {
     "cs": "NEGATIVNÍ PROMPT: Prvky, styly a vady, které nechceš v obraze mít (např. deformace, text, vodoznaky).",
@@ -157,8 +157,8 @@ var strings = {
     "en": "ADVANCED PARAMETERS: Expands expert controls for CFG scale, fixed seed, and sampling steps."
   },
   "help_cfg": {
-    "cs": "CFG ŠKÁLA (Classifier-Free Guidance): Síla lpění na textovém promptu (výchozí: 4.0, Turbo: 1.0).",
-    "en": "CFG SCALE (Classifier-Free Guidance): Prompt adherence strength (default: 4.0, Turbo: 1.0)."
+    "cs": "CFG ŠKÁLA: Síla vlivu promptu (I2I úpravy: 3.0–4.0, T2I: 4.0). Při TURBO se automaticky fixuje na 1.0.",
+    "en": "CFG SCALE: Prompt adherence strength (I2I edits: 3.0–4.0, T2I: 4.0). Automatically fixed to 1.0 when TURBO is on."
   },
   "help_seed": {
     "cs": "SEED: Přepíná mezi náhodným generováním nového díla a fixací konkrétního seedu.",
@@ -221,8 +221,8 @@ var strings = {
     "en": "VISION PROMPT: Reconstructs and describes scene in natural language via local multimodal Qwen-Vision on local GPU."
   },
   "help_denoise": {
-    "cs": "DENOISE: Míra přepracování referenčního obrázku (0.10 = jemné úpravy, 0.65 = vyvážený redesign kompozice, 0.95 = hluboká transformace).",
-    "en": "DENOISE: Modification strength of reference image (0.10 = subtle edit, 0.65 = balanced redesign, 0.95 = deep transformation)."
+    "cs": "DENOISE: Míra změny předlohy (0.45–0.65 = změna barvy/detailu se zachováním obličeje, 0.80+ = větší zásah). TURBO tento posuvník ignoruje.",
+    "en": "DENOISE: Edit strength (0.45–0.65 = color/detail edit keeping identity, 0.80+ = major change). Ignored when TURBO is on."
   },
   "help_scale_esrgan": {
     "cs": "4X ESRGAN: Neuronový 4X upscaling pomocí RealESRGAN_x4plus (silné potlačení šumu a artefaktů, nulová mřížka).",
@@ -265,8 +265,8 @@ var strings = {
     "en": "PROMPTS: Browse and search thousands of prompts from CivitAI, Lexica, PromptHero, OpenArt, and Hugging Face."
   },
   "help_turbo_lora": {
-    "cs": "TURBO (5s): VAROVÁNÍ // Při lidských tělech a anatomii doporučujeme TURBO vypnout.",
-    "en": "TURBO (5s): WARNING // For human bodies and anatomy, turning TURBO off is recommended."
+    "cs": "TURBO (6s): Rychlé generování (CFG 1.0, ignoruje Denoise). Pro přesné I2I úpravy, masku a anatomii doporučujeme TURBO vypnout.",
+    "en": "TURBO (6s): Fast generation (CFG 1.0, ignores Denoise). Recommended OFF for precise I2I edits, masking, and anatomy."
   },
   "help_anime_lora": {
     "cs": "ANIME LORA: Čtyřstavový adaptér stylu (OFF = fotorealismus, LIGHT = jemná ilustrace 0.45, MEDIUM = stylizované anime 0.75, HEAVY = 2D cel-shading 1.0).",
@@ -325,8 +325,8 @@ var strings = {
     "en": "FIT: Resets canvas zoom (100%) and re-centers the preview."
   },
   "help_mask_toggle": {
-    "cs": "MASK: Zapne nebo vypne kreslení inpainting masky přímo na obrázek.",
-    "en": "MASK: Toggles inpainting mask painting directly on the canvas."
+    "cs": "MASK: Přegeneruje JEN označenou oblast na plátně; zbytek zůstane beze změny (doporučeno bez TURBO, Denoise 0.65–0.85).",
+    "en": "MASK: Regenerates ONLY the painted area on canvas, preserving the rest (recommended with TURBO off, Denoise 0.65–0.85)."
   },
   "help_mask_brush": {
     "cs": "BRUSH: Štětec pro kreslení oblasti masky určené k přegenerování (inpainting).",

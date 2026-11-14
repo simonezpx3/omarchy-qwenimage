@@ -101,7 +101,7 @@ ColumnLayout {
           onHotChanged: if (root) root.setHelp(root.tr("help_mask_toggle"), hot)
           onClicked: {
             if (!panelRoot) return;
-            if (!panelRoot.inpaintMode && panelRoot.referencePath === "" && panelRoot.generatedPath !== "") {
+            if (!panelRoot.inpaintMode && panelRoot.generatedPath !== "" && panelRoot.referencePath !== panelRoot.generatedPath) {
               panelRoot.setReferenceImage(panelRoot.generatedPath);
             }
             panelRoot.inpaintMode = !panelRoot.inpaintMode;
@@ -154,7 +154,7 @@ ColumnLayout {
             transformOrigin: Item.Center
             fillMode: Image.PreserveAspectFit
             sourceSize: Qt.size(Math.min(Math.max(width * (Screen.devicePixelRatio > 0 ? Screen.devicePixelRatio : 1.0), 1280), 2560), 0)
-            source: panelRoot && panelRoot.generatedPath !== "" ? ("file://" + encodeURI(panelRoot.generatedPath)) : ""
+            source: panelRoot ? (panelRoot.generatedPath !== "" ? ("file://" + encodeURI(panelRoot.generatedPath)) : (panelRoot.inpaintMode && panelRoot.referencePath !== "" ? ("file://" + encodeURI(panelRoot.referencePath)) : "")) : ""
             cache: false
             asynchronous: true
             onSourceChanged: {

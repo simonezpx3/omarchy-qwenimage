@@ -43,6 +43,7 @@ fn test_build_generation_graph_declarative() {
         seed: 42,
         image_ref: None,
         mask_ref: None,
+        inpaint_ref: None,
         denoise: 0.85,
         anime: comfy::LoraLevel::Off,
         turbo: false,
@@ -77,6 +78,7 @@ fn test_turbo_graph_and_cfg_guard() {
         seed: 12345,
         image_ref: None,
         mask_ref: None,
+        inpaint_ref: None,
         denoise: 0.85,
         anime: comfy::LoraLevel::Off,
         turbo: true,
@@ -113,6 +115,7 @@ fn test_turbo_i2i_split_sigmas_denoise() {
         seed: 777,
         image_ref: Some(&ref_str),
         mask_ref: None,
+        inpaint_ref: None,
         denoise: 0.65,
         anime: comfy::LoraLevel::Off,
         turbo: true,
@@ -142,6 +145,7 @@ fn test_anatomy_lora_graph_wiring() {
         seed: 999,
         image_ref: None,
         mask_ref: None,
+        inpaint_ref: None,
         denoise: 0.85,
         anime: comfy::LoraLevel::Off,
         turbo: false,
@@ -182,6 +186,7 @@ fn test_anime_and_heretic_tri_state_levels() {
         seed: 101,
         image_ref: None,
         mask_ref: None,
+        inpaint_ref: None,
         denoise: 0.85,
         anime: comfy::LoraLevel::Light,
         turbo: false,
@@ -231,6 +236,7 @@ fn test_turbo_9step_hybrid_and_active_vae() {
         seed: 42,
         image_ref: None,
         mask_ref: None,
+        inpaint_ref: None,
         denoise: 0.85,
         anime: comfy::LoraLevel::Heavy,
         turbo: true,
@@ -437,6 +443,7 @@ fn test_vram_budget_node_in_graph_and_easycache_lora_bypass() {
         seed: 42,
         image_ref: None,
         mask_ref: None,
+        inpaint_ref: None,
         denoise: 0.85,
         anime: comfy::LoraLevel::Medium,
         turbo: false,
@@ -477,8 +484,10 @@ fn test_inpaint_graph_wiring() {
     let dir = std::env::temp_dir();
     let ref_img = dir.join("qis_test_inpaint_ref.png");
     let mask_img = dir.join("qis_test_inpaint_mask.png");
+    let extra_ref_img = dir.join("qis_test_inpaint_extra_ref.png");
     let _ = std::fs::write(&ref_img, b"fake_png_ref");
     let _ = std::fs::write(&mask_img, b"fake_png_mask");
+    let _ = std::fs::write(&extra_ref_img, b"fake_png_extra_ref");
 
     let cfg = comfy::GenerationConfig {
         prompt: "replace jacket with red leather jacket",
@@ -489,6 +498,7 @@ fn test_inpaint_graph_wiring() {
         seed: 777,
         image_ref: Some(ref_img.to_str().unwrap()),
         mask_ref: Some(mask_img.to_str().unwrap()),
+        inpaint_ref: Some(extra_ref_img.to_str().unwrap()),
         denoise: 0.85,
         anime: comfy::LoraLevel::Off,
         turbo: false,
@@ -508,8 +518,17 @@ fn test_inpaint_graph_wiring() {
     assert_eq!(graph["5b"]["inputs"]["mask"], serde_json::json!(["9m", 0]));
     assert_eq!(graph["4"]["class_type"], "TextEncodeQwenImageEditPlus");
     assert_eq!(graph["4"]["inputs"]["image1"], serde_json::json!(["5", 0]));
-    assert_eq!(graph["9f"]["class_type"], "FeatherMask");
-    assert_eq!(graph["9f"]["inputs"]["mask"], serde_json::json!(["9m", 0]));
+    assert_eq!(graph["4b"]["class_type"], "TextEncodeQwenImageEditPlus");
+    assert_eq!(graph["4b"]["inputs"]["image1"], serde_json::json!(["5", 0]));
+    assert_eq!(graph["9r"]["class_type"], "LoadImage");
+    assert_eq!(graph["4"]["inputs"]["image2"], serde_json::json!(["9r", 0]));
+    assert_eq!(graph["4b"]["inputs"]["image2"], serde_json::json!(["9r", 0]));
+    assert_eq!(graph["9f_img"]["class_type"], "MaskToImage");
+    assert_eq!(graph["9f_img"]["inputs"]["mask"], serde_json::json!(["9m", 0]));
+    assert_eq!(graph["9f_blur"]["class_type"], "ImageBlur");
+    assert_eq!(graph["9f_blur"]["inputs"]["image"], serde_json::json!(["9f_img", 0]));
+    assert_eq!(graph["9f"]["class_type"], "ImageToMask");
+    assert_eq!(graph["9f"]["inputs"]["image"], serde_json::json!(["9f_blur", 0]));
     assert_eq!(graph["7m"]["class_type"], "ImageCompositeMasked");
     assert_eq!(graph["7m"]["inputs"]["destination"], serde_json::json!(["5", 0]));
     assert_eq!(graph["7m"]["inputs"]["mask"], serde_json::json!(["9f", 0]));
@@ -518,6 +537,7 @@ fn test_inpaint_graph_wiring() {
 
     let _ = std::fs::remove_file(&ref_img);
     let _ = std::fs::remove_file(&mask_img);
+    let _ = std::fs::remove_file(&extra_ref_img);
 }
 
 #[test]

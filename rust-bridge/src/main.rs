@@ -438,6 +438,7 @@ fn main() {
         "generate" => {
             let mut res_mode: Option<String> = None;
             let mut mask_ref: Option<String> = None;
+            let mut inpaint_ref: Option<String> = None;
             let mut anime = comfy::LoraLevel::Off;
             let mut turbo = false;
             let mut uncensored = comfy::LoraLevel::Off;
@@ -521,6 +522,20 @@ fn main() {
                         continue;
                     }
                     idx += 1;
+                } else if let Some(val) = args[idx].strip_prefix("--inpaint-ref=") {
+                    if !val.trim().is_empty() {
+                        inpaint_ref = Some(val.to_string());
+                    }
+                    idx += 1;
+                } else if args[idx] == "--inpaint-ref" {
+                    if let Some(next) = args.get(idx + 1) {
+                        if !next.trim().is_empty() {
+                            inpaint_ref = Some(next.clone());
+                        }
+                        idx += 2;
+                        continue;
+                    }
+                    idx += 1;
                 } else if args[idx] == "--res" || args[idx] == "--res-mode" {
                     if let Some(next) = args.get(idx + 1) {
                         res_mode = Some(next.clone());
@@ -543,7 +558,7 @@ fn main() {
             let image_ref = pos_args.get(6).copied().filter(|s| !s.trim().is_empty());
             let denoise = pos_args.get(7).and_then(|s| s.parse::<f32>().ok()).unwrap_or(0.85).clamp(0.05, 0.95);
 
-            cmd_generate(prompt, ratio, steps, cfg, seed, negative, image_ref, mask_ref.as_deref(), denoise, anime, turbo, uncensored, anatomy, res_mode.as_deref(), expand, anatomy_guard.as_deref().unwrap_or("auto"));
+            cmd_generate(prompt, ratio, steps, cfg, seed, negative, image_ref, mask_ref.as_deref(), inpaint_ref.as_deref(), denoise, anime, turbo, uncensored, anatomy, res_mode.as_deref(), expand, anatomy_guard.as_deref().unwrap_or("auto"));
         }
         "interrupt" | "cancel" => {
             let ok = comfy::interrupt_comfyui();

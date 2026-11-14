@@ -314,14 +314,25 @@ pub(crate) fn apply_vae_and_inpaint_postprocess(
     }
 
     if is_i2i && cfg.mask_ref.filter(|s| !s.trim().is_empty()).is_some() && graph.get("9m").is_some() {
-        graph["9f"] = json!({
-            "class_type": "FeatherMask",
+        graph["9f_img"] = json!({
+            "class_type": "MaskToImage",
             "inputs": {
-                "mask": ["9m", 0],
-                "left": 16,
-                "top": 16,
-                "right": 16,
-                "bottom": 16
+                "mask": ["9m", 0]
+            }
+        });
+        graph["9f_blur"] = json!({
+            "class_type": "ImageBlur",
+            "inputs": {
+                "image": ["9f_img", 0],
+                "blur_radius": 12,
+                "sigma": 6.0
+            }
+        });
+        graph["9f"] = json!({
+            "class_type": "ImageToMask",
+            "inputs": {
+                "image": ["9f_blur", 0],
+                "channel": "red"
             }
         });
         graph["7m"] = json!({

@@ -34,10 +34,12 @@
     }
   },
   "4b": {
-    "class_type": "CLIPTextEncode",
+    "class_type": "TextEncodeQwenImageEditPlus",
     "inputs": {
       "clip": ["2", 0],
-      "text": "blurry, distorted, low quality, artifacts, watermark"
+      "prompt": "blurry, distorted, low quality, artifacts, watermark",
+      "vae": ["3", 0],
+      "image1": ["5", 0]
     }
   },
   "5": {

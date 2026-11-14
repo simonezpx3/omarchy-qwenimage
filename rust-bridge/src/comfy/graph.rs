@@ -12,6 +12,19 @@ use super::{get_comfy_dir, now_millis, resolve_dit_model_name, GenerationConfig,
 const TEMPLATE_T2I: &str = include_str!("../../../assets/qwen_workflow_api.json");
 const TEMPLATE_I2I: &str = include_str!("../../../assets/qwen_edit_workflow_api.json");
 
+fn stage_comfy_input(src_path: &str, comfy_in_dir: &Path, prefix: &str, fallback_stem: &str, label: &str) -> Result<String, String> {
+    let p = Path::new(src_path);
+    if !p.exists() {
+        return Err(format!("{} not found: {}", label, src_path));
+    }
+    let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or(fallback_stem);
+    let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("png");
+    let clean: String = stem.chars().filter(|c| c.is_alphanumeric() || *c == '_' || *c == '-').take(48).collect();
+    let filename = format!("{}_{}.{}", prefix, if clean.is_empty() { fallback_stem } else { &clean }, ext);
+    let _ = fs::copy(p, comfy_in_dir.join(&filename));
+    Ok(filename)
+}
+
 pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32, u32), String> {
     let (width, height) = calculate_dimensions(cfg.ratio, cfg.res_mode, cfg.is_human, cfg.image_ref);
     let res_val = width.max(height);
@@ -66,20 +79,9 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
     }
 
     let mut graph: Value = if let Some(ref_path) = cfg.image_ref.filter(|s| !s.trim().is_empty()) {
-        let p = Path::new(ref_path);
-        if !p.exists() {
-            return Err(format!("Reference image not found: {}", ref_path));
-        }
-
         let comfy_in_dir = get_comfy_dir().join("input");
         let _ = fs::create_dir_all(&comfy_in_dir);
-
-        let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("input_ref");
-        let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("png");
-        let clean_stem: String = stem.chars().filter(|c| c.is_alphanumeric() || *c == '_' || *c == '-').take(48).collect();
-        let input_filename = format!("edit_{}.{}", if clean_stem.is_empty() { "ref" } else { &clean_stem }, ext);
-        let dest = comfy_in_dir.join(&input_filename);
-        let _ = fs::copy(p, dest);
+        let input_filename = stage_comfy_input(ref_path, &comfy_in_dir, "edit", "ref", "Reference image")?;
 
         let mut val: Value = serde_json::from_str(TEMPLATE_I2I).map_err(|e| format!("Failed to parse I2I template: {}", e))?;
 
@@ -90,7 +92,7 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
             n4["prompt"] = json!(prompt_text);
         }
         if let Some(n4b) = val.get_mut("4b").and_then(|n| n.get_mut("inputs")) {
-            n4b["text"] = json!(cfg.negative_prompt);
+            n4b["prompt"] = json!(cfg.negative_prompt);
         }
         if let Some(n5) = val.get_mut("5").and_then(|n| n.get_mut("inputs")) {
             n5["width"] = json!(width);
@@ -103,18 +105,9 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
             n6["denoise"] = json!(cfg.denoise);
         }
 
-        // Inpainting: LoadImageMask + switch VAEEncode ("5b") -> VAEEncodeForInpaint
+        // Inpainting: LoadImageMask + switch VAEEncode ("5b") -> SetLatentNoiseMask
         if let Some(mask_path) = cfg.mask_ref.filter(|s| !s.trim().is_empty()) {
-            let mp = Path::new(mask_path);
-            if !mp.exists() {
-                return Err(format!("Inpaint mask image not found: {}", mask_path));
-            }
-            let m_stem = mp.file_stem().and_then(|s| s.to_str()).unwrap_or("mask");
-            let m_ext = mp.extension().and_then(|e| e.to_str()).unwrap_or("png");
-            let m_clean: String = m_stem.chars().filter(|c| c.is_alphanumeric() || *c == '_' || *c == '-').take(48).collect();
-            let mask_filename = format!("mask_{}.{}", if m_clean.is_empty() { "inpaint" } else { &m_clean }, m_ext);
-            let mask_dest = comfy_in_dir.join(&mask_filename);
-            let _ = fs::copy(mp, mask_dest);
+            let mask_filename = stage_comfy_input(mask_path, &comfy_in_dir, "mask", "inpaint", "Inpaint mask image")?;
 
             val["9m"] = json!({
                 "class_type": "LoadImageMask",
@@ -137,6 +130,22 @@ pub fn build_generation_graph(cfg: &GenerationConfig) -> Result<(Value, i64, u32
                     "mask": ["9m", 0]
                 }
             });
+
+            if let Some(iref_path) = cfg.inpaint_ref.filter(|s| !s.trim().is_empty()) {
+                let iref_filename = stage_comfy_input(iref_path, &comfy_in_dir, "iref", "ref", "Inpaint reference image")?;
+                val["9r"] = json!({
+                    "class_type": "LoadImage",
+                    "inputs": {
+                        "image": iref_filename
+                    }
+                });
+                if let Some(n4) = val.get_mut("4").and_then(|n| n.get_mut("inputs")) {
+                    n4["image2"] = json!(["9r", 0]);
+                }
+                if let Some(n4b) = val.get_mut("4b").and_then(|n| n.get_mut("inputs")) {
+                    n4b["image2"] = json!(["9r", 0]);
+                }
+            }
         }
         val
     } else {

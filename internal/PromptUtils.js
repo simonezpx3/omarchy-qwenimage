@@ -81,15 +81,24 @@ function buildGenerationArgs(service, trimmedPrompt) {
     service.negativePromptText
   ];
 
-  if (service.referencePath !== "") {
-    args.push(service.referencePath);
+  var hasMask = Boolean(service.inpaintMode && service.activeMaskCanvas);
+  var baseImage = hasMask
+    ? (service.generatedPath !== "" ? service.generatedPath : service.referencePath)
+    : service.referencePath;
+
+  if (baseImage !== "") {
+    args.push(baseImage);
     var clampedDenoise = Math.min(0.95, Math.max(0.05, service.denoise));
     args.push(String(clampedDenoise));
-    if (service.inpaintMode && service.activeMaskCanvas) {
+    if (hasMask) {
       var tmpMask = "/tmp/qis_inpaint_mask_" + Date.now() + ".png";
       if (service.activeMaskCanvas.save(tmpMask)) {
         args.push("--mask");
         args.push(tmpMask);
+      }
+      if (service.referencePath !== "" && service.referencePath !== baseImage) {
+        args.push("--inpaint-ref");
+        args.push(service.referencePath);
       }
     }
   }
@@ -144,6 +153,9 @@ function applyGenerationEvent(service, line) {
       service.previousGeneratedPath = service.generatedPath;
       service.generatedPath = res.path;
       service.baseGeneratedPath = res.path;
+      if (service.inpaintMode) {
+        service.inpaintMode = false;
+      }
       var elapsedSec = (typeof res.elapsed === "number") ? res.elapsed.toFixed(1) : String(res.elapsed || "0");
       service.generationTelemetry = (res.ratio || "1:1") + " | " + (res.steps || service.steps) + " STEPS | " + elapsedSec + "s | SEED: " + (res.seed >= 0 ? res.seed : "RANDOM");
       service.fetchHistory();
