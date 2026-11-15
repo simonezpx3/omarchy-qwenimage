@@ -23,7 +23,7 @@ ColumnLayout {
       ? (root.activeHelpText.indexOf("VAROVÁNÍ") !== -1 || root.activeHelpText.indexOf("WARNING") !== -1
           ? Commons.Util.alpha(Commons.Color.urgent, 0.55)
           : Commons.Util.alpha(Commons.Color.accent, 0.45))
-      : Commons.Color.menu.border
+      : Commons.Util.alpha(Commons.Color.menu.border, 0.35)
     border.width: 1
     radius: Commons.Style.cornerRadius
 
@@ -104,21 +104,28 @@ ColumnLayout {
 
     // Uncensored Latent LoRA Switcher (4-State: OFF -> LIGHT -> MEDIUM -> HEAVY)
     Button {
+      readonly property string mode: panelRoot ? panelRoot.hereticMode : "off"
+      readonly property bool animeActive: Boolean(panelRoot && panelRoot.animeMode !== "off")
+      readonly property bool hereticGated: animeActive && panelRoot && !panelRoot.isNudityInPrompt && !panelRoot.isAnatomyGateDeferred
+      readonly property string hereticHelpKey: hereticGated ? "help_heretic_gated" : "help_uncensored_lora"
       text: {
-        var mode = panelRoot ? panelRoot.hereticMode : "off";
-        if (mode === "heavy" || mode === "full") return "HERETIC: HEAVY";
-        if (mode === "medium") return "HERETIC: MEDIUM";
-        if (mode === "light" || mode === "soft") return "HERETIC: LIGHT";
-        return "HERETIC: OFF";
+        var base = "HERETIC: OFF";
+        if (mode === "heavy" || mode === "full") base = "HERETIC: HEAVY";
+        else if (mode === "medium") base = "HERETIC: MEDIUM";
+        else if (mode === "light" || mode === "soft") base = "HERETIC: LIGHT";
+        return hereticGated ? (base + " (GATED)") : base;
       }
       fontSize: Commons.Style.font.caption
       bordered: false
-      selected: panelRoot && panelRoot.hereticMode !== "off"
+      enabled: !hereticGated
+      opacity: hereticGated ? 0.4 : 1.0
+      selected: !hereticGated && mode !== "off"
       foreground: selected ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.foreground, 0.72)
       accent: Commons.Color.accent
       Layout.preferredHeight: Commons.Style.space(20)
       verticalPadding: Commons.Style.space(1)
-      onHotChanged: if (root) root.setHelp(root.tr("help_uncensored_lora"), hot)
+      onHotChanged: if (root) root.setHelp(root.tr(hereticHelpKey), hot)
+      onHereticHelpKeyChanged: if (hot && root) root.setHelp(root.tr(hereticHelpKey), true)
       onClicked: if (panelRoot) panelRoot.cycleHereticMode()
     }
 
@@ -138,8 +145,9 @@ ColumnLayout {
       }
       fontSize: Commons.Style.font.caption
       bordered: false
+      enabled: !anatomyIdle
       selected: anatomyActive && !anatomyIdle
-      opacity: anatomyIdle ? 0.52 : 1.0
+      opacity: anatomyIdle ? 0.4 : 1.0
       foreground: selected
         ? Commons.Color.accent
         : (anatomyIdle

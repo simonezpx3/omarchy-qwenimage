@@ -11,8 +11,7 @@ Rectangle {
   Layout.preferredHeight: Commons.Style.space(260)
   Layout.minimumHeight: Commons.Style.space(200)
   color: Commons.Util.alpha(Commons.Color.background, 0.85)
-  border.color: Commons.Color.menu.border
-  border.width: 1
+  border.width: 0
   radius: Commons.Style.cornerRadius
   clip: true
 
@@ -53,7 +52,7 @@ Rectangle {
     Rectangle {
       Layout.fillWidth: true
       height: 1
-      color: Qt.rgba(Commons.Color.menu.border.r, Commons.Color.menu.border.g, Commons.Color.menu.border.b, 0.25)
+      color: Commons.Util.alpha(Commons.Color.menu.border, 0.25)
     }
 
     // 1. Large Preview Frame
@@ -63,7 +62,7 @@ Rectangle {
       Layout.fillHeight: true
       Layout.minimumHeight: Commons.Style.space(130)
       color: refBoxMouse.containsMouse ? Commons.Util.alpha(Commons.Color.accent, 0.08) : Commons.Util.alpha(Commons.Color.background, 0.65)
-      border.color: refBoxMouse.containsMouse ? Commons.Color.accent : (panelRoot && panelRoot.referencePath !== "" ? Commons.Color.accent : Commons.Color.menu.border)
+      border.color: (refBoxMouse.containsMouse || (panelRoot && panelRoot.referencePath !== "")) ? Commons.Color.accent : Commons.Util.alpha(Commons.Color.menu.border, 0.35)
       border.width: 1
       radius: Commons.Style.cornerRadius
       clip: true

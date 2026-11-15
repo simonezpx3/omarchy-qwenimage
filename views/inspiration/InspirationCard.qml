@@ -171,6 +171,6 @@ Rectangle {
     anchors.leftMargin: Commons.Style.spacing.sm
     anchors.rightMargin: Commons.Style.spacing.sm
     height: 1
-    color: Commons.Util.alpha(Commons.Color.menu.border, 0.22)
+    color: Commons.Util.alpha(Commons.Color.menu.border, 0.25)
   }
 }

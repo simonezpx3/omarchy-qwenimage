@@ -95,7 +95,7 @@ Item {
             height: Commons.Style.space(24)
             implicitWidth: historyLoadingText.implicitWidth + Commons.Style.spacing.md * 2
             color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.12)
-            border.color: Qt.rgba(Commons.Color.accent.r, Commons.Color.accent.g, Commons.Color.accent.b, 0.45)
+            border.color: Commons.Util.alpha(Commons.Color.accent, 0.45)
             border.width: 1
             radius: Commons.Style.cornerRadius
 

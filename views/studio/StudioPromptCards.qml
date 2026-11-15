@@ -34,7 +34,7 @@ ColumnLayout {
     Layout.fillWidth: true
     Layout.preferredHeight: Commons.Style.space(138)
     color: Commons.Util.alpha(Commons.Color.background, 0.85)
-    border.color: promptInput.activeFocus ? Commons.Color.accent : (promptCardHover.hovered || promptInput.hovered ? Qt.lighter(Commons.Color.menu.border, 1.4) : Commons.Color.menu.border)
+    border.color: promptInput.activeFocus ? Commons.Color.accent : (promptCardHover.hovered || promptInput.hovered ? Commons.Util.alpha(Commons.Color.menu.border, 0.6) : Commons.Util.alpha(Commons.Color.menu.border, 0.35))
     border.width: 1
     radius: Commons.Style.cornerRadius
     clip: true
@@ -185,7 +185,7 @@ ColumnLayout {
     Layout.fillWidth: true
     Layout.preferredHeight: Commons.Style.space(80)
     color: Commons.Util.alpha(Commons.Color.background, 0.85)
-    border.color: negativeInput.activeFocus ? Commons.Color.accent : (negativeCardHover.hovered || negativeInput.hovered ? Qt.lighter(Commons.Color.menu.border, 1.4) : Commons.Color.menu.border)
+    border.color: negativeInput.activeFocus ? Commons.Color.accent : (negativeCardHover.hovered || negativeInput.hovered ? Commons.Util.alpha(Commons.Color.menu.border, 0.6) : Commons.Util.alpha(Commons.Color.menu.border, 0.35))
     border.width: 1
     radius: Commons.Style.cornerRadius
     clip: true

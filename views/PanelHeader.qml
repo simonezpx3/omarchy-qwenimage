@@ -92,7 +92,7 @@ RowLayout {
   Rectangle {
     width: 1
     implicitHeight: Commons.Style.space(16)
-    color: Commons.Util.alpha(Commons.Color.menu.border, 0.35)
+    color: Commons.Util.alpha(Commons.Color.menu.border, 0.25)
     Layout.alignment: Qt.AlignVCenter
   }
 
@@ -206,7 +206,7 @@ RowLayout {
       Rectangle {
         width: 1
         implicitHeight: Commons.Style.space(12)
-        color: Commons.Util.alpha(Commons.Color.menu.border, 0.35)
+        color: Commons.Util.alpha(Commons.Color.menu.border, 0.25)
         Layout.alignment: Qt.AlignVCenter
       }
 

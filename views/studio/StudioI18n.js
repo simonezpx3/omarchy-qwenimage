@@ -276,6 +276,10 @@ var strings = {
     "cs": "HERETIC LORA: Čtyřstavový necenzurovaný adaptér (OFF = výchozí filtry, LIGHT = uvolněné oděvy 0.45, MEDIUM = odhalené křivky 0.70, HEAVY = plně necenzurovaný latent 0.95).",
     "en": "HERETIC LORA: 4-state uncensored adapter (OFF = default filters, LIGHT = relaxed clothing 0.45, MEDIUM = expressive boudoir 0.70, HEAVY = fully uncensored latent 0.95)."
   },
+  "help_heretic_gated": {
+    "cs": "HERETIC LORA (GATED): Při aktivním ANIME bez explicitní nahoty je Heretic pozastaven, aby 2D styl netáhl k 3D fotorealismu.",
+    "en": "HERETIC LORA (GATED): Paused while ANIME is active without explicit nudity so 2D styling is not pulled toward 3D photorealism."
+  },
   "help_anatomy_lora": {
     "cs": "GENITALIA LORA: Čtyřstavový adaptér intimní anatomické fidelity (OFF = výchozí, LIGHT = 0.50, MEDIUM = 0.75, HEAVY = 1.0).",
     "en": "GENITALIA LORA: 4-state intimate anatomy fidelity adapter (OFF = default, LIGHT = 0.50, MEDIUM = 0.75, HEAVY = 1.0)."

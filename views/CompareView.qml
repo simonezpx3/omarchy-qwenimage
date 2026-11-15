@@ -33,7 +33,7 @@ Item {
       Layout.fillWidth: true
       Layout.fillHeight: true
       color: Commons.Color.background
-      border.color: Commons.Color.menu.border
+      border.color: Commons.Util.alpha(Commons.Color.menu.border, 0.35)
       border.width: 1
       radius: Commons.Style.cornerRadius
       clip: true
@@ -136,7 +136,7 @@ Item {
         x: viewport.width * root.splitPosition - (width / 2)
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        width: 2
+        width: 1
         color: Commons.Color.accent
 
         Rectangle {
@@ -146,7 +146,7 @@ Item {
           radius: width / 2
           color: Commons.Color.background
           border.color: Commons.Color.accent
-          border.width: 2
+          border.width: 1
 
           Text {
             textFormat: Text.PlainText
