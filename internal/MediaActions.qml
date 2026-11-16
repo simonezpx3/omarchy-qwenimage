@@ -96,21 +96,17 @@ Item {
     pickRefImageProc.running = true;
   }
 
-  Process {
+  BoundedProcess {
     id: wallProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        if (!service) return;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok") {
-            service.generationTelemetry = "WALLPAPER SET";
-          }
-        } catch (e) {}
-      }
+    maxOutBytes: 65536
+    onFinished: function(stdoutText, exitCode, wasOverflowed) {
+      if (!service || wasOverflowed || stdoutText.length === 0) return;
+      try {
+        var res = JSON.parse(stdoutText);
+        if (res.status === "ok") {
+          service.generationTelemetry = "WALLPAPER SET";
+        }
+      } catch (e) {}
     }
   }
 
@@ -131,56 +127,41 @@ Item {
     }
   }
 
-  Process {
+  BoundedProcess {
     id: pickRefImageProc
-    property string collectedPath: ""
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        var s = (text || "").trim();
-        if (s.length > 4096) s = s.substring(0, 4096);
-        pickRefImageProc.collectedPath = s;
-      }
-    }
-    onExited: function(exitCode) {
+    maxOutBytes: 4096
+    onFinished: function(stdoutText, exitCode, wasOverflowed) {
       if (!service) return;
-      if (exitCode === 0 && pickRefImageProc.collectedPath !== "") {
-        service.setReferenceImage(pickRefImageProc.collectedPath);
+      if (!wasOverflowed && exitCode === 0 && stdoutText.length > 0) {
+        service.setReferenceImage(stdoutText);
       }
-      pickRefImageProc.collectedPath = "";
     }
   }
 
-  Process {
+  BoundedProcess {
     id: pasteProc
+    maxOutBytes: 65536
     command: service && service.bridgeBin ? [service.bridgeBin, "paste-clipboard"] : []
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        if (!service) return;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && res.path) {
-            service.setReferenceImage(res.path);
-          }
-        } catch (e) {}
-      }
+    onFinished: function(stdoutText, exitCode, wasOverflowed) {
+      if (!service || wasOverflowed || stdoutText.length === 0) return;
+      try {
+        var res = JSON.parse(stdoutText);
+        if (res.status === "ok" && res.path) {
+          service.setReferenceImage(res.path);
+        }
+      } catch (e) {}
     }
   }
 
-  Process {
+  BoundedProcess {
     id: pasteTextProc
+    maxOutBytes: 65536
     command: service && service.bridgeBin ? [service.bridgeBin, "paste-text"] : []
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        if (!service) return;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
+    onFinished: function(stdoutText, exitCode, wasOverflowed) {
+      if (!service) return;
+      if (!wasOverflowed && stdoutText.length > 0) {
         try {
-          var res = JSON.parse(str);
+          var res = JSON.parse(stdoutText);
           if (res.status === "ok" && res.text && root.activePasteTarget) {
             var cleanText = typeof service.sanitizePromptText === "function" ? service.sanitizePromptText(res.text) : res.text;
             if (typeof root.activePasteTarget.insert === "function") {
@@ -191,63 +172,51 @@ Item {
             }
           }
         } catch (e) {}
-        root.activePasteTarget = null;
       }
+      root.activePasteTarget = null;
     }
   }
 
-  Process {
+  BoundedProcess {
     id: validateRefProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        if (!service) return;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && res.path) {
-            service.setReferenceImage(res.path);
-          }
-        } catch (e) {}
-      }
+    maxOutBytes: 65536
+    onFinished: function(stdoutText, exitCode, wasOverflowed) {
+      if (!service || wasOverflowed || stdoutText.length === 0) return;
+      try {
+        var res = JSON.parse(stdoutText);
+        if (res.status === "ok" && res.path) {
+          service.setReferenceImage(res.path);
+        }
+      } catch (e) {}
     }
   }
 
-  Process {
+  BoundedProcess {
     id: deleteProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        if (!service) return;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && typeof service.fetchHistory === "function") {
-            service.fetchHistory();
-          }
-        } catch (e) {}
-      }
+    maxOutBytes: 65536
+    onFinished: function(stdoutText, exitCode, wasOverflowed) {
+      if (!service || wasOverflowed || stdoutText.length === 0) return;
+      try {
+        var res = JSON.parse(stdoutText);
+        if (res.status === "ok" && typeof service.fetchHistory === "function") {
+          service.fetchHistory();
+        }
+      } catch (e) {}
     }
   }
 
-  Process {
+  BoundedProcess {
     id: snipProc
+    maxOutBytes: 65536
     command: service && service.bridgeBin ? [service.bridgeBin, "snip"] : []
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        if (!service) return;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && res.path) {
-            service.setReferenceImage(res.path);
-          }
-        } catch (e) {}
-      }
+    onFinished: function(stdoutText, exitCode, wasOverflowed) {
+      if (!service || wasOverflowed || stdoutText.length === 0) return;
+      try {
+        var res = JSON.parse(stdoutText);
+        if (res.status === "ok" && res.path) {
+          service.setReferenceImage(res.path);
+        }
+      } catch (e) {}
     }
   }
 }

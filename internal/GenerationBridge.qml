@@ -216,112 +216,99 @@ Item {
     }
   }
 
-  Process {
+  BoundedProcess {
     id: scaleProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        if (!service) return;
-        service.isGenerating = false;
-        service.currentScaleFactor = 0.0;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && res.path) {
-            service.previousGeneratedPath = service.generatedPath;
-            service.generatedPath = res.path;
-            var info = (res.factor ? (res.factor + " ") : (res.tier ? ("AI " + res.tier + " ") : "")) + (res.width || "2048") + "x" + (res.height || "2048");
-            if (res.model) {
-              info += " // " + res.model.replace(".safetensors", "");
-            } else {
-              info += " // SIMD LANCZOS";
-            }
-            service.generationTelemetry = info;
-            service.fetchHistory();
+    maxOutBytes: 65536
+    onFinished: function(stdoutText, exitCode, wasOverflowed) {
+      if (!service) return;
+      service.isGenerating = false;
+      service.currentScaleFactor = 0.0;
+      if (wasOverflowed || stdoutText.length === 0) return;
+      try {
+        var res = JSON.parse(stdoutText);
+        if (res.status === "ok" && res.path) {
+          service.previousGeneratedPath = service.generatedPath;
+          service.generatedPath = res.path;
+          var info = (res.factor ? (res.factor + " ") : (res.tier ? ("AI " + res.tier + " ") : "")) + (res.width || "2048") + "x" + (res.height || "2048");
+          if (res.model) {
+            info += " // " + res.model.replace(".safetensors", "");
+          } else {
+            info += " // SIMD LANCZOS";
           }
-        } catch (e) {}
-      }
+          service.generationTelemetry = info;
+          service.fetchHistory();
+        }
+      } catch (e) {}
     }
   }
 
-  Process {
+  BoundedProcess {
     id: tagProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        if (!service) return;
-        service.isInterrogating = false;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && res.raw) {
-            if (service.promptText.trim() === "") {
-              service.promptText = res.raw;
-            } else {
-              service.promptText = service.promptText + ", " + res.raw;
-            }
+    maxOutBytes: 65536
+    onFinished: function(stdoutText, exitCode, wasOverflowed) {
+      if (!service) return;
+      service.isInterrogating = false;
+      if (wasOverflowed || stdoutText.length === 0) return;
+      try {
+        var res = JSON.parse(stdoutText);
+        if (res.status === "ok" && res.raw) {
+          if (service.promptText.trim() === "") {
+            service.promptText = res.raw;
+          } else {
+            service.promptText = service.promptText + ", " + res.raw;
           }
-        } catch (e) {}
-      }
+        }
+      } catch (e) {}
     }
   }
 
-  Process {
+  BoundedProcess {
     id: visionProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        if (!service) return;
-        service.isVisionLoading = false;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && res.prompt) {
-            service.promptText = res.prompt;
-          }
-        } catch (e) {}
-      }
+    maxOutBytes: 65536
+    onFinished: function(stdoutText, exitCode, wasOverflowed) {
+      if (!service) return;
+      service.isVisionLoading = false;
+      if (wasOverflowed || stdoutText.length === 0) return;
+      try {
+        var res = JSON.parse(stdoutText);
+        if (res.status === "ok" && res.prompt) {
+          service.promptText = res.prompt;
+        }
+      } catch (e) {}
     }
   }
 
-  Process {
+  BoundedProcess {
     id: metaProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        if (!service) return;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok") {
-            if (res.prompt) service.promptText = res.prompt;
-            if (res.negative_prompt) service.negativePromptText = res.negative_prompt;
-            if (res.seed && res.seed > 0) {
-              service.seedVal = res.seed;
-              service.seedLocked = true;
-            }
-            if (res.ratio) {
-              service.aspectRatio = res.ratio;
-              service.referenceMatchedRatio = res.ratio;
-            }
+    maxOutBytes: 65536
+    onFinished: function(stdoutText, exitCode, wasOverflowed) {
+      if (!service || wasOverflowed || stdoutText.length === 0) return;
+      try {
+        var res = JSON.parse(stdoutText);
+        if (res.status === "ok") {
+          if (res.prompt) service.promptText = res.prompt;
+          if (res.negative_prompt) service.negativePromptText = res.negative_prompt;
+          if (res.seed && res.seed > 0) {
+            service.seedVal = res.seed;
+            service.seedLocked = true;
           }
-        } catch (e) {}
-      }
+          if (res.ratio) {
+            service.aspectRatio = res.ratio;
+            service.referenceMatchedRatio = res.ratio;
+          }
+        }
+      } catch (e) {}
     }
   }
 
-  Process {
+  BoundedProcess {
     id: optProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        if (!service) return;
-        service.isOptimizingPrompt = false;
-        PromptUtils.applyOptResult(service, (text || "").trim());
+    maxOutBytes: 65536
+    onFinished: function(stdoutText, exitCode, wasOverflowed) {
+      if (!service) return;
+      service.isOptimizingPrompt = false;
+      if (!wasOverflowed) {
+        PromptUtils.applyOptResult(service, stdoutText);
       }
     }
   }

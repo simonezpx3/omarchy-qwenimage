@@ -71,41 +71,35 @@ Item {
     service.baseGeneratedPath = path;
   }
 
-  Process {
+  BoundedProcess {
     id: civitaiProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        if (!service) return;
-        service.isCivitaiLoading = false;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 524288) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && res.items) {
-            service.civitaiModel = res.items;
-          }
-        } catch (e) {}
-      }
+    maxOutBytes: 524288
+    onFinished: function(stdoutText, exitCode, wasOverflowed) {
+      if (!service) return;
+      service.isCivitaiLoading = false;
+      if (wasOverflowed || stdoutText.length === 0) return;
+      try {
+        var res = JSON.parse(stdoutText);
+        if (res.status === "ok" && res.items) {
+          service.civitaiModel = res.items;
+        }
+      } catch (e) {}
     }
   }
 
-  Process {
+  BoundedProcess {
     id: histProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        if (!service) return;
-        service.isHistoryLoading = false;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 524288) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok" && res.items) {
-            service.historyModel = res.items;
-          }
-        } catch (e) {}
-      }
+    maxOutBytes: 524288
+    onFinished: function(stdoutText, exitCode, wasOverflowed) {
+      if (!service) return;
+      service.isHistoryLoading = false;
+      if (wasOverflowed || stdoutText.length === 0) return;
+      try {
+        var res = JSON.parse(stdoutText);
+        if (res.status === "ok" && res.items) {
+          service.historyModel = res.items;
+        }
+      } catch (e) {}
     }
   }
 }

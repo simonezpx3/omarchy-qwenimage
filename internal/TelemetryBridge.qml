@@ -73,8 +73,9 @@ Item {
     }
   }
 
-  Process {
+  BoundedProcess {
     id: statusProc
+    maxOutBytes: 65536
     command: service && service.bridgeBin ? [service.bridgeBin, "status"] : []
     onRunningChanged: {
       if (statusProc.running) {
@@ -83,19 +84,15 @@ Item {
         statusWatchdog.stop();
       }
     }
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        statusWatchdog.stop();
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var data = JSON.parse(str);
-          if (data && data.status) {
-            root.updateTelemetry(data);
-          }
-        } catch (e) {}
-      }
+    onFinished: function(stdoutText, exitCode, wasOverflowed) {
+      statusWatchdog.stop();
+      if (wasOverflowed || stdoutText.length === 0) return;
+      try {
+        var data = JSON.parse(stdoutText);
+        if (data && data.status) {
+          root.updateTelemetry(data);
+        }
+      } catch (e) {}
     }
   }
 

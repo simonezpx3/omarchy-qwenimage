@@ -149,24 +149,20 @@ Item {
     }
   }
 
-  Process {
+  BoundedProcess {
     id: analyzeProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        if (!service || service.autoTuneMode === "off") return;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          if (res.status === "ok") {
-            if (typeof res.turbo === "boolean") service.isTurboEnabled = res.turbo;
-            if (typeof res.steps === "number") service.steps = res.steps;
-            if (typeof res.cfg === "number") service.cfg = res.cfg;
-            service.autoTuneSummary = (res.turbo ? (res.steps >= 9 ? "HYBRID " : "TURBO ") : "") + res.steps + "s · CFG " + Number(res.cfg).toFixed(1);
-          }
-        } catch (e) {}
-      }
+    maxOutBytes: 65536
+    onFinished: function(stdoutText, exitCode, wasOverflowed) {
+      if (!service || service.autoTuneMode === "off" || wasOverflowed || stdoutText.length === 0) return;
+      try {
+        var res = JSON.parse(stdoutText);
+        if (res.status === "ok") {
+          if (typeof res.turbo === "boolean") service.isTurboEnabled = res.turbo;
+          if (typeof res.steps === "number") service.steps = res.steps;
+          if (typeof res.cfg === "number") service.cfg = res.cfg;
+          service.autoTuneSummary = (res.turbo ? (res.steps >= 9 ? "HYBRID " : "TURBO ") : "") + res.steps + "s · CFG " + Number(res.cfg).toFixed(1);
+        }
+      } catch (e) {}
     }
   }
 
@@ -186,60 +182,56 @@ Item {
     id: saveSettingsProc
   }
 
-  Process {
+  BoundedProcess {
     id: loadLangProc
+    maxOutBytes: 65536
     command: service && service.bridgeBin ? [service.bridgeBin, "settings"] : []
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        if (!service) return;
-        var str = (text || "").trim();
-        if (str.length === 0 || str.length > 65536) return;
-        try {
-          var res = JSON.parse(str);
-          service.currentLang = "en";
-          if (typeof res.nsfw === "boolean") {
-            service.isNsfwEnabled = res.nsfw;
+    onFinished: function(stdoutText, exitCode, wasOverflowed) {
+      if (!service || wasOverflowed || stdoutText.length === 0) return;
+      try {
+        var res = JSON.parse(stdoutText);
+        service.currentLang = "en";
+        if (typeof res.nsfw === "boolean") {
+          service.isNsfwEnabled = res.nsfw;
+        }
+        if (res.anime_mode) {
+          service.animeMode = (res.anime_mode === "soft" ? "light" : (res.anime_mode === "full" ? "heavy" : res.anime_mode));
+        } else if (typeof res.anime === "boolean") {
+          service.animeMode = res.anime ? "heavy" : "off";
+        }
+        if (typeof res.turbo === "boolean") {
+          service.isTurboEnabled = res.turbo;
+        }
+        if (res.heretic_mode) {
+          service.hereticMode = (res.heretic_mode === "soft" ? "light" : (res.heretic_mode === "full" ? "heavy" : res.heretic_mode));
+        } else if (res.uncensored_mode) {
+          service.hereticMode = (res.uncensored_mode === "soft" ? "light" : (res.uncensored_mode === "full" ? "heavy" : res.uncensored_mode));
+        } else if (typeof res.uncensored === "boolean") {
+          service.hereticMode = res.uncensored ? "heavy" : "off";
+        }
+        if (res.anatomy_mode) {
+          service.anatomyMode = (res.anatomy_mode === "soft" ? "light" : (res.anatomy_mode === "full" ? "heavy" : res.anatomy_mode));
+        } else if (typeof res.anatomy === "boolean") {
+          service.anatomyMode = res.anatomy ? "heavy" : "off";
+        } else if (typeof res.anatomy_lora === "boolean") {
+          service.anatomyMode = res.anatomy_lora ? "heavy" : "off";
+        }
+        if (res.anatomy_guard === "on" || res.anatomy_guard === "off" || res.anatomy_guard === "auto") {
+          service.anatomyGuardMode = res.anatomy_guard;
+        }
+        if (res.auto_tune === "off" || res.auto_tune === "balanced" || res.auto_tune === "quality") {
+          service.autoTuneMode = res.auto_tune;
+          if (service.autoTuneMode !== "off" && (service.promptText || "").trim() !== "") {
+            root.applyAutoTune();
           }
-          if (res.anime_mode) {
-            service.animeMode = (res.anime_mode === "soft" ? "light" : (res.anime_mode === "full" ? "heavy" : res.anime_mode));
-          } else if (typeof res.anime === "boolean") {
-            service.animeMode = res.anime ? "heavy" : "off";
-          }
-          if (typeof res.turbo === "boolean") {
-            service.isTurboEnabled = res.turbo;
-          }
-          if (res.heretic_mode) {
-            service.hereticMode = (res.heretic_mode === "soft" ? "light" : (res.heretic_mode === "full" ? "heavy" : res.heretic_mode));
-          } else if (res.uncensored_mode) {
-            service.hereticMode = (res.uncensored_mode === "soft" ? "light" : (res.uncensored_mode === "full" ? "heavy" : res.uncensored_mode));
-          } else if (typeof res.uncensored === "boolean") {
-            service.hereticMode = res.uncensored ? "heavy" : "off";
-          }
-          if (res.anatomy_mode) {
-            service.anatomyMode = (res.anatomy_mode === "soft" ? "light" : (res.anatomy_mode === "full" ? "heavy" : res.anatomy_mode));
-          } else if (typeof res.anatomy === "boolean") {
-            service.anatomyMode = res.anatomy ? "heavy" : "off";
-          } else if (typeof res.anatomy_lora === "boolean") {
-            service.anatomyMode = res.anatomy_lora ? "heavy" : "off";
-          }
-          if (res.anatomy_guard === "on" || res.anatomy_guard === "off" || res.anatomy_guard === "auto") {
-            service.anatomyGuardMode = res.anatomy_guard;
-          }
-          if (res.auto_tune === "off" || res.auto_tune === "balanced" || res.auto_tune === "quality") {
-            service.autoTuneMode = res.auto_tune;
-            if (service.autoTuneMode !== "off" && (service.promptText || "").trim() !== "") {
-              root.applyAutoTune();
-            }
-          }
-          if (typeof res.auto_expand === "boolean") {
-            service.isAutoExpandEnabled = res.auto_expand;
-          }
-          if (res.res_mode) {
-            service.resMode = res.res_mode;
-          }
-        } catch (e) {}
-      }
+        }
+        if (typeof res.auto_expand === "boolean") {
+          service.isAutoExpandEnabled = res.auto_expand;
+        }
+        if (res.res_mode) {
+          service.resMode = res.res_mode;
+        }
+      } catch (e) {}
     }
   }
 }

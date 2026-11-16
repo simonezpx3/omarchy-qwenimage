@@ -878,11 +878,8 @@ update_comfyui() {
     write_checkpoint "${CHECKPOINT_DIR}/latest_checkpoint.txt" "$cur_commit" || return 1
 
     log_info "Ověřuji integritu ComfyUI jádra na prověřený commit ${COMFY_PINNED_COMMIT:0:7}..."
-    if git -C "${COMFY_DIR}" fetch --depth 1 origin b53f77a74e21091cbdebfdf7b85fc80326932646 2>/dev/null; then
+    (git -C "${COMFY_DIR}" fetch --depth 1 origin b53f77a74e21091cbdebfdf7b85fc80326932646 2>/dev/null || true) && \
         git -C "${COMFY_DIR}" checkout --detach b53f77a74e21091cbdebfdf7b85fc80326932646
-    else
-        git -C "${COMFY_DIR}" checkout --detach b53f77a74e21091cbdebfdf7b85fc80326932646
-    fi
 
     local actual_comfy
     actual_comfy=$(git -C "${COMFY_DIR}" rev-parse HEAD 2>/dev/null || echo "")
@@ -904,11 +901,8 @@ update_comfyui() {
         local node_dir="${COMFY_DIR}/custom_nodes/${node_name}"
         if [[ -d "${node_dir}/.git" ]]; then
             log_info "  -> ${node_name} (uzamčeno na ${node_commit:0:7})"
-            if git -C "$node_dir" fetch --depth 1 origin "$node_commit" 2>/dev/null; then
+            (git -C "$node_dir" fetch --depth 1 origin "$node_commit" 2>/dev/null || true) && \
                 git -C "$node_dir" checkout --detach -q "$node_commit"
-            else
-                git -C "$node_dir" checkout --detach -q "$node_commit"
-            fi
 
             local actual_node_commit
             actual_node_commit=$(git -C "$node_dir" rev-parse HEAD 2>/dev/null || echo "")
