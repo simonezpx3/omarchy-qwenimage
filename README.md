@@ -75,9 +75,27 @@ qis update [all|plugin|comfy|models]    # Granular stack updates
 - **Supply-Chain Baseline:** ComfyUI (`v0.41.2`) and custom nodes pinned to commit SHAs; Python deps locked via `pip install --require-hashes` (`locks/`); native binary verified via `bin/qwen-bridge.sha256`.
 - **Key Shortcuts:** `Ctrl + Enter` (Generate) · `Ctrl + V` / `Super + V` (Paste reference) · `Esc` (Close / back to Studio).
 - **Uninstall:** `omarchy plugin remove simonez.qwenimage` or `./uninstall.sh [--purge-settings | --purge-all]`.
-- **Upstream:** ComfyUI, ComfyUI-GGUF, Qwen2.5/3-VL, Viggle Turbo DMD, Quickshell, WD14 Tagger, TAEQI, Real-ESRGAN, 4x-UltraSharp/AnimeSharp, Hyprland.
 
 </details>
+
+## Acknowledgments & Upstream Credits
+
+QIS builds upon the work of open-source creators and AI researchers whose technologies make local inference possible:
+
+- **[ComfyUI](https://github.com/comfyanonymous/ComfyUI)** by [@comfyanonymous](https://github.com/comfyanonymous) – Node-based execution engine powering the local diffusion pipeline.
+- **[ComfyUI-GGUF](https://github.com/city96/ComfyUI-GGUF)** by [@city96](https://github.com/city96) – GGUF quantization loader enabling DiT models to run within consumer VRAM limits.
+- **[Qwen-Image / Qwen2.5-VL](https://github.com/QwenLM)** by the **Qwen Team (Alibaba Cloud)** – Foundation models for generative image synthesis and visual understanding.
+- **[Viggle AI](https://huggingface.co/Viggle/Qwen-Image-2.1-viggle-turbo)** by [@Viggle](https://viggle.ai/) – 6-step DMD (Distribution Matching Distillation) LoRA architecture and custom scheduler.
+- **[chfm](https://huggingface.co/chfm/Qwen-Image-2.1-Text-Encoder-Heretic-GGUF)** – Qwen3-VL 8B Heretic GGUF text encoder reducing false-positive prompt refusals while maintaining semantic alignment.
+- **[abenzerps](https://huggingface.co/abenzerps/Qwen-Image-2.1-Uncensored-GGUF)** – Uncensored latent LoRA adapter.
+- **[WarmBloodAban](https://huggingface.co/WarmBloodAban/Qwen-Image-2.1-LoRAs)** – Anime consistency LoRA adapter.
+- **[Quickshell](https://github.com/outfoxxed/quickshell)** by [@outfoxxed](https://github.com/outfoxxed) – Reactive QtQuick/Wayland shell environment.
+- **[WD14 Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger)** by [@pythongosssss](https://github.com/pythongosssss) & [@SmilingWolf](https://github.com/SmilingWolf) – Anime and photography tag interrogation models.
+- **[TAEQI / Tiny AutoEncoder](https://github.com/madebyollin/taesd)** by [@madebyollin](https://github.com/madebyollin) – Lightweight latent autoencoder powering real-time step previews.
+- **[Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)** by [@xinntao](https://github.com/xinntao) & **[Comfy-Org](https://huggingface.co/Comfy-Org/Real-ESRGAN_repackaged)** – Super-resolution architecture and repackaged weights.
+- **[4x-UltraSharp & 4x-AnimeSharp](https://huggingface.co/Kim2091)** by [@Kim2091](https://huggingface.co/Kim2091) – Super-resolution checkpoints for micro-contrast and linework restoration.
+- **[Civitai](https://civitai.com/)** – Community platform for prompt engineering and open model sharing.
+- **[Omarchy Linux & Hyprland](https://github.com/hyprwm/Hyprland)** – Wayland tiling desktop ecosystem.
 
 ## License
 
