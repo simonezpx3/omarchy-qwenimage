@@ -878,7 +878,7 @@ update_comfyui() {
     write_checkpoint "${CHECKPOINT_DIR}/latest_checkpoint.txt" "$cur_commit" || return 1
 
     log_info "Ověřuji integritu ComfyUI jádra na prověřený commit ${COMFY_PINNED_COMMIT:0:7}..."
-    (git -C "${COMFY_DIR}" fetch --depth 1 origin b53f77a74e21091cbdebfdf7b85fc80326932646 2>/dev/null || true) && \
+    git -C "${COMFY_DIR}" fetch --depth 1 origin b53f77a74e21091cbdebfdf7b85fc80326932646 && \
         git -C "${COMFY_DIR}" checkout --detach b53f77a74e21091cbdebfdf7b85fc80326932646
 
     local actual_comfy
@@ -901,7 +901,7 @@ update_comfyui() {
         local node_dir="${COMFY_DIR}/custom_nodes/${node_name}"
         if [[ -d "${node_dir}/.git" ]]; then
             log_info "  -> ${node_name} (uzamčeno na ${node_commit:0:7})"
-            (git -C "$node_dir" fetch --depth 1 origin "$node_commit" 2>/dev/null || true) && \
+            git -C "$node_dir" fetch --depth 1 origin "$node_commit" && \
                 git -C "$node_dir" checkout --detach -q "$node_commit"
 
             local actual_node_commit
