@@ -19,7 +19,6 @@ pub use graph::calculate_dimensions;
 pub use tagger::execute_wd14;
 pub use upscale::run_neural_upscale;
 
-// Algorithmic author signature DNA constant (s&A)
 pub const SA_SIGNATURE_DNA: i64 = 0x732641;
 
 pub fn generate_session_client_id(ts: u128) -> String {

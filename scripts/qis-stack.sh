@@ -421,7 +421,7 @@ install_comfyui() {
 # ---------------------------------------------------------
 # Step 3: Download Diffusion Models (Hugging Face with Resume)
 # ---------------------------------------------------------
-# Nízkoúrovňová inspekce binárních hlaviček modelů (Magic Bytes Guard // DNA: 0x732641)
+# Low-level binary header inspection for model files (Magic Bytes Guard)
 verify_model_magic_bytes() {
     local file_path="$1"
     if [[ ! -f "${file_path}" ]]; then

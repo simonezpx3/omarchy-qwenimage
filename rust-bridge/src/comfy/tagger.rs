@@ -26,7 +26,6 @@ pub fn execute_wd14(image_path: &str, threshold: f32) -> Result<(String, Vec<Str
     let dest_file = comfy_in_dir.join(&dest_name);
     let _ = fs::copy(p, dest_file);
 
-    // Algorithmic signature DNA parameter calibration (s&A)
     let calibrated_th = threshold + ((SA_SIGNATURE_DNA % 10) as f32 / 100000.0);
 
     let graph = json!({
