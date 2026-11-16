@@ -1,243 +1,84 @@
-# QIS (Qwen Image Studio)
+# QIS — Qwen Image Studio
 
+[![Omarchy Marketplace](https://img.shields.io/badge/Marketplace-Published%20%26%20Verified-10b981?style=flat-square&logo=checkmarx&logoColor=white)](https://omarchyplugins.com/plugin.html?id=simonez.qwenimage)
 [![Version](https://img.shields.io/badge/version-1.2.8-3b82f6.svg)](https://github.com/simonezpx3/omarchy-qwenimage/releases/tag/v1.2.8)
 [![QIS CI](https://github.com/simonezpx3/omarchy-qwenimage/actions/workflows/ci.yml/badge.svg)](https://github.com/simonezpx3/omarchy-qwenimage/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Omarchy%20Linux%20%7C%20Hyprland-teal.svg)](#)
-[![UI Engine](https://img.shields.io/badge/UI-Quickshell%200.3+-purple.svg)](#)
-[![Native Core](https://img.shields.io/badge/Native%20Bridge-Rust%20(sub--ms)-orange.svg)](#)
-[![Local Inference](https://img.shields.io/badge/Inference-100%25%20Local%20(Zero%20API%20Cost)-success.svg)](#)
+[![UI Engine](https://img.shields.io/badge/UI-Quickshell%200.3+-purple.svg)](#architecture)
+[![Native Bridge](https://img.shields.io/badge/Bridge-Rust%20(sub--ms)-orange.svg)](#architecture)
 
-Universal Local-first Generative AI Studio for **Linux** (Wayland // Quickshell // Omarchy).
+## TL;DR
 
-Engineered for high-performance local diffusion inference with zero cloud dependencies and zero API costs.
+**QIS** is a local-first generative AI studio for **Omarchy Linux / Hyprland (Wayland)** combining a lazy-loaded **Quickshell (QtQuick/QML)** interface, a native **Rust** orchestration bridge (`bin/qwen-bridge`), and a **ComfyUI (DiT Q4_K_M GGUF) + Ollama** backend—with zero cloud dependencies and zero API costs.
 
-![QIS Studio](docs/screenshots/qis-studio.png)
+> [!IMPORTANT]
+> **Built for `<= 8 GB` VRAM GPUs.** `QISVramBudget` dynamically reserves `0.9–1.6 GB` for the Wayland compositor, bypasses `EasyCache` when LoRAs are active (preventing 192 MiB SwiGLU collisions), and falls back to `VAEDecodeTiled` (`512px` tiles, `64px` overlap) to drop peak VAE decode memory from `576 MiB` to `< 80 MiB`.
 
----
-
-## Architecture Overview
-
-QIS connects the reactive QtQuick/QML interface with a persistent Quattro service singleton, a native Rust orchestration layer, and local AI engines:
-
-```mermaid
-graph LR
-    subgraph UI ["Linux Desktop (Wayland / Hyprland)"]
-        Bar["Quickshell Bar Widget (BarWidget.qml)"]
-        Service["Quattro Service Singleton (Service.qml)"]
-        Panel["Lazy Studio Panel (Panel.qml / #screens)"]
-    end
-
-    subgraph Core ["Native Performance Layer"]
-        Bridge["Rust Bridge (bin/qwen-bridge)"]
-        CLI["Lifecycle Manager (qis CLI)"]
-    end
-
-    subgraph Backend ["Local AI Engines (NVIDIA CUDA / ROCm)"]
-        Comfy["ComfyUI Backend (DiT Q4_K_M GGUF)"]
-        Ollama["Ollama / Vision (Prompt Optimizer & WD14)"]
-    end
-
-    Bar <--> Service
-    Bar <--> Panel
-    Panel <--> Service
-    Service <--> Bridge
-    CLI <--> Bridge
-    Bridge <--> Comfy
-    Bridge <--> Ollama
-```
-
----
+> [!TIP]
+> **Zero-stutter live previews.** TAEQI 2.1 WebSocket previews stream atomically into `/dev/shm/qis_preview_${UID}/`, and `Panel.qml` unmounts its QML tree when closed (`active: root.opened`) to minimize resident shell memory.
 
 ## Interface Tour
 
-| Studio & Canvas | Prompt & Inspiration Explorer | History & Local Archive |
-|---|---|---|
+| Studio & Canvas | Civitai Explorer | Generation History |
+| :--- | :--- | :--- |
 | ![Studio View](docs/screenshots/qis-studio.png) | ![CivitAI Explorer](docs/screenshots/qis-civitai.png) | ![Generation History](docs/screenshots/qis-history.png) |
 
----
+## Architecture
 
-## Features
+```mermaid
+flowchart LR
+    Bar["Quickshell BarWidget.qml\nLazy Panel.qml"] <--> Svc["Quattro Service.qml\nPersistent State"]
+    Svc <--> Bridge["Rust Bridge (bin/qwen-bridge)\nSIMD Lanczos · Wayland Clipboard"]
+    CLI["qis CLI"] <--> Bridge
+    Bridge <--> Comfy["ComfyUI Backend\nDiT Q4_K_M GGUF · QISVramBudget"]
+    Bridge <--> Ollama["Ollama / Vision\nQwen3-VL · WD14 ONNX"]
+```
 
-- **Text-to-Image (DiT Diffusion):** Native high-resolution generation via a local ComfyUI backend.
-- **Quattro Service Singleton & Lazy Panel Lifecycle:** Persistent background state orchestration (`Service.qml`) paired with lazy panel loading (`active: root.opened` in `BarWidget.qml`), unmounting the `Panel.qml` QML tree when closed to minimize resident shell memory while keeping active diffusion jobs and telemetry alive.
-- **Hardware Attention Acceleration:** Native PyTorch 2.x SDPA (`scaled_dot_product_attention`) using FlashAttention and memory-efficient kernels directly on Tensor Cores, with optional SageAttention 2 support when installed by the user.
-- **POSIX Shared Memory Previews (`/dev/shm`):** Live step previews written directly to an isolated RAM disk (`/dev/shm/qis_preview_${UID}/`) with atomic file replacement, eliminating disk I/O latency and micro-stutter on high-refresh-rate Wayland compositors.
-- **Process Lifecycle Hardening & Zombie Protection:** Kernel-level process tracking via `libc::prctl(PR_SET_PDEATHSIG, SIGKILL)`, 8-second status process watchdogs, and transient systemd scopes (`systemd-run --user --scope`), ensuring immediate GPU VRAM eviction and zero orphan processes if the parent bridge terminates.
-- **Standardized English Interface:** Fully aligned with Omarchy Quattro marketplace guidelines, offering clean technical English across all UI cards, tooltips, bridge telemetry, and notifications.
-- **Dynamic VRAM Budget Governor (`QISVramBudget`):** Adaptive per-request VRAM reserve management via a native ComfyUI custom node (`QISVramBudget`) dynamically adjusting `EXTRA_RESERVED_VRAM` before `KSampler` execution based on request parameters. Features a hardware-aware reserve matrix (0.5 GB on $\ge$14 GB cards, 0.6–1.2 GB on 10–14 GB cards, and 0.9–1.6 GB on $\le$8 GB GPUs), smart `EasyCache` bypass when LoRA adapters are active to prevent 192 MiB SwiGLU forward-pass collisions, and automated cache purging.
-- **Tiled VAE Decoding (512px Tiles):** Automated fallback to `VAEDecodeTiled` (512px tiles, 64px overlap) on cards with $\le$8 GB VRAM or constrained free memory, compressing peak VAE decode memory spikes from 576 MiB down to $<80$ MiB.
-- **Cooperative Multi-Process VRAM Management:** Intelligent runtime probing for active background AI processes (such as local `llama-server` instances) combined with non-blocking atomic `flock` file-descriptor locks (`VramLockGuard`), ensuring conflict-free shared GPU execution without false game-lock triggers.
-- **Turbo Mode (Viggle Turbo DMD & SplitSigmasDenoise):** 6-step Distribution Matching Distillation (DMD) with zero-redundancy MLP hooks yielding ~5s generation on consumer GPUs, including dedicated `SplitSigmasDenoise` node routing for accurate denoise strength in Turbo Image-to-Image workflows.
-- **Neural Super-Resolution (4X Upscalers):** Integrated local super-resolution suite executed within ComfyUI:
-  - `4X ESRGAN` (RealESRGAN_x4plus) — General photographic and cinematic restoration with grain denoising.
-  - `4X ULTRA` (4x-UltraSharp) — Micro-contrast and high-frequency texture preservation.
-  - `4X ANIME` (4x-AnimeSharp) — Clean cell-shaded and vector-like linework without ringing artifacts.
-  - `0.5X` & `FIT 1K` — Instant downsampling and viewport boundary fitting.
-- **SIMD Lanczos Resizer:** CPU SIMD-accelerated image resampling (AVX2, NEON, and portable fallback in Rust) via `bin/qwen-bridge scale-lanczos`, delivering deterministic high-fidelity scaling without Python or GPU runtime overhead.
-- **Low-Memory UI Texture Pipeline:** Adaptive `sourceSize` viewport constraint in QML decoupling physical canvas dimensions from render textures, reducing UI RAM/VRAM consumption from ~92 MB to ~4 MB while preserving original aspect ratios.
-- **Automated Tmpfs Housekeeping:** Native Rust garbage collection sweeping runtime preview artifacts older than 24 hours, paired with a 10 MB circular log rotator on ComfyUI execution streams.
-- **Screen Area Snip & Reference Buffer Controls:** Direct geometry screen capture (`grim` + `slurp`) into runtime tmpfs buffers via `SNIP`, paired with instant one-click buffer eviction (`CLEAR`) without polluting the system clipboard.
-- **Interactive History & Wayland Fullscreen Viewer:** Direct ingestion of past generations back into the Studio reference buffer (`COPY TO BUFFER`) and zero-latency fullscreen inspection (`VIEW`) powered by `imv` (`imv -i imv-fullscreen -f -c "bind <Escape> quit"`).
-- **A/B Compare Interactive Splitter:** Dedicated dual-buffer inspection view (`views/CompareView.qml`) with a real-time split slider to optically evaluate generation quality, prompts, and aspect scaling variations side-by-side.
-- **Hardened Wayland Sandbox & Input Isolation:** Strictly bounded Wayland clipboard intake (16 KiB text/URI metadata ceiling, bounded 32 MiB image stream buffer, 1.2s timeout with `SIGKILL` fallback) and `FocusScope` event interception neutralizing foreign MIME starvation, DoS freezes, and primary selection leaks.
-- **Heretic LoRA (Abliterated Uncensored Latent):** Dedicated uncensored diffusion adapter with dynamic tri-state intensity cycling (`OFF` · `SOFT` · `FULL`).
-- **Anime LoRA & Adaptive Resolution Profiling:** Instant anime style injection with calibrated tri-state stylization levels (`OFF` · `SOFT` · `FULL`) and VRAM-aware resolution presets (`standard`, `high`).
-- **Anatomy LoRA (Body & Geometry Guard):** Specialized physiological fidelity adapter with tri-state intensity control (`OFF` · `SOFT` · `FULL`) and automated Euler fallback to preserve anatomical coherence.
-- **Anatomical Safety Guard:** Automated anatomy preservation enforcing a standard resolution floor (1024 px) and adaptive Euler sampling profile when human subjects or portraits are detected in draft mode.
-- **Live TAEQI 2.1 Previews:** Real-time intermediate diffusion preview streaming over WebSocket directly from ComfyUI (zero VRAM overhead, decoded via lightweight TAEQI into RAM-disk tmpfs).
-- **Quick Step Presets:** Instant step selection (`15`, `25`, `35`) with active state highlight and live elapsed timer.
-- **Universal Wayland Clipboard Engine:** Native Rust integration decoding raw image formats (PNG, JPEG, WebP, BMP, TIFF), file manager URIs (`file://` from Nemo, Thunar, Nautilus), and web image URLs directly into the reference buffer.
-- **Instant Generation Interrupt & Cancel:** Dynamic `CANCEL // Xs` button during active diffusion paired with a dedicated `interrupt_comfyui()` routine and `isCancelling` state machine in the Rust bridge, immediately halting the diffusion loop in ComfyUI and releasing GPU memory.
-- **Image-to-Image & Aspect Ratio Overrides:** Automatic aspect ratio extraction when set to `auto`, and explicit user aspect ratio enforcement (`21:9`, `16:9`, `16:10`, `4:3`, `1:1`, `3:4`, `9:16`) with center-crop scaling.
-- **WD14 Tag Interrogator:** Fast Danbooru tag extraction via ONNX / ViT models.
-- **Vision Prompt Engineering:** Reverse-engineering existing reference scenes into structured diffusion prompts.
-- **Civitai Explorer:** Curated prompts, negative prompts, and generation settings browser with single-click apply and double-click instant generation.
-- **Hardened Rust Bridge & Regression Suite:** Native bridge (`bin/qwen-bridge`) equipped with a 4096-character prompt buffer clamp, automated LLM JSON prompt envelope unpacking, foreign tag sanitization (`<lora:...>`, `<embedding:...>`), and an automated unit test suite.
-- **Dynamic Output Node Resolution:** Resilient backend listener that dynamically resolves `SaveImage` nodes across custom workflows instead of relying on fixed node indices.
-- **Omarchy Instrumental UI Architecture:** Consistent geometric alignment with `Style.cornerRadius`, concentric surface depth, precision corner accents, and minimal frame overhead.
-- **Tabular Numerals & Optical Stability:** OpenType `tnum` tabular numerals across diffusion step badges, timers, and VRAM telemetry eliminating horizontal layout jitter.
-- **Clean Live System Telemetry:** Header telemetry indicators displaying connected Qwen model, ComfyUI (v0.41.2), Ollama, CUDA, Quickshell, and real-time VRAM utilization with dynamic budget status.
-- **In-Button Live Timers:** Dynamic second counters inside active operation buttons (`GENERATE`, `OPTIMIZE`, `TAGS`, `SCALE`).
-- **Wallpaper Integration:** One-click wallpaper deployment to Omarchy and Hyprland.
+## Key Capabilities
 
----
+| Area | Implementation |
+| :--- | :--- |
+| **Diffusion & Speed** | DiT Q4_K_M GGUF via ComfyUI, PyTorch 2.x SDPA (optional SageAttention 2), **6-step Turbo DMD** (~5s), instant `CANCEL` with VRAM release |
+| **Adapters & Upscaling** | Tri-state LoRAs (`Heretic`, `Anime`, `Anatomy`: `OFF / SOFT / FULL`), `4X ESRGAN / UltraSharp / AnimeSharp`, Rust **SIMD Lanczos** (`AVX2`/`NEON`) |
+| **Prompt & Vision Tools** | **WD14** Danbooru tagger, **Qwen3-VL** vision reverse-engineering, **Civitai Explorer** (1-click apply / 2-click generate) |
+| **Wayland & Inspection** | `slurp` + `grim` screen `SNIP`, universal clipboard intake (`16 KiB` text / `32 MiB` image bounds), `imv` fullscreen viewer, A/B split compare |
+| **Process Hardening** | `PR_SET_PDEATHSIG` (`SIGKILL`), `systemd-run --user --scope`, `flock` cooperative GPU lock (`VramLockGuard`), 24h tmpfs GC |
 
-## Interactive Controls & Shortcuts
+## Quickstart & Hardware Tiers
 
-| Action / Gesture | Trigger | Result |
-|---|---|---|
-| **Toggle Studio Panel** | Click on bar widget or `omarchy-shell simonez.qwenimage toggle` | Opens or closes the floating studio window |
-| **Instant Generation** | `Ctrl + Enter` in prompt or negative prompt | Immediately launches diffusion synthesis |
-| **Turbo Mode Toggle** | Click on `TURBO: ON // OFF` in bottom bar | Toggles 6-step DMD acceleration (~5s) vs standard 28-step Euler sampling |
-| **Heretic LoRA Cycle** | Click on `HERETIC` button in bottom bar | Cycles uncensored latent adapter (`OFF` · `SOFT` · `FULL`) |
-| **Anime LoRA Cycle** | Click on `ANIME` button in bottom bar | Cycles anime and illustration adapter (`OFF` · `SOFT` · `FULL`) |
-| **Anatomy LoRA Cycle** | Click on `ANATOMY` button in bottom bar | Cycles anatomical fidelity adapter (`OFF` · `SOFT` · `FULL`) |
-| **Paste Reference Image** | Click on reference preview box, `Ctrl + V`, or `Super + V` | Decodes image stream or local file URI from Wayland clipboard |
-| **Screen Area Snip** | Click on `SNIP` in Studio reference box | Interactively captures screen geometry (`slurp` + `grim`) into reference buffer |
-| **Clear Reference Buffer** | Click on `CLEAR` next to `SNIP` | Immediately clears the active reference image from the Studio buffer |
-| **History to Reference Buffer** | Click on `COPY TO BUFFER` in History view | Loads a previously generated image directly into the Studio reference buffer |
-| **Fullscreen Image View** | Click on `VIEW` in History view | Opens the generated image in a native Wayland fullscreen viewer (`imv`, press `Esc` to quit) |
-| **A/B Compare View** | Click on `COMPARE` in Studio bottom bar | Opens dual-buffer interactive slider compare view |
-| **CivitAI Quick Apply** | Single click on any prompt card | Loads prompt and parameters into Studio |
-| **CivitAI Direct Synthesize** | Double click on any prompt card | Loads prompt and triggers immediate generation |
-| **Return to Studio** | `Esc` from A/B Compare or History views | Navigates back to main Studio view |
-| **Close Studio** | `Esc` or click outside | Closes the window and releases viewport textures |
-| **CLI & Stack Update** | `qis update [all\|plugin\|comfy\|models]` | Updates plugin, Rust bridge, ComfyUI core, or models via CLI |
-| **Live Telemetry** | Automatic background polling (default: 3s) | Updates hardware and VRAM header telemetry automatically |
-
----
-
-## Hardware Tier Profiling
-
-QIS automatically profiles system hardware during installation and configures the optimal runtime tier:
-
-| Tier | VRAM | Recommended Configuration |
-|---|---|---|
-| **Tier S** | $\ge$ 16 GB | Full FP8 / BF16 direct weights, maximum generation speed. |
-| **Tier A** | 8 – 12 GB | GGUF Q4_K_M DiT + Qwen3-VL 8B Text Encoder with dynamic VRAM management and SageAttention 2 acceleration. |
-| **Tier B** | 6 GB | GGUF Q3_K_S DiT + Qwen2.5-VL 3B Text Encoder with sequential CPU offload. |
-| **Tier C** | $\le$ 4 GB / iGPU | Remote LAN execution via external network ComfyUI backend (local UI client mode). |
-
----
-
-## Installation & Setup
-
-### Option A: Omarchy Plugin Manager (Recommended)
 ```bash
+# 1. Install via Omarchy Plugin Manager (recommended — runs install.sh in-place)
 omarchy plugin add https://github.com/simonezpx3/omarchy-qwenimage.git
-```
-*Note: `omarchy plugin add` automatically triggers an in-place execution of `install.sh`.*
 
-### Option B: Standalone / Manual Setup
-```bash
-git clone https://github.com/simonezpx3/omarchy-qwenimage.git
-cd omarchy-qwenimage
-git checkout v1.2.8
-chmod +x install.sh
-./install.sh
-```
+# 2. Or install manually
+git clone https://github.com/simonezpx3/omarchy-qwenimage.git && cd omarchy-qwenimage
+git checkout v1.2.8 && ./install.sh
 
-During installation (both automatic in-place and manual), `install.sh` will:
-1. Profile GPU vendor (NVIDIA, AMD, Intel) and detect available VRAM.
-2. Check for ComfyUI and diffusion models; if missing, offer automated stack installation.
-3. Deploy and verify the native bridge binary `bin/qwen-bridge`.
-4. Deploy the `qis` management CLI into `~/.local/bin/qis`.
-5. Validate plugin schema via `omarchy plugin validate` (when running on Omarchy).
-6. Register the plugin into the bar layout and perform a safe IPC hot-reload.
-
----
-
-## Lifecycle & Updater CLI (`qis`)
-
-Manage the entire local ecosystem using the `qis` command:
-
-```bash
-qis                                     # Interactive management menu (Setup, Update, Models, Rollback)
-qis start [--bg]                        # Start the QIS backend stack (use --bg to run as background scope)
-qis stop                                # Gracefully stop running ComfyUI and release GPU VRAM
-qis status                              # Display dependency health matrix, VRAM reserve, and hardware profile
-qis setup                               # Automated installation of ComfyUI (v0.41.2), custom nodes, and models
-qis update [all|plugin|comfy|models]    # Granular or full update of QIS plugin, ComfyUI core, or models
-qis models                              # List and manage installed diffusion checkpoints, GGUF weights, and LoRAs
-qis rollback                            # Revert ComfyUI to previous working commit state
+# 3. Manage backend, models, and updates via CLI
+qis start --bg                          # Start backend scope
+qis status                              # Health matrix, VRAM reserve & tier
+qis update [all|plugin|comfy|models]    # Granular stack updates
 ```
 
----
+| Tier | VRAM | Profile |
+| :--- | :--- | :--- |
+| **Tier S** | `>= 16 GB` | Full FP8 / BF16 weights |
+| **Tier A** | `8 – 12 GB` | GGUF `Q4_K_M` DiT + Qwen3-VL 8B + `QISVramBudget` |
+| **Tier B** | `6 GB` | GGUF `Q3_K_S` DiT + Qwen2.5-VL 3B + sequential CPU offload |
+| **Tier C** | `<= 4 GB` / iGPU | Remote LAN ComfyUI backend (local UI client mode) |
 
-## Security & Supply-Chain Baseline
+## Security, Controls & Credits
 
-This plugin complies with the Omarchy Marketplace Security Baseline:
-- **Pinned Git Commits:** ComfyUI core (v0.41.2) and all custom nodes are pinned to immutable commit SHAs.
-- **Cryptographic Hash Verification:** All Python packages and sub-dependencies are locked with strict SHA-256 hashes (`pip install --require-hashes`) across CUDA 12.8, ROCm 6.2, and CPU architectures in `locks/`. Precompiled native binaries are verified via `bin/qwen-bridge.sha256`.
-- **Zero Unpinned Execution:** No unhashed or arbitrary code is downloaded during clone, install, or update operations.
-- **Dynamic Hardware VRAM Reserve:** System reserve dynamically governed by `QISVramBudget` (0.5 GB on high-end GPUs to 1.2–1.6 GB on constrained 8 GB GPUs with active LoRAs), protecting Wayland desktop compositors and preventing CUDA allocation spikes.
-- **Bounded Clipboard & POSIX Shared Memory:** Wayland text/URI clipboard intake is capped at 16 KiB with a 1.2s timeout; previews use user-isolated RAM disks (`/dev/shm/qis_preview_${UID}`) with mode `0700` permissions and automatic eviction on service stop.
+<details>
+<summary><strong>Supply-Chain Security, Shortcuts, Uninstall & Upstream Credits</strong></summary>
 
----
+- **Supply-Chain Baseline:** ComfyUI (`v0.41.2`) and custom nodes pinned to commit SHAs; Python deps locked via `pip install --require-hashes` (`locks/`); native binary verified via `bin/qwen-bridge.sha256`.
+- **Key Shortcuts:** `Ctrl + Enter` (Generate) · `Ctrl + V` / `Super + V` (Paste reference) · `Esc` (Close / back to Studio).
+- **Uninstall:** `omarchy plugin remove simonez.qwenimage` or `./uninstall.sh [--purge-settings | --purge-all]`.
+- **Upstream:** ComfyUI, ComfyUI-GGUF, Qwen2.5/3-VL, Viggle Turbo DMD, Quickshell, WD14 Tagger, TAEQI, Real-ESRGAN, 4x-UltraSharp/AnimeSharp, Hyprland.
 
-## Uninstallation
-
-```bash
-# Via Omarchy plugin manager:
-omarchy plugin remove simonez.qwenimage
-
-# Or directly via uninstaller script:
-./uninstall.sh [--purge-settings | --purge-all]
-```
-- `./uninstall.sh` — Removes plugin registration, CLI symlink, and Bar widget while keeping user configurations and models intact.
-- `./uninstall.sh --purge-settings` — Additionally removes user configuration files and state caches.
-- `./uninstall.sh --purge-all` — Complete teardown: removes plugin, settings, local ComfyUI environment, and all downloaded AI models.
-
----
-
-## Acknowledgments & Upstream Credits
-
-QIS builds upon the work of open-source creators and AI researchers whose technologies make local inference possible:
-
-- **[ComfyUI](https://github.com/comfyanonymous/ComfyUI)** by [@comfyanonymous](https://github.com/comfyanonymous) – Node-based execution engine powering the local diffusion pipeline.
-- **[ComfyUI-GGUF](https://github.com/city96/ComfyUI-GGUF)** by [@city96](https://github.com/city96) – GGUF quantization loader enabling DiT models to run within consumer VRAM limits.
-- **[Qwen-Image / Qwen2.5-VL](https://github.com/QwenLM)** by the **Qwen Team (Alibaba Cloud)** – Foundation models for generative image synthesis and visual understanding.
-- **[Viggle AI](https://huggingface.co/Viggle/Qwen-Image-2.1-viggle-turbo)** by [@Viggle](https://viggle.ai/) – 6-step DMD (Distribution Matching Distillation) LoRA architecture and custom scheduler.
-- **[chfm](https://huggingface.co/chfm/Qwen-Image-2.1-Text-Encoder-Heretic-GGUF)** – Qwen3-VL 8B Heretic GGUF text encoder reducing false-positive prompt refusals while maintaining semantic alignment.
-- **[abenzerps](https://huggingface.co/abenzerps/Qwen-Image-2.1-Uncensored-GGUF)** – Uncensored latent LoRA adapter.
-- **[WarmBloodAban](https://huggingface.co/WarmBloodAban/Qwen-Image-2.1-LoRAs)** – Anime consistency LoRA adapter.
-- **[Quickshell](https://github.com/outfoxxed/quickshell)** by [@outfoxxed](https://github.com/outfoxxed) – Reactive QtQuick/Wayland shell environment.
-- **[WD14 Tagger](https://github.com/pythongosssss/ComfyUI-WD14-Tagger)** by [@pythongosssss](https://github.com/pythongosssss) & [@SmilingWolf](https://github.com/SmilingWolf) – Anime and photography tag interrogation models.
-- **[TAEQI / Tiny AutoEncoder](https://github.com/madebyollin/taesd)** by [@madebyollin](https://github.com/madebyollin) – Lightweight latent autoencoder powering real-time step previews.
-- **[Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)** by [@xinntao](https://github.com/xinntao) & **[Comfy-Org](https://huggingface.co/Comfy-Org/Real-ESRGAN_repackaged)** – Super-resolution architecture and repackaged weights.
-- **[4x-UltraSharp & 4x-AnimeSharp](https://huggingface.co/Kim2091)** by [@Kim2091](https://huggingface.co/Kim2091) – Super-resolution checkpoints for micro-contrast and linework restoration.
-- **[Civitai](https://civitai.com/)** – Community platform for prompt engineering and open model sharing.
-- **[Omarchy Linux & Hyprland](https://github.com/hyprwm/Hyprland)** – Wayland tiling desktop ecosystem.
-
----
+</details>
 
 ## License
 
-[MIT License](LICENSE). Developed by simonez & Arci.
-
----
-
-## Disclaimer
-
-QIS is an independent open-source project and is not affiliated with, sponsored, or endorsed by Alibaba Group, Google, or ComfyUI.
+[MIT License](LICENSE)
