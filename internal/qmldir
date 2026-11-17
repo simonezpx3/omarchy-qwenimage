@@ -3,3 +3,4 @@ TelemetryBridge 1.0 TelemetryBridge.qml
 GenerationBridge 1.0 GenerationBridge.qml
 MediaActions 1.0 MediaActions.qml
 DiscoveryBridge 1.0 DiscoveryBridge.qml
+BoundedProcess 1.0 BoundedProcess.qml
