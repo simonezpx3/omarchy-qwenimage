@@ -1,7 +1,7 @@
 # QIS — Qwen Image Studio
 
 [![Omarchy Marketplace](https://img.shields.io/badge/Marketplace-Published%20%26%20Verified-10b981?style=flat-square&logo=checkmarx&logoColor=white)](https://omarchyplugins.com/plugin.html?id=simonez.qwenimage)
-[![Version](https://img.shields.io/badge/version-1.2.8-3b82f6.svg)](https://github.com/simonezpx3/omarchy-qwenimage/releases/tag/v1.2.8)
+[![Version](https://img.shields.io/badge/version-1.3.0-3b82f6.svg)](https://github.com/simonezpx3/omarchy-qwenimage/releases/tag/v1.3.0)
 [![QIS CI](https://github.com/simonezpx3/omarchy-qwenimage/actions/workflows/ci.yml/badge.svg)](https://github.com/simonezpx3/omarchy-qwenimage/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![UI Engine](https://img.shields.io/badge/UI-Quickshell%200.3+-purple.svg)](#architecture)
@@ -51,7 +51,7 @@ omarchy plugin add https://github.com/simonezpx3/omarchy-qwenimage.git
 
 # 2. Or install manually
 git clone https://github.com/simonezpx3/omarchy-qwenimage.git && cd omarchy-qwenimage
-git checkout v1.2.8 && ./install.sh
+git checkout v1.3.0 && ./install.sh
 
 # 3. Manage backend, models, and updates via CLI
 qis start --bg                          # Start backend scope
