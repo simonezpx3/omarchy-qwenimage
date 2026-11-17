@@ -17,11 +17,9 @@
 > [!TIP]
 > **Zero-stutter live previews.** TAEQI 2.1 WebSocket previews stream atomically into `/dev/shm/qis_preview_${UID}/`, and `Panel.qml` unmounts its QML tree when closed (`active: root.opened`) to minimize resident shell memory.
 
-## Interface Tour
+## Interface
 
-| Studio & Canvas | Civitai Explorer | Generation History |
-| :--- | :--- | :--- |
-| ![Studio View](docs/screenshots/qis-studio.png) | ![CivitAI Explorer](docs/screenshots/qis-civitai.png) | ![Generation History](docs/screenshots/qis-history.png) |
+![QIS Studio](docs/screenshots/qis-studio.png)
 
 ## Architecture
 
