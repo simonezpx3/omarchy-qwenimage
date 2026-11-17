@@ -109,8 +109,22 @@ while (( $# > 0 )); do
       ACTION_ARGS=("update" "${1:-all}")
       break
       ;;
+    -h|--help|--h)
+      echo "Usage: ./install.sh <OPTIONS | COMMAND>"
+      echo ""
+      echo "Options:"
+      echo "  --full           Run full stack setup (system deps, ComfyUI, models, plugin)"
+      echo "  --stack          Open interactive stack manager"
+      echo "  --force, -f      Force reinstall"
+      echo "  --no-restart     Skip omarchy-shell restart"
+      echo "  -h, --help       Show this help message"
+      echo ""
+      echo "Commands:"
+      echo "  start | stop | status | rollback | update [all|plugin|comfy|models] | uninstall"
+      exit 0
+      ;;
     *)
-      log_err "Unknown argument: ${1}. Supported options: start, stop, status, rollback, update, uninstall, --full, --stack, --force, --no-restart"
+      log_err "Unknown argument: ${1}. Supported options: start, stop, status, rollback, update, uninstall, --full, --stack, --force, --no-restart, --help"
       exit 1
       ;;
   esac

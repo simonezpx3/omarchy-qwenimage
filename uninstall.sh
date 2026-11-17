@@ -44,8 +44,18 @@ for arg in "$@"; do
     --no-restart)
       NO_RESTART=1
       ;;
+    -h|--help|--h)
+      echo "Usage: ./uninstall.sh <OPTIONS>"
+      echo ""
+      echo "Options:"
+      echo "  --purge-settings  Remove ~/.config/qwenimage and settings"
+      echo "  --purge-all       Remove settings and ComfyUI engine/models"
+      echo "  --no-restart      Skip omarchy-shell restart"
+      echo "  -h, --help        Show this help message"
+      exit 0
+      ;;
     *)
-      log_err "Unknown argument: ${arg}. Allowed options: --purge-settings, --purge-all, --no-restart"
+      log_err "Unknown argument: ${arg}. Allowed options: --purge-settings, --purge-all, --no-restart, --help"
       exit 1
       ;;
   esac

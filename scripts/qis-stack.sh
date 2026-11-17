@@ -11,7 +11,8 @@ if (( EUID == 0 )); then
     exit 1
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+_self_path="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$_self_path")/.." && pwd)"
 COMFY_DIR="${COMFY_DIR:-${HOME}/.local/share/comfyui}"
 if [[ -d "${COMFY_DIR}/.venv" && ! -d "${COMFY_DIR}/venv" ]]; then
     COMFY_VENV="${COMFY_DIR}/.venv"
@@ -345,13 +346,13 @@ install_comfyui() {
         local lock_file=""
         if [[ "$GPU_VENDOR" == "nvidia" ]]; then
             lock_file="${SCRIPT_DIR}/locks/requirements-lock-cu128.txt"
-            log_info "Zvolen lockfile pro NVIDIA CUDA (cu128, hash-verified)."
+            log_info "Selected lockfile for NVIDIA CUDA (cu128, hash-verified)."
         elif [[ "$GPU_VENDOR" == "amd" ]]; then
             lock_file="${SCRIPT_DIR}/locks/requirements-lock-rocm.txt"
-            log_info "Zvolen lockfile pro AMD ROCm (rocm6.2, hash-verified)."
+            log_info "Selected lockfile for AMD ROCm (rocm6.2, hash-verified)."
         else
             lock_file="${SCRIPT_DIR}/locks/requirements-lock-cpu.txt"
-            log_info "Zvolen lockfile pro CPU (hash-verified)."
+            log_info "Selected lockfile for CPU (hash-verified)."
         fi
 
         if [[ ! -f "$lock_file" ]]; then
@@ -425,7 +426,7 @@ install_comfyui() {
 verify_model_magic_bytes() {
     local file_path="$1"
     if [[ ! -f "${file_path}" ]]; then
-        log_err "SECURITY REJECT // Soubor modelu neexistuje: ${file_path}"
+        log_err "SECURITY REJECT // Model file does not exist: ${file_path}"
         return 1
     fi
 
@@ -533,7 +534,7 @@ safe_download_model() {
         fi
     fi
 
-    log_info "Stahuji ${desc} (${file_name})..."
+    log_info "Downloading ${desc} (${file_name})..."
     local tmp_part
     tmp_part="$(mktemp "${target_dir}/${file_name}.part.XXXXXX")"
     chmod 0644 "$tmp_part"
@@ -698,7 +699,7 @@ setup_ollama_models() {
         local models=("qwen2.5-coder:7b")
         for m in "${models[@]}"; do
             if ! ollama list 2>/dev/null | grep -q "${m%:*}"; then
-                log_info "Stahuji model ${m}..."
+                log_info "Pulling model ${m}..."
                 ollama pull "$m" || log_warn "Failed to pull ${m}, attempting to continue."
             fi
         done
@@ -710,7 +711,7 @@ setup_ollama_models() {
 # UPDATER 1: Update QIS Plugin
 # ---------------------------------------------------------
 update_qis_plugin() {
-    log_info "Kontrola a aktualizace QIS Pluginu..."
+    log_info "Checking and updating QIS plugin..."
     local target_dir="${HOME}/.config/omarchy/plugins/simonez.qwenimage"
 
     # Identify source repository
@@ -980,14 +981,14 @@ interactive_menu() {
         echo -e "${BOLD}========================================================================${RESET}"
         echo -e "  ${BOLD}1 ·${RESET} ${BOLD}Full installation${RESET} // Packages, ComfyUI, nodes, models"
         echo -e "  ${BOLD}2 ·${RESET} ${BOLD}Update EVERYTHING${RESET} // QIS plugin, ComfyUI, nodes, models"
-        echo -e "  ${BOLD}3 ·${RESET} Aktualizovat pouze QIS Plugin // UI a Rust bridge"
-        echo -e "  ${BOLD}4 ·${RESET} Aktualizovat pouze ComfyUI Engine a Custom Nody"
+        echo -e "  ${BOLD}3 ·${RESET} Update QIS Plugin only // UI and Rust bridge"
+        echo -e "  ${BOLD}4 ·${RESET} Update ComfyUI Engine and Custom Nodes only"
         echo -e "  ${BOLD}5 ·${RESET} Download / Verify AI Models // HuggingFace"
         echo -e "  ${BOLD}6 ·${RESET} Show status and dependency matrix"
         echo -e "  ${BOLD}7 ·${RESET} Emergency ComfyUI Rollback // Restore working checkpoint"
         echo -e "  ${BOLD}0 ·${RESET} Exit\n"
 
-        read -rp "Zadejte volbu (0-7): " choice
+        read -rp "Enter choice (0-7): " choice
         case "$choice" in
             1)
                 install_system_deps
@@ -1170,11 +1171,33 @@ stop_comfyui() {
     fi
 }
 
+show_help() {
+    echo "QIS (Qwen Image Studio) — Stack & Lifecycle CLI"
+    echo ""
+    echo "Usage: qis <COMMAND>"
+    echo ""
+    echo "Commands:"
+    echo "  status                       Show ecosystem health matrix, VRAM tier & models"
+    echo "  start <--bg>                 Start ComfyUI backend (foreground or --bg)"
+    echo "  stop                         Stop ComfyUI backend and clean /dev/shm previews"
+    echo "  setup | install | --full     Full stack setup (deps, ComfyUI, models, plugin)"
+    echo "  update <all|plugin|comfy|models>"
+    echo "                               Update QIS components (default: all)"
+    echo "  models                       Download / verify AI models"
+    echo "  rollback                     Roll back ComfyUI to last working checkpoint"
+    echo "  help | -h | --help           Show this help message"
+    echo ""
+    echo "Run without arguments to open the interactive menu."
+}
+
 # ---------------------------------------------------------
 # CLI Router
 # ---------------------------------------------------------
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     case "${1:-}" in
+        help|-h|--help|--h)
+            show_help
+            ;;
         status)
             check_status
             ;;
@@ -1216,8 +1239,12 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
         models)
             download_models
             ;;
-        *)
+        "")
             interactive_menu
+            ;;
+        *)
+            log_err "Unknown command: ${1}. Run 'qis --help' for usage."
+            exit 1
             ;;
     esac
 fi
