@@ -7,7 +7,7 @@
 set -euo pipefail
 
 if (( EUID == 0 )); then
-    echo -e "\033[0;31m· ERR //\033[0m Spuštění pod účtem root (EUID 0) je zakázáno. Spusťte skript jako běžný uživatel." >&2
+    echo -e "\033[0;31m· ERR //\033[0m Running as root (EUID 0) is forbidden. Run this script as a regular user." >&2
     exit 1
 fi
 
@@ -159,43 +159,43 @@ check_status() {
 
     echo -e "${BOLD}Hardware Profile:${RESET}"
     echo -e "  GPU: ${GREEN}${GPU_NAME}${RESET} (${VRAM_MB} MB VRAM)"
-    echo -e "  Alokace: ${CYAN}${TIER_DESC}${RESET}\n"
+    echo -e "  Allocation: ${CYAN}${TIER_DESC}${RESET}\n"
 
     echo -e "${BOLD}Core Applications:${RESET}"
     if command -v quickshell >/dev/null 2>&1; then
         QS_VER=$(quickshell --version 2>/dev/null | awk '{print $2}' || echo "installed")
-        echo -e "  [✔] Quickshell: ${GREEN}${QS_VER}${RESET}"
+        echo -e "  OK // Quickshell: ${GREEN}${QS_VER}${RESET}"
     else
-        echo -e "  [✖] Quickshell: ${RED}Nenalezeno${RESET}"
+        echo -e "  ERR // Quickshell: ${RED}Not found${RESET}"
     fi
 
     if command -v hyprctl >/dev/null 2>&1; then
         HYPR_VER=$(hyprctl version 2>/dev/null | awk '{print $2}' | head -n 1 || echo "installed")
-        echo -e "  [✔] Hyprland: ${GREEN}${HYPR_VER}${RESET}"
+        echo -e "  OK // Hyprland: ${GREEN}${HYPR_VER}${RESET}"
     else
-        echo -e "  [✖] Hyprland: ${RED}Nenalezeno${RESET}"
+        echo -e "  ERR // Hyprland: ${RED}Not found${RESET}"
     fi
 
     if command -v ollama >/dev/null 2>&1; then
         OLLAMA_VER=$(ollama --version 2>/dev/null | awk '{print $NF}' || echo "installed")
-        echo -e "  [✔] Ollama: ${GREEN}${OLLAMA_VER}${RESET}"
+        echo -e "  OK // Ollama: ${GREEN}${OLLAMA_VER}${RESET}"
     else
-        echo -e "  [✖] Ollama: ${RED}Nenalezeno${RESET}"
+        echo -e "  ERR // Ollama: ${RED}Not found${RESET}"
     fi
 
     echo -e "\n${BOLD}ComfyUI Diffusion Backend:${RESET}"
     if [[ -d "${COMFY_DIR}" && -f "${COMFY_DIR}/main.py" ]]; then
-        echo -e "  [✔] ComfyUI Engine: ${GREEN}${COMFY_DIR}${RESET}"
+        echo -e "  OK // ComfyUI Engine: ${GREEN}${COMFY_DIR}${RESET}"
     else
-        echo -e "  [✖] ComfyUI Engine: ${RED}Nenalezeno (${COMFY_DIR})${RESET}"
+        echo -e "  ERR // ComfyUI Engine: ${RED}Nenalezeno (${COMFY_DIR})${RESET}"
     fi
 
     local nodes=("ComfyUI-GGUF" "ComfyUI-GGUF-Qwen3VL-TE" "ComfyUI-WD14-Tagger" "ComfyUI-Autocomplete-Plus" "ComfyUI-ViggleTurbo")
     for node in "${nodes[@]}"; do
         if [[ -d "${COMFY_DIR}/custom_nodes/${node}" ]]; then
-            echo -e "  [✔] Node: ${node}: ${GREEN}Aktivní${RESET}"
+            echo -e "  OK // Node: ${node}: ${GREEN}Active${RESET}"
         else
-            echo -e "  [✖] Node: ${node}: ${RED}Chybí${RESET}"
+            echo -e "  ERR // Node: ${node}: ${RED}Missing${RESET}"
         fi
     done
 
@@ -207,21 +207,21 @@ check_status() {
     if [[ -f "$dit_model" ]]; then
         local sz
         sz=$(du -h "$dit_model" | awk '{print $1}')
-        echo -e "  [✔] DiT Model: ${GREEN}qwen_image_2.1_Q4_K_M.gguf (${sz})${RESET}"
+        echo -e "  OK // DiT Model: ${GREEN}qwen_image_2.1_Q4_K_M.gguf (${sz})${RESET}"
     else
-        echo -e "  [✖] DiT Model: ${RED}Chybí (${dit_model})${RESET}"
+        echo -e "  ERR // DiT Model: ${RED}Missing (${dit_model})${RESET}"
     fi
 
     if [[ -f "$te_model" || -L "$te_model" ]]; then
-        echo -e "  [✔] Text Encoder: ${GREEN}qwen3vl_8b_heretic-Q4_K_M.gguf${RESET}"
+        echo -e "  OK // Text Encoder: ${GREEN}qwen3vl_8b_heretic-Q4_K_M.gguf${RESET}"
     else
-        echo -e "  [✖] Text Encoder: ${RED}Chybí (${te_model})${RESET}"
+        echo -e "  ERR // Text Encoder: ${RED}Missing (${te_model})${RESET}"
     fi
 
     if [[ -f "$vae_model" ]]; then
-        echo -e "  [✔] VAE: ${GREEN}qwen_image_2.1_vae_bf16.safetensors${RESET}"
+        echo -e "  OK // VAE: ${GREEN}qwen_image_2.1_vae_bf16.safetensors${RESET}"
     else
-        echo -e "  [✖] VAE: ${RED}Chybí (${vae_model})${RESET}"
+        echo -e "  ERR // VAE: ${RED}Missing (${vae_model})${RESET}"
     fi
 
     echo -e "\n${BOLD}LoRA Adapters & Acceleration:${RESET}"
@@ -233,25 +233,25 @@ check_status() {
     if [[ -f "$turbo_lora" || -L "$turbo_lora" ]]; then
         local sz_turbo
         sz_turbo=$(du -hL "$turbo_lora" | awk '{print $1}')
-        echo -e "  [✔] Viggle Turbo (DMD 6-Step): ${GREEN}qwen-image-2.1-viggle-turbo.safetensors (${sz_turbo})${RESET}"
+        echo -e "  OK // Viggle Turbo (DMD 6-Step): ${GREEN}qwen-image-2.1-viggle-turbo.safetensors (${sz_turbo})${RESET}"
     else
-        echo -e "  [✖] Viggle Turbo (DMD 6-Step): ${RED}Chybí (${turbo_lora})${RESET}"
+        echo -e "  ERR // Viggle Turbo (DMD 6-Step): ${RED}Missing (${turbo_lora})${RESET}"
     fi
 
     if [[ -f "$uncensored_lora" ]]; then
         local sz_uncensored
         sz_uncensored=$(du -h "$uncensored_lora" | awk '{print $1}')
-        echo -e "  [✔] Heretic Uncensored: ${GREEN}qwen-image-2.1-uncensored-lora.safetensors (${sz_uncensored})${RESET}"
+        echo -e "  OK // Heretic Uncensored: ${GREEN}qwen-image-2.1-uncensored-lora.safetensors (${sz_uncensored})${RESET}"
     else
-        echo -e "  [✖] Heretic Uncensored: ${RED}Chybí (${uncensored_lora})${RESET}"
+        echo -e "  ERR // Heretic Uncensored: ${RED}Missing (${uncensored_lora})${RESET}"
     fi
 
     if [[ -f "$anime_lora" ]]; then
         local sz_anime
         sz_anime=$(du -h "$anime_lora" | awk '{print $1}')
-        echo -e "  [✔] Anime Consistency: ${GREEN}qwen-image-2.1-anime-lora.safetensors (${sz_anime})${RESET}"
+        echo -e "  OK // Anime Consistency: ${GREEN}qwen-image-2.1-anime-lora.safetensors (${sz_anime})${RESET}"
     else
-        echo -e "  [✖] Anime Consistency: ${RED}Chybí (${anime_lora})${RESET}"
+        echo -e "  ERR // Anime Consistency: ${RED}Missing (${anime_lora})${RESET}"
     fi
 
     if [[ -f "$anatomy_lora" ]]; then
@@ -259,7 +259,7 @@ check_status() {
         sz_anatomy=$(du -h "$anatomy_lora" | awk '{print $1}')
         echo -e "  OK // Anatomy Fidelity: ${GREEN}Genitalia-Anatomy-2.1-v1.safetensors (${sz_anatomy})${RESET}"
     else
-        echo -e "  ERR // Anatomy Fidelity: ${RED}Chybí (${anatomy_lora})${RESET}"
+        echo -e "  ERR // Anatomy Fidelity: ${RED}Missing (${anatomy_lora})${RESET}"
     fi
 
     echo -e "\n${BOLD}Neural AI Upscalers (4X Super-Resolution):${RESET}"
@@ -272,7 +272,7 @@ check_status() {
         sz_esrgan=$(du -h "$esrgan_model" | awk '{print $1}')
         echo -e "  · OK · 4X ESRGAN (Denoise): ${GREEN}RealESRGAN_x4plus.safetensors (${sz_esrgan})${RESET}"
     else
-        echo -e "  · ERR · 4X ESRGAN (Denoise): ${RED}Chybí (${esrgan_model})${RESET}"
+        echo -e "  · ERR · 4X ESRGAN (Denoise): ${RED}Missing (${esrgan_model})${RESET}"
     fi
 
     if [[ -f "$ultrasharp_model" ]]; then
@@ -280,7 +280,7 @@ check_status() {
         sz_ultra=$(du -h "$ultrasharp_model" | awk '{print $1}')
         echo -e "  · OK · 4X ULTRA (Textures): ${GREEN}4x-UltraSharp.safetensors (${sz_ultra})${RESET}"
     else
-        echo -e "  · ERR · 4X ULTRA (Textures): ${RED}Chybí (${ultrasharp_model})${RESET}"
+        echo -e "  · ERR · 4X ULTRA (Textures): ${RED}Missing (${ultrasharp_model})${RESET}"
     fi
 
     if [[ -f "$animesharp_model" ]]; then
@@ -288,7 +288,7 @@ check_status() {
         sz_anime_up=$(du -h "$animesharp_model" | awk '{print $1}')
         echo -e "  · OK · 4X ANIME (Contours): ${GREEN}4x-AnimeSharp.safetensors (${sz_anime_up})${RESET}"
     else
-        echo -e "  · ERR · 4X ANIME (Contours): ${RED}Chybí (${animesharp_model})${RESET}"
+        echo -e "  · ERR · 4X ANIME (Contours): ${RED}Missing (${animesharp_model})${RESET}"
     fi
 }
 
@@ -296,7 +296,7 @@ check_status() {
 # Step 1: Install System Dependencies (Strictly Official Arch - NO AUR)
 # ---------------------------------------------------------
 install_system_deps() {
-    log_info "Instaluji základní systémové závislosti (oficiální Arch repozitáře)..."
+    log_info "Installing core system dependencies (official Arch repositories)..."
     local pkgs=("curl" "jq" "imagemagick" "rsync" "git" "python" "python-pip")
     local needed=()
     for pkg in "${pkgs[@]}"; do
@@ -306,11 +306,11 @@ install_system_deps() {
     done
 
     if (( ${#needed[@]} > 0 )); then
-        echo "Vyžadována instalace balíčků: ${needed[*]}"
+        echo "Packages required for installation: ${needed[*]}"
         sudo pacman -S --needed --noconfirm "${needed[@]}"
-        log_ok "Systémové balíčky úspěšně nainstalovány."
+        log_ok "System packages installed successfully."
     else
-        log_ok "Všechny systémové balíčky jsou již přítomny."
+        log_ok "All system packages are already present."
     fi
 }
 
@@ -318,11 +318,11 @@ install_system_deps() {
 # Step 2: Install / Setup ComfyUI & Custom Nodes
 # ---------------------------------------------------------
 install_comfyui() {
-    log_info "Příprava ComfyUI v ${COMFY_DIR}..."
+    log_info "Preparing ComfyUI in ${COMFY_DIR}..."
     mkdir -p "${COMFY_DIR}" "${COMFY_DIR}/models/diffusion_models" "${COMFY_DIR}/models/text_encoders" "${COMFY_DIR}/models/vae" "${COMFY_DIR}/models/loras" "${COMFY_DIR}/custom_nodes"
 
     if [[ ! -f "${COMFY_DIR}/main.py" ]]; then
-        log_info "Klonuji oficiální ComfyUI repozitář na prověřený commit ${COMFY_PINNED_COMMIT:0:7}..."
+        log_info "Cloning official ComfyUI repository at pinned commit ${COMFY_PINNED_COMMIT:0:7}..."
         git clone --no-checkout https://github.com/comfyanonymous/ComfyUI.git "${COMFY_DIR}" && \
             git -C "${COMFY_DIR}" checkout --detach b53f77a74e21091cbdebfdf7b85fc80326932646
     else
@@ -332,13 +332,13 @@ install_comfyui() {
     local actual_comfy
     actual_comfy=$(git -C "${COMFY_DIR}" rev-parse HEAD 2>/dev/null || echo "")
     if [[ "${actual_comfy}" != "${COMFY_PINNED_COMMIT}" ]]; then
-        log_err "Chyba ověření integrity ComfyUI! Očekáván commit ${COMFY_PINNED_COMMIT}, ale nalezen ${actual_comfy}."
+        log_err "ComfyUI integrity check failed! Expected commit ${COMFY_PINNED_COMMIT}, found ${actual_comfy}."
         return 1
     fi
-    log_ok "ComfyUI jádro ověřeno na prověřeném commitu (${actual_comfy:0:7})."
+    log_ok "ComfyUI core verified at pinned commit (${actual_comfy:0:7})."
 
     if [[ ! -d "${COMFY_VENV}" ]]; then
-        log_info "Vytvářím izolované virtuální prostředí Pythonu (${COMFY_VENV})..."
+        log_info "Creating isolated Python virtual environment (${COMFY_VENV})..."
         python3 -m venv "${COMFY_VENV}"
         
         detect_hardware
@@ -355,17 +355,17 @@ install_comfyui() {
         fi
 
         if [[ ! -f "$lock_file" ]]; then
-            log_err "Nenalezen lockfile závislostí: ${lock_file}"
+            log_err "Dependency lockfile not found: ${lock_file}"
             return 1
         fi
 
-        log_info "Instaluji deterministické závislosti s kontrolou SHA-256 hashů (pip install --require-hashes)..."
+        log_info "Installing deterministic dependencies with SHA-256 verification (pip install --require-hashes)..."
         if ! "${COMFY_VENV}/bin/pip" install --require-hashes -r "$lock_file"; then
-            log_err "Kritická chyba ověření integrity: SHA-256 hash stahovaného balíčku neodpovídá lockfile v locks/!"
-            log_err "Instalace byla z bezpečnostních důvodů přerušena, aby se zabránilo spuštění nepovoleného kódu."
+            log_err "Critical integrity error: downloaded package SHA-256 hash does not match lockfile in locks/!"
+            log_err "Installation aborted for security reasons to prevent running unverified code."
             return 1
         fi
-        log_ok "Všechny Python závislosti byly úspěšně ověřeny a nainstalovány z immutable hash lockfile."
+        log_ok "All Python dependencies verified and installed from immutable hash lockfile."
     fi
 
     # Clone required custom nodes (pinned to verified immutable commit hashes)
@@ -380,10 +380,10 @@ install_comfyui() {
         IFS="|" read -r node_name node_url node_commit <<< "$item"
         local target_node="${COMFY_DIR}/custom_nodes/${node_name}"
         if [[ ! -d "$target_node" ]]; then
-            log_info "Klonuji uzel ${node_name} na prověřený commit ${node_commit:0:7}..."
+            log_info "Cloning node ${node_name} at pinned commit ${node_commit:0:7}..."
             git clone --no-checkout "$node_url" "$target_node" && \
                 git -C "$target_node" checkout --detach "$node_commit"
-            log_ok "Závislosti uzlu ${node_name} jsou zaručeny v hash-verified lockfile."
+            log_ok "Dependencies for node ${node_name} are covered by the hash-verified lockfile."
         else
             git -C "$target_node" checkout --detach "$node_commit" 2>/dev/null || true
         fi
@@ -391,10 +391,10 @@ install_comfyui() {
         local actual_node_commit
         actual_node_commit=$(git -C "$target_node" rev-parse HEAD 2>/dev/null || echo "")
         if [[ "${actual_node_commit}" != "${node_commit}" ]]; then
-            log_err "Chyba ověření integrity uzlu ${node_name}! Očekáván ${node_commit}, nalezen ${actual_node_commit}."
+            log_err "Integrity check failed for node ${node_name}! Expected ${node_commit}, found ${actual_node_commit}."
             return 1
         fi
-        log_ok "Uzel ${node_name} ověřen na prověřeném commitu (${node_commit:0:7})."
+        log_ok "Node ${node_name} verified at pinned commit (${node_commit:0:7})."
     done
 
     # Setup ComfyUI-ViggleTurbo custom node (runtime LoRA & DMD 6-step scheduler)
@@ -404,18 +404,18 @@ install_comfyui() {
     local local_viggle="${SCRIPT_DIR}/custom_nodes/ComfyUI-ViggleTurbo/__init__.py"
 
     if [[ -f "${local_viggle}" ]]; then
-        log_info "Instaluji ComfyUI-ViggleTurbo z lokálního repozitáře..."
+        log_info "Installing ComfyUI-ViggleTurbo from local repository..."
         cp -f "${local_viggle}" "${viggle_init}"
         chmod 0644 "${viggle_init}"
-        log_ok "ComfyUI-ViggleTurbo úspěšně integrován z lokálního balíčku."
+        log_ok "ComfyUI-ViggleTurbo integrated from local package."
     else
-        log_info "Stahuji ComfyUI-ViggleTurbo z Hugging Face na prověřený commit ${HF_VIGGLE_COMMIT:0:7}..."
+        log_info "Fetching ComfyUI-ViggleTurbo from Hugging Face at pinned commit ${HF_VIGGLE_COMMIT:0:7}..."
         safe_download_model "${viggle_dir}" "__init__.py" \
             "https://huggingface.co/Viggle/Qwen-Image-2.1-viggle-turbo/resolve/${HF_VIGGLE_COMMIT}/comfyui/viggle_turbo.py" \
             "ComfyUI-ViggleTurbo Node" "${HF_VIGGLE_NODE_SHA256}"
     fi
 
-    log_ok "ComfyUI a custom nody jsou připraveny na schválených commitech."
+    log_ok "ComfyUI and custom nodes are ready at approved commits."
 }
 
 # ---------------------------------------------------------
@@ -429,37 +429,37 @@ verify_model_magic_bytes() {
         return 1
     fi
 
-    # Přečtení prvních 16 bajtů v hex formátu
+    # Read first 16 bytes in hex format
     local hex_header
     hex_header=$(od -N 16 -t x1 -An "${file_path}" 2>/dev/null | tr -d ' \n' | awk '{print tolower($0)}')
 
-    # 1. Okamžitá blokace Python Pickle (protokoly 2, 3, 4, 5: 0x80 0x02..0x05)
+    # 1. Immediately block Python Pickle (protocols 2, 3, 4, 5: 0x80 0x02..0x05)
     if [[ "${hex_header}" =~ ^800[2-5] ]]; then
-        log_err "SECURITY CRITICAL // Odmítnut nebezpečný Python Pickle soubor (RCE vektor)!"
+        log_err "SECURITY CRITICAL // Rejected unsafe Python Pickle file (RCE vector)!"
         return 1
     fi
 
     # 2. Blokace ZIP / PyTorch .bin archivu (PK\x03\x04 = 504b0304)
     if [[ "${hex_header}" =~ ^504b0304 ]]; then
-        log_err "SECURITY CRITICAL // Odmítnut komprimovaný ZIP/PyTorch archiv maskovaný jako model!"
+        log_err "SECURITY CRITICAL // Rejected compressed ZIP/PyTorch archive disguised as a model!"
         return 1
     fi
 
     # 3. Validace GGUF (0x47 0x47 0x55 0x46 = "GGUF")
     if [[ "${hex_header}" =~ ^47475546 ]]; then
-        log_ok "Magic Bytes // Identifikován platný datový formát GGUF."
+        log_ok "Magic Bytes // Valid GGUF tensor format identified."
         return 0
     fi
 
-    # 4. Validace Safetensors (8-bajtová uint64 délka následovaná bajtem 0x7B '{')
+    # 4. Validate Safetensors (8-byte uint64 header length followed by 0x7B '{')
     local ninth_byte
     ninth_byte=$(od -j 8 -N 1 -t x1 -An "${file_path}" 2>/dev/null | tr -d ' \n' | awk '{print tolower($0)}')
     if [[ "${ninth_byte}" == "7b" ]]; then
-        log_ok "Magic Bytes // Identifikován platný datový formát Safetensors (JSON hlavička '{' potvrzena)."
+        log_ok "Magic Bytes // Valid Safetensors format identified (JSON header '{' confirmed)."
         return 0
     fi
 
-    log_err "SECURITY REJECT // Neznámý nebo nepovolený binární formát souboru. Povoleny jsou výhradně GGUF a Safetensors."
+    log_err "SECURITY REJECT // Unknown or disallowed binary format. Only GGUF and Safetensors are permitted."
     return 1
 }
 
@@ -473,31 +473,31 @@ safe_download_model() {
     local p2p_source="${6:-}"
 
     # Strict Anti-Pickle Rule (AGENTS.md Security Policy):
-    # Pro modely jsou povoleny výhradně datové tenzorové kontejnery GGUF a safetensors.
-    # Spustitelné Python pickle formáty (.bin, .pt, .pth, .ckpt) jsou přísně zakázány.
+    # Only pure tensor containers (GGUF and safetensors) are allowed for models.
+    # Executable Python pickle formats (.bin, .pt, .pth, .ckpt) are strictly forbidden.
     if [[ "$file_name" != "__init__.py" ]]; then
         case "$file_name" in
             *.gguf|*.safetensors)
                 ;;
             *.bin|*.pt|*.pth|*.ckpt)
-                log_err "SECURITY POLICY VIOLATION // Detekován zakázaný spustitelný pickle formát: ${file_name}"
-                log_err "Povoleny jsou výhradně bezpečné datové kontejnery GGUF a safetensors."
+                log_err "SECURITY POLICY VIOLATION // Forbidden executable pickle format detected: ${file_name}"
+                log_err "Only safe tensor containers (GGUF and safetensors) are permitted."
                 return 1
                 ;;
             *)
-                log_err "SECURITY WARNING // Nepovolený formát váhy modelu: ${file_name}"
+                log_err "SECURITY WARNING // Disallowed model weight format: ${file_name}"
                 return 1
                 ;;
         esac
     fi
 
     if [[ -L "$target_dir" ]]; then
-        log_err "Cílový adresář modelů je symlink: $target_dir"
+        log_err "Target models directory is a symlink: $target_dir"
         return 1
     fi
     mkdir -p "$target_dir"
     if [[ ! -O "$target_dir" ]]; then
-        log_err "Cílový adresář modelů není ve vlastnictví uživatele: $target_dir"
+        log_err "Target models directory is not owned by the current user: $target_dir"
         return 1
     fi
 
@@ -506,14 +506,14 @@ safe_download_model() {
     if [[ -L "$target_path" ]]; then
         real_target="$(realpath -q "$target_path" || true)"
         if [[ -z "$real_target" || ! -f "$real_target" ]]; then
-            log_err "Cílová cesta modelu je neplatný symlink: $target_path. Odmítám stahování."
+            log_err "Target model path is an invalid symlink: $target_path. Aborting download."
             return 1
         fi
         if [[ ! -O "$real_target" ]]; then
-            log_err "Cíl symlinku není ve vlastnictví uživatele: $real_target"
+            log_err "Symlink target is not owned by the current user: $real_target"
             return 1
         fi
-        log_info "Cílový model je existující symlink odkazující na: $real_target"
+        log_info "Target model is an existing symlink pointing to: $real_target"
     fi
 
     if [[ -f "$real_target" ]]; then
@@ -521,14 +521,14 @@ safe_download_model() {
             local curr_sha
             curr_sha="$(sha256sum "$real_target" | awk '{print $1}')"
             if [[ "$curr_sha" == "$expected_sha256" ]]; then
-                log_ok "${desc} (${file_name}) je již stažen a ověřen (SHA-256 OK)."
+                log_ok "${desc} (${file_name}) is already downloaded and verified (SHA-256 OK)."
                 return 0
             else
-                log_err "Cílový model ${real_target} již existuje, ale má odlišný kontrolní součet. Odmítám smazat nebo přepsat existující soubor uživatele."
+                log_err "Target model ${real_target} already exists with a different checksum. Refusing to overwrite existing user file."
                 return 1
             fi
         else
-            log_ok "${desc} (${file_name}) je již stažen."
+            log_ok "${desc} (${file_name}) is already downloaded."
             return 0
         fi
     fi
@@ -540,13 +540,13 @@ safe_download_model() {
 
     local download_success=0
 
-    # 1. Prioritní stažení: Oficiální HTTPS (curl s resume -C -)
+    # 1. Primary download: Official HTTPS (curl with resume -C -)
     if curl -L --fail -C - --progress-bar -o "$tmp_part" "$url"; then
         download_success=1
     elif [[ -n "$p2p_source" ]]; then
-        # 2. P2P Fallback (Pirate Face BitTorrent / WebSeed přes aria2c s povinným šifrováním)
+        # 2. P2P Fallback (BitTorrent / WebSeed via aria2c with mandatory encryption)
         if command -v aria2c >/dev/null 2>&1; then
-            log_warn "Primární HTTPS selhalo. Spouštím P2P Fallback přes aria2c (--bt-require-crypto=true)..."
+            log_warn "Primary HTTPS failed. Starting P2P fallback via aria2c (--bt-require-crypto=true)..."
             if aria2c --bt-require-crypto=true \
                       --summary-interval=5 \
                       --max-connection-per-server=4 \
@@ -557,52 +557,52 @@ safe_download_model() {
                 download_success=1
             fi
         else
-            log_warn "HTTPS selhalo a aria2c není k dispozici pro P2P fallback."
+            log_warn "HTTPS failed and aria2c is unavailable for P2P fallback."
         fi
     fi
 
     if (( download_success == 1 )); then
-        # Kryptografická SHA-256 verifikace (Strict Ingestion Guard)
+        # Cryptographic SHA-256 verification (Strict Ingestion Guard)
         if [[ -n "$expected_sha256" ]]; then
             local downloaded_sha
             downloaded_sha="$(sha256sum "$tmp_part" | awk '{print $1}')"
             if [[ "$downloaded_sha" != "$expected_sha256" ]]; then
-                log_err "Kritická chyba integrity: Kontrolní součet ${desc} neodpovídá prověřenému otisku!"
-                log_err "Očekáván SHA-256: ${expected_sha256}"
-                log_err "Zjištěn SHA-256:  ${downloaded_sha}"
+                log_err "Critical integrity error: checksum for ${desc} does not match expected digest!"
+                log_err "Expected SHA-256: ${expected_sha256}"
+                log_err "Actual SHA-256:   ${downloaded_sha}"
                 rm -f "$tmp_part"
                 return 1
             fi
-            log_ok "Kryptografický otisk ${desc} ověřen (SHA-256 OK)."
+            log_ok "Cryptographic digest for ${desc} verified (SHA-256 OK)."
         fi
 
-        # Nízkoúrovňová binární kontrola magických bajtů (Magic Bytes Security Guard)
+        # Low-level binary magic bytes check (Magic Bytes Security Guard)
         if [[ "$file_name" != "__init__.py" ]]; then
             if ! verify_model_magic_bytes "$tmp_part"; then
-                log_err "SECURITY REJECT // Binární hlavička souboru neprošla bezpečnostní validací!"
+                log_err "SECURITY REJECT // Binary file header failed security validation!"
                 rm -f "$tmp_part"
                 return 1
             fi
         fi
 
-        # Povinná AI inspekce payloadu (Google Magika Anomaly Detection):
-        # Detekce skrytých spustitelných polyglotů před přesunem do ostrých složek
+        # Mandatory AI payload inspection (Google Magika Anomaly Detection):
+        # Detect hidden executable polyglots before moving into production directories
         if command -v magika >/dev/null 2>&1 && [[ "$file_name" != "__init__.py" ]]; then
             local magika_type
             magika_type=$(magika --json "$tmp_part" 2>/dev/null | grep -o '"label": *"[^"]*"' | head -n1 | cut -d'"' -f4 || echo "unknown")
             if [[ "$magika_type" =~ elf|pebin|mach-o|python|sh|bash|powershell|jar ]]; then
-                log_err "SECURITY ALERT // Google Magika AI detekovala spustitelný payload maskovaný v modelu: ${magika_type}"
+                log_err "SECURITY ALERT // Google Magika AI detected an executable payload disguised as a model: ${magika_type}"
                 rm -f "$tmp_part"
                 return 1
             fi
-            log_ok "Google Magika AI inspekce: ${magika_type} (žádné polyglotní anomálie)."
+            log_ok "Google Magika AI inspection: ${magika_type} (no polyglot anomalies)."
         fi
 
         mv -f "$tmp_part" "$target_path"
         chmod 0644 "$target_path"
-        log_ok "${desc} úspěšně stažen a integrován."
+        log_ok "${desc} downloaded and integrated successfully."
     else
-        log_err "Chyba při stahování ${desc}!"
+        log_err "Error downloading ${desc}!"
         rm -f "$tmp_part"
         return 1
     fi
@@ -610,7 +610,7 @@ safe_download_model() {
 
 download_models() {
     detect_hardware
-    log_info "Kontrola a stahování optimalizovaných modelů pro profil ${HW_TIER}..."
+    log_info "Checking and downloading optimized models for profile ${HW_TIER}..."
 
     local diff_dir="${COMFY_DIR}/models/diffusion_models"
     local te_dir="${COMFY_DIR}/models/text_encoders"
@@ -689,9 +689,9 @@ EOF
 # ---------------------------------------------------------
 setup_ollama_models() {
     if command -v ollama >/dev/null 2>&1; then
-        log_info "Kontrola lokálních modelů Ollama pro překlad CZ➔EN a optimalizaci promptů..."
+        log_info "Checking local Ollama models for translation and prompt optimization..."
         if ! curl -s http://127.0.0.1:11434/api/version >/dev/null 2>&1; then
-            log_warn "Ollama server právě neběží na portu 11434. Modely zkontroluji při spuštění."
+            log_warn "Ollama server is not running on port 11434. Models will be checked on startup."
             return 0
         fi
 
@@ -699,10 +699,10 @@ setup_ollama_models() {
         for m in "${models[@]}"; do
             if ! ollama list 2>/dev/null | grep -q "${m%:*}"; then
                 log_info "Stahuji model ${m}..."
-                ollama pull "$m" || log_warn "Nepodařilo se stáhnout ${m}, zkusím pokračovat."
+                ollama pull "$m" || log_warn "Failed to pull ${m}, attempting to continue."
             fi
         done
-        log_ok "Ollama modely ověřeny."
+        log_ok "Ollama models verified."
     fi
 }
 
@@ -726,20 +726,20 @@ update_qis_plugin() {
     if [[ -L "${target_dir}" ]]; then
         if [[ "${norm_src}" == "${norm_target}" && -O "${target_dir}" ]]; then
             is_dev_symlink=1
-            log_info "Dev symlink režim (${target_dir} -> ${src_dir})."
+            log_info "Dev symlink mode (${target_dir} -> ${src_dir})."
         else
-            log_err "Cílový adresář pluginu je cizí symlink: ${target_dir}. Aktualizace zrušena."
+            log_err "Target plugin directory is an unrecognized symlink: ${target_dir}. Update aborted."
             return 1
         fi
     fi
 
     # In developer workspace, sync directly to user config (unless dev symlink already points to src_dir)
     if (( is_dev_symlink == 0 )) && [[ -d "${src_dir}" && "${norm_src}" != "${norm_target}" && -d "${target_dir}" ]]; then
-        log_info "Synchronizuji lokální repozitář (${src_dir}) do cíle (${target_dir})..."
+        log_info "Syncing local repository (${src_dir}) to target (${target_dir})..."
         rsync -a --exclude='.git/' --exclude='target/' --exclude='*.tmp*' --exclude='bin/' \
             "${src_dir}/" "${target_dir}/"
     elif (( is_dev_symlink == 0 )) && command -v omarchy >/dev/null 2>&1 && omarchy plugin list --json 2>/dev/null | grep -q "simonez.qwenimage"; then
-        log_info "Aktualizuji plugin přes oficiální správce Omarchy..."
+        log_info "Updating plugin via official Omarchy manager..."
         omarchy plugin update simonez.qwenimage --yes 2>/dev/null || true
     fi
 
@@ -753,24 +753,24 @@ update_qis_plugin() {
 
         # Verify target plugin directory
         if (( is_dev_symlink == 0 )) && [[ -L "${build_dir}" ]]; then
-            log_err "Cílový adresář pluginu je symlink: ${build_dir}. Aktualizace zrušena."
+            log_err "Target plugin directory is a symlink: ${build_dir}. Update aborted."
             return 1
         fi
         if [[ -e "${build_dir}" ]]; then
             if [[ ! -d "${build_dir}" || ! -O "${build_dir}" ]]; then
-                log_err "Cílový adresář pluginu není ve vlastnictví uživatele: ${build_dir}"
+                log_err "Target plugin directory is not owned by the current user: ${build_dir}"
                 return 1
             fi
         fi
 
         # Verify target bin directory
         if [[ -L "${target_bin_dir}" ]]; then
-            log_err "Adresář bin/ v pluginu je symlink: ${target_bin_dir}. Aktualizace zrušena."
+            log_err "Plugin bin/ directory is a symlink: ${target_bin_dir}. Update aborted."
             return 1
         fi
         if [[ -e "${target_bin_dir}" ]]; then
             if [[ ! -d "${target_bin_dir}" || ! -O "${target_bin_dir}" ]]; then
-                log_err "Adresář bin/ v pluginu není ve vlastnictví uživatele: ${target_bin_dir}"
+                log_err "Plugin bin/ directory is not owned by the current user: ${target_bin_dir}"
                 return 1
             fi
         else
@@ -779,7 +779,7 @@ update_qis_plugin() {
 
         # Verify target binary
         if [[ -L "${target_bin}" ]]; then
-            log_err "Cílová binárka je symlink: ${target_bin}. Aktualizace zrušena."
+            log_err "Target binary is a symlink: ${target_bin}. Update aborted."
             return 1
         fi
 
@@ -788,7 +788,7 @@ update_qis_plugin() {
             newer_src="$(find "${src_dir}/rust-bridge/src" "${src_dir}/rust-bridge/Cargo.toml" -type f -newer "${target_bin}" -print -quit 2>/dev/null || true)"
         fi
         if [[ ! -f "${target_bin}" ]] || [[ -n "${newer_src}" ]]; then
-            log_info "Aktualizuji nativní Rust můstek..."
+            log_info "Updating native Rust bridge..."
             (cd "${src_dir}/rust-bridge" && cargo build --release)
             local compiled_bin="${src_dir}/rust-bridge/target/release/qwen_bridge"
             if [[ -f "$compiled_bin" ]]; then
@@ -831,7 +831,7 @@ update_qis_plugin() {
         fi
     fi
 
-    log_ok "QIS Plugin a nativní komponenty jsou aktuální."
+    log_ok "QIS plugin and native components are up to date."
 }
 
 # ---------------------------------------------------------
@@ -839,18 +839,18 @@ update_qis_plugin() {
 # ---------------------------------------------------------
 update_comfyui() {
     if [[ ! -d "${COMFY_DIR}/.git" ]]; then
-        log_warn "ComfyUI adresář není git repozitář (${COMFY_DIR})."
+        log_warn "ComfyUI directory is not a git repository (${COMFY_DIR})."
         return 0
     fi
 
-    log_info "Vytvářím kontrolní bod před aktualizací ComfyUI..."
+    log_info "Creating checkpoint before updating ComfyUI..."
     if [[ -L "${CHECKPOINT_DIR}" ]]; then
-        log_err "CHECKPOINT_DIR je symlink: ${CHECKPOINT_DIR}. Přerušuji."
+        log_err "CHECKPOINT_DIR is a symlink: ${CHECKPOINT_DIR}. Aborting."
         return 1
     fi
     mkdir -p "${CHECKPOINT_DIR}"
     if [[ ! -O "${CHECKPOINT_DIR}" ]]; then
-        log_err "CHECKPOINT_DIR není ve vlastnictví uživatele: ${CHECKPOINT_DIR}"
+        log_err "CHECKPOINT_DIR is not owned by the current user: ${CHECKPOINT_DIR}"
         return 1
     fi
 
@@ -863,7 +863,7 @@ update_comfyui() {
         local target="$1"
         local data="$2"
         if [[ -L "$target" ]]; then
-            log_err "Odmítám zápis kontrolního bodu do symlinku: $target"
+            log_err "Refusing to write checkpoint to symlink: $target"
             return 1
         fi
         local tmp_file
@@ -877,18 +877,18 @@ update_comfyui() {
     write_checkpoint "${CHECKPOINT_DIR}/comfy_last_known_good_${ts}.txt" "$cur_commit" || return 1
     write_checkpoint "${CHECKPOINT_DIR}/latest_checkpoint.txt" "$cur_commit" || return 1
 
-    log_info "Ověřuji integritu ComfyUI jádra na prověřený commit ${COMFY_PINNED_COMMIT:0:7}..."
+    log_info "Verifying ComfyUI core integrity at pinned commit ${COMFY_PINNED_COMMIT:0:7}..."
     git -C "${COMFY_DIR}" fetch --depth 1 origin b53f77a74e21091cbdebfdf7b85fc80326932646 && \
         git -C "${COMFY_DIR}" checkout --detach b53f77a74e21091cbdebfdf7b85fc80326932646
 
     local actual_comfy
     actual_comfy=$(git -C "${COMFY_DIR}" rev-parse HEAD 2>/dev/null || echo "")
     if [[ "${actual_comfy}" != "${COMFY_PINNED_COMMIT}" ]]; then
-        log_err "Chyba ověření integrity ComfyUI po aktualizaci! Očekáván commit ${COMFY_PINNED_COMMIT}, ale nalezen ${actual_comfy}."
+        log_err "ComfyUI integrity check failed after update! Expected commit ${COMFY_PINNED_COMMIT}, found ${actual_comfy}."
         return 1
     fi
 
-    log_info "Ověřuji integritu custom nodů..."
+    log_info "Verifying custom nodes integrity..."
     local nodes=(
         "ComfyUI-GGUF|https://github.com/city96/ComfyUI-GGUF.git|${NODE_GGUF_COMMIT}"
         "ComfyUI-GGUF-Qwen3VL-TE|https://github.com/pottokao-dotcom/ComfyUI-GGUF-Qwen3VL-TE.git|${NODE_QWEN3VL_COMMIT}"
@@ -900,14 +900,14 @@ update_comfyui() {
         IFS="|" read -r node_name node_url node_commit <<< "$item"
         local node_dir="${COMFY_DIR}/custom_nodes/${node_name}"
         if [[ -d "${node_dir}/.git" ]]; then
-            log_info "  -> ${node_name} (uzamčeno na ${node_commit:0:7})"
+            log_info "  -> ${node_name} (pinned at ${node_commit:0:7})"
             git -C "$node_dir" fetch --depth 1 origin "$node_commit" && \
                 git -C "$node_dir" checkout --detach -q "$node_commit"
 
             local actual_node_commit
             actual_node_commit=$(git -C "$node_dir" rev-parse HEAD 2>/dev/null || echo "")
             if [[ "${actual_node_commit}" != "${node_commit}" ]]; then
-                log_err "Chyba ověření integrity uzlu ${node_name} po aktualizaci! Očekáván ${node_commit}, nalezen ${actual_node_commit}."
+                log_err "Integrity check failed for node ${node_name} after update! Expected ${node_commit}, found ${actual_node_commit}."
                 return 1
             fi
         fi
@@ -922,14 +922,14 @@ update_comfyui() {
     if [[ -f "${local_viggle}" ]]; then
         cp -f "${local_viggle}" "${viggle_init}"
         chmod 0644 "${viggle_init}"
-        log_ok "ComfyUI-ViggleTurbo synchronizován z lokálního repozitáře."
+        log_ok "ComfyUI-ViggleTurbo synced from local repository."
     elif [[ ! -f "${viggle_init}" ]]; then
         safe_download_model "${viggle_dir}" "__init__.py" \
             "https://huggingface.co/Viggle/Qwen-Image-2.1-viggle-turbo/resolve/${HF_VIGGLE_COMMIT}/comfyui/viggle_turbo.py" \
             "ComfyUI-ViggleTurbo Node" "${HF_VIGGLE_NODE_SHA256}"
     fi
 
-    # Synchronizace a ověření hash-verified závislostí
+    # Sync and verify hash-locked dependencies
     detect_hardware
     local lock_file=""
     if [[ "$GPU_VENDOR" == "nvidia" ]]; then
@@ -941,16 +941,16 @@ update_comfyui() {
     fi
 
     if [[ -f "$lock_file" && -x "${COMFY_VENV}/bin/pip" ]]; then
-        log_info "Ověřuji a synchronizuji závislosti podle immutable hash lockfile..."
+        log_info "Verifying and syncing dependencies against immutable hash lockfile..."
         if ! "${COMFY_VENV}/bin/pip" install --require-hashes -r "$lock_file"; then
-            log_err "Kritická chyba: Zjištěn neplatný hash závislostí při aktualizaci ComfyUI!"
-            log_err "Aktualizace byla z bezpečnostních důvodů přerušena."
+            log_err "Critical error: invalid dependency hash detected while updating ComfyUI!"
+            log_err "Update aborted for security reasons."
             return 1
         fi
-        log_ok "Závislosti ComfyUI a uzlů odpovídají prověřeným otiskům v locks/."
+        log_ok "ComfyUI and node dependencies match verified hashes in locks/."
     fi
 
-    log_ok "ComfyUI a custom nody jsou uzamčeny a ověřeny na schválených commitech."
+    log_ok "ComfyUI and custom nodes are locked and verified at approved commits."
 }
 
 # ---------------------------------------------------------
@@ -961,11 +961,11 @@ rollback_comfyui() {
     if [[ -f "$cp_file" ]]; then
         local target_commit
         target_commit=$(xargs < "$cp_file")
-        log_warn "Vracím ComfyUI do kontrolního bodu: ${target_commit}..."
+        log_warn "Rolling back ComfyUI to checkpoint: ${target_commit}..."
         git -C "${COMFY_DIR}" checkout "$target_commit"
-        log_ok "ComfyUI bylo úspěšně vráceno do předchozího funkčního stavu."
+        log_ok "ComfyUI rolled back to previous working state."
     else
-        log_err "Nenalezen žádný předchozí kontrolní bod v ${CHECKPOINT_DIR}."
+        log_err "No previous checkpoint found in ${CHECKPOINT_DIR}."
     fi
 }
 
@@ -978,14 +978,14 @@ interactive_menu() {
         echo -e "\n${BOLD}========================================================================${RESET}"
         echo -e "         ${CYAN}QIS (Qwen Image Studio) — Setup & Lifecycle Manager${RESET}"
         echo -e "${BOLD}========================================================================${RESET}"
-        echo -e "  ${BOLD}1 ·${RESET} ${BOLD}Kompletní instalace všeho${RESET} // Balíčky, ComfyUI, nody, modely"
-        echo -e "  ${BOLD}2 ·${RESET} ${BOLD}Aktualizovat VŠECHNO${RESET} // QIS plugin, ComfyUI, nody, modely"
+        echo -e "  ${BOLD}1 ·${RESET} ${BOLD}Full installation${RESET} // Packages, ComfyUI, nodes, models"
+        echo -e "  ${BOLD}2 ·${RESET} ${BOLD}Update EVERYTHING${RESET} // QIS plugin, ComfyUI, nodes, models"
         echo -e "  ${BOLD}3 ·${RESET} Aktualizovat pouze QIS Plugin // UI a Rust bridge"
         echo -e "  ${BOLD}4 ·${RESET} Aktualizovat pouze ComfyUI Engine a Custom Nody"
-        echo -e "  ${BOLD}5 ·${RESET} Stáhnout / Zkontrolovat AI Modely // HuggingFace"
-        echo -e "  ${BOLD}6 ·${RESET} Zobrazit stav a matici závislostí"
-        echo -e "  ${BOLD}7 ·${RESET} Záchranný Rollback ComfyUI // Návrat do funkčního bodu"
-        echo -e "  ${BOLD}0 ·${RESET} Ukončit\n"
+        echo -e "  ${BOLD}5 ·${RESET} Download / Verify AI Models // HuggingFace"
+        echo -e "  ${BOLD}6 ·${RESET} Show status and dependency matrix"
+        echo -e "  ${BOLD}7 ·${RESET} Emergency ComfyUI Rollback // Restore working checkpoint"
+        echo -e "  ${BOLD}0 ·${RESET} Exit\n"
 
         read -rp "Zadejte volbu (0-7): " choice
         case "$choice" in
@@ -995,13 +995,13 @@ interactive_menu() {
                 download_models
                 setup_ollama_models
                 "${SCRIPT_DIR}/install.sh"
-                log_ok "Kompletní instalace dokončena!"
+                log_ok "Full installation complete!"
                 ;;
             2)
                 update_qis_plugin
                 update_comfyui
                 setup_ollama_models
-                log_ok "Vše bylo úspěšně aktualizováno!"
+                log_ok "Everything updated successfully!"
                 ;;
             3)
                 update_qis_plugin
@@ -1023,7 +1023,7 @@ interactive_menu() {
                 exit 0
                 ;;
             *)
-                echo "Neplatná volba."
+                echo "Invalid choice."
                 ;;
         esac
     done
@@ -1039,12 +1039,12 @@ start_comfyui() {
     done
 
     if curl -sf "http://127.0.0.1:8188/system_stats" >/dev/null 2>&1; then
-        log_ok "ComfyUI server již běží na http://127.0.0.1:8188."
+        log_ok "ComfyUI server is already running on http://127.0.0.1:8188."
         return 0
     fi
 
     detect_hardware
-    log_info "Spouštím ComfyUI backend (Profil: ${TIER_DESC})..."
+    log_info "Starting ComfyUI backend (Profile: ${TIER_DESC})..."
 
     local py_bin="${COMFY_VENV}/bin/python"
     if [[ ! -f "$py_bin" ]]; then
@@ -1052,7 +1052,7 @@ start_comfyui() {
     fi
     if [[ ! -f "$py_bin" ]]; then
         log_err "Nenalezen Python venv ComfyUI v ${COMFY_DIR}/venv ani .venv."
-        log_err "Spusťte: qis setup"
+        log_err "Run: qis setup"
         return 1
     fi
 
@@ -1069,12 +1069,12 @@ start_comfyui() {
         args+=("--reserve-vram" "${reserve_val}" "--enable-dynamic-vram" "--fp8_e4m3fn-text-enc")
     fi
 
-    # Akcelerace Attention vrstev přes SageAttention 2 na Ampere sm_86
+    # Accelerate attention layers via SageAttention 2 on Ampere sm_86
     if [[ "$HW_TIER" != "C" ]] && "$py_bin" -c "import sageattention" >/dev/null 2>&1; then
         args+=("--use-sage-attention")
     fi
 
-    # Alokační a runtime pojistky (expandable_segments, lazy loading, single-CCD threading)
+    # Allocation and runtime guards (expandable_segments, lazy loading, single-CCD threading)
     export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,garbage_collection_threshold:0.8"
     export CUDA_MODULE_LOADING="LAZY"
     export OMP_NUM_THREADS="8"
@@ -1084,7 +1084,7 @@ start_comfyui() {
     local log_file="${COMFY_DIR}/comfyui.log"
     local pid_file="${COMFY_DIR}/comfyui.pid"
 
-    # Rotace logu ComfyUI při překročení 10 MB (zachování posledních 10 000 řádků)
+    # Rotate ComfyUI log when exceeding 10 MB (keeping last 10,000 lines)
     if [[ -f "$log_file" ]] && ! [[ -L "$log_file" ]]; then
         local log_sz
         log_sz=$(stat -c%s "$log_file" 2>/dev/null || echo 0)
@@ -1108,7 +1108,7 @@ start_comfyui() {
             local pid=$!
             echo "$pid" > "$pid_file"
         fi
-        log_info "Čekám na spuštění ComfyUI na pozadí..."
+        log_info "Waiting for ComfyUI to start in background..."
         local started=0
         for (( i=1; i<=45; i++ )); do
             sleep 1
@@ -1118,9 +1118,9 @@ start_comfyui() {
             fi
         done
         if (( started == 1 )); then
-            log_ok "ComfyUI backend úspěšně nastartován na http://127.0.0.1:8188."
+            log_ok "ComfyUI backend started successfully on http://127.0.0.1:8188."
         else
-            log_warn "ComfyUI byl spuštěn na pozadí, ale server zatím neodpovídá na portu 8188 (vypršel 45s limit)."
+            log_warn "ComfyUI started in background, but port 8188 is not responding yet (45s timeout)."
         fi
     else
         exec "$py_bin" "${COMFY_DIR}/main.py" "${args[@]}"
@@ -1156,17 +1156,17 @@ stop_comfyui() {
         fi
     fi
 
-    # Úklid dočasných náhledů z /dev/shm
+    # Clean up temporary previews in /dev/shm
     local shm_dir="/dev/shm/qis_preview_${UID}"
     if [[ -d "$shm_dir" && ! -L "$shm_dir" && -O "$shm_dir" ]]; then
         rm -rf "$shm_dir"
-        log_ok "Dočasné náhledy v ${shm_dir} vyčištěny."
+        log_ok "Temporary previews in ${shm_dir} cleaned up."
     fi
 
     if (( stopped == 1 )) || ! curl -sf "http://127.0.0.1:8188/system_stats" >/dev/null 2>&1; then
-        log_ok "ComfyUI server byl úspěšně zastaven."
+        log_ok "ComfyUI server stopped successfully."
     else
-        log_warn "ComfyUI server se nepodařilo zastavit."
+        log_warn "Failed to stop ComfyUI server."
     fi
 }
 
