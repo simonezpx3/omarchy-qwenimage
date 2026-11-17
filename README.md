@@ -40,6 +40,7 @@ flowchart LR
 | **Adapters & Upscaling** | Tri-state LoRAs (`Heretic`, `Anime`, `Anatomy`: `OFF / SOFT / FULL`), `4X ESRGAN / UltraSharp / AnimeSharp`, Rust **SIMD Lanczos** (`AVX2`/`NEON`) |
 | **Prompt & Vision Tools** | **WD14** Danbooru tagger, **Qwen3-VL** vision reverse-engineering, **Civitai Explorer** (1-click apply / 2-click generate) |
 | **Wayland & Inspection** | `slurp` + `grim` screen `SNIP`, universal clipboard intake (`16 KiB` text / `32 MiB` image bounds), `imv` fullscreen viewer, A/B split compare |
+| **Interactive Mask & Inpaint** | Brush mask canvas over output with separated base image vs. reference input for targeted `I2I` inpainting |
 | **Process Hardening** | `PR_SET_PDEATHSIG` (`SIGKILL`), `systemd-run --user --scope`, `flock` cooperative GPU lock (`VramLockGuard`), 24h tmpfs GC |
 
 ## Quickstart & Hardware Tiers
