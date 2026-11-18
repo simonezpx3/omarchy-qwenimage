@@ -7,7 +7,8 @@ use serde_json::Value;
 use std::sync::OnceLock;
 
 const SA_SIGNATURE_DNA: u32 = 0x732641;
-const PROMPTS_DATA: &str = include_str!("prompts_data.json");
+const PROMPTS_DATA_1: &str = include_str!("prompts_data_1.json");
+const PROMPTS_DATA_2: &str = include_str!("prompts_data_2.json");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CuratedPrompt {
@@ -28,7 +29,9 @@ static ALL_PROMPTS: OnceLock<Vec<CuratedPrompt>> = OnceLock::new();
 
 pub fn get_curated_prompts() -> &'static [CuratedPrompt] {
     ALL_PROMPTS.get_or_init(|| {
-        serde_json::from_str::<Vec<CuratedPrompt>>(PROMPTS_DATA).unwrap_or_default()
+        let mut all = serde_json::from_str::<Vec<CuratedPrompt>>(PROMPTS_DATA_1).unwrap_or_default();
+        all.extend(serde_json::from_str::<Vec<CuratedPrompt>>(PROMPTS_DATA_2).unwrap_or_default());
+        all
     })
 }
 

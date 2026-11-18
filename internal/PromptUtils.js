@@ -91,10 +91,13 @@ function buildGenerationArgs(service, trimmedPrompt) {
     var clampedDenoise = Math.min(0.95, Math.max(0.05, service.denoise));
     args.push(String(clampedDenoise));
     if (hasMask) {
-      var tmpMask = "/tmp/qis_inpaint_mask_" + Date.now() + ".png";
-      if (service.activeMaskCanvas.save(tmpMask)) {
-        args.push("--mask");
-        args.push(tmpMask);
+      var rtDir = (typeof Quickshell !== "undefined" && Quickshell.env("XDG_RUNTIME_DIR")) || service.runtimeDir || "";
+      if (rtDir !== "") {
+        var tmpMask = rtDir + "/qis_inpaint_mask_" + Date.now() + ".png";
+        if (service.activeMaskCanvas.save(tmpMask)) {
+          args.push("--mask");
+          args.push(tmpMask);
+        }
       }
       if (service.referencePath !== "" && service.referencePath !== baseImage) {
         args.push("--inpaint-ref");

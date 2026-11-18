@@ -47,13 +47,9 @@ flowchart LR
 
 ```bash
 # 1. Install via Omarchy Plugin Manager (recommended — runs install.sh in-place)
-omarchy plugin add https://github.com/simonezpx3/omarchy-qwenimage.git
+omarchy plugin add https://github.com/simonezpx3/omarchy-qwenimage.git --enable
 
-# 2. Or install manually
-git clone https://github.com/simonezpx3/omarchy-qwenimage.git && cd omarchy-qwenimage
-git checkout v1.3.0 && ./install.sh
-
-# 3. Manage backend, models, and updates via CLI
+# 2. Manage backend, models, and updates via CLI
 qis start --bg                          # Start backend scope
 qis status                              # Health matrix, VRAM reserve & tier
 qis update [all|plugin|comfy|models]    # Granular stack updates

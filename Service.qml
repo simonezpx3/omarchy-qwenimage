@@ -20,6 +20,7 @@ Item {
 
   readonly property string bridgeBin: Qt.resolvedUrl("bin/qwen-bridge").toString().replace(/^file:\/\//, "")
   readonly property string userHome: Quickshell.env("HOME") || "/home/" + (Quickshell.env("USER") || "user")
+  readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") || ""
   readonly property string picturesDir: userHome + "/Pictures/Qwen-Image"
 
   QtObject {
