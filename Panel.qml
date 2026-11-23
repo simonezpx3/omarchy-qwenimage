@@ -25,6 +25,7 @@ Panel {
     sourceComponent: Component {
       Service {
         activePolling: false
+        enableIpc: false
         bar: root.bar
         settings: root.settings
       }

@@ -12,6 +12,7 @@ Item {
   property var settings: ({})
   property var bar: null
   property bool activePolling: true
+  property bool enableIpc: true
   property int watchers: 0
 
   signal openRequested(string view)
@@ -262,55 +263,60 @@ Item {
     }
   }
 
-  IpcHandler {
-    target: "simonez.qwenimage"
+  Loader {
+    active: root.enableIpc
+    sourceComponent: Component {
+      IpcHandler {
+        target: "simonez.qwenimage"
 
-    function refresh(): void {
-      root.refresh();
-    }
-    function open(): void {
-      root.currentView = "studio";
-      root.openRequested("studio");
-    }
-    function close(): void {
-      root.closeRequested();
-    }
-    function toggle(): void {
-      root.toggleRequested();
-    }
-    function prompts(source: string): void {
-      var s = String(source || "").trim().toLowerCase();
-      if (s.length > 32) s = s.substring(0, 32);
-      var validSources = ["civitai", "lexica", "prompthero", "openart", "huggingface", "midlibrary", "diffusiondb", "seaart", "shakker", "playground", "krea", "tensorart", "all"];
-      if (validSources.indexOf(s) === -1) s = "civitai";
-      root.activePromptSource = s;
-      root.fetchPrompts(s, "");
-      root.currentView = "civitai";
-      root.openRequested("civitai");
-    }
-    function history(): void {
-      root.currentView = "history";
-      root.fetchHistory();
-      root.openRequested("history");
-    }
-    function paste(): void {
-      root.pasteFromClipboard();
-      root.openRequested("studio");
-    }
-    function anime(): void {
-      root.cycleAnimeMode();
-    }
-    function heretic(): void {
-      root.cycleHereticMode();
-    }
-    function anatomy(): void {
-      root.cycleAnatomyMode();
-    }
-    function anatomyGuard(): void {
-      root.cycleAnatomyGuardMode();
-    }
-    function autoTune(): void {
-      root.cycleAutoTuneMode();
+        function refresh(): void {
+          root.refresh();
+        }
+        function open(): void {
+          root.currentView = "studio";
+          root.openRequested("studio");
+        }
+        function close(): void {
+          root.closeRequested();
+        }
+        function toggle(): void {
+          root.toggleRequested();
+        }
+        function prompts(source: string): void {
+          var s = String(source || "").trim().toLowerCase();
+          if (s.length > 32) s = s.substring(0, 32);
+          var validSources = ["civitai", "lexica", "prompthero", "openart", "huggingface", "midlibrary", "diffusiondb", "seaart", "shakker", "playground", "krea", "tensorart", "all"];
+          if (validSources.indexOf(s) === -1) s = "civitai";
+          root.activePromptSource = s;
+          root.fetchPrompts(s, "");
+          root.currentView = "civitai";
+          root.openRequested("civitai");
+        }
+        function history(): void {
+          root.currentView = "history";
+          root.fetchHistory();
+          root.openRequested("history");
+        }
+        function paste(): void {
+          root.pasteFromClipboard();
+          root.openRequested("studio");
+        }
+        function anime(): void {
+          root.cycleAnimeMode();
+        }
+        function heretic(): void {
+          root.cycleHereticMode();
+        }
+        function anatomy(): void {
+          root.cycleAnatomyMode();
+        }
+        function anatomyGuard(): void {
+          root.cycleAnatomyGuardMode();
+        }
+        function autoTune(): void {
+          root.cycleAutoTuneMode();
+        }
+      }
     }
   }
 }

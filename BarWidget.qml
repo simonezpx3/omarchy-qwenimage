@@ -20,6 +20,7 @@ BarWidget {
     sourceComponent: Component {
       Service {
         activePolling: false
+        enableIpc: false
       }
     }
   }
