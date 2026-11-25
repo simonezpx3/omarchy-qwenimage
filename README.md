@@ -25,11 +25,11 @@
 
 ```mermaid
 flowchart LR
-    Bar["Quickshell BarWidget.qml\nLazy Panel.qml"] <--> Svc["Quattro Service.qml\nPersistent State"]
-    Svc <--> Bridge["Rust Bridge (bin/qwen-bridge)\nSIMD Lanczos · Wayland Clipboard"]
+    Bar["Quickshell BarWidget.qml<br/>Lazy Panel.qml"] <--> Svc["Quattro Service.qml<br/>Persistent State"]
+    Svc <--> Bridge["Rust Bridge (bin/qwen-bridge)<br/>SIMD Lanczos · Wayland Clipboard"]
     CLI["qis CLI"] <--> Bridge
-    Bridge <--> Comfy["ComfyUI Backend\nDiT Q4_K_M GGUF · QISVramBudget"]
-    Bridge <--> Ollama["Ollama / Vision\nQwen3-VL · WD14 ONNX"]
+    Bridge <--> Comfy["ComfyUI Backend<br/>DiT Q4_K_M GGUF · QISVramBudget"]
+    Bridge <--> Ollama["Ollama / Vision<br/>Qwen3-VL · WD14 ONNX"]
 ```
 
 ## Key Capabilities
