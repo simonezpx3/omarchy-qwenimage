@@ -10,6 +10,7 @@ import "studio/StudioI18n.js" as StudioI18n
 
 Item {
   id: root
+  readonly property var studioRoot: root
 
   property var panelRoot: null
   property string activeHelpText: ""
@@ -153,20 +154,20 @@ Item {
         StudioPromptCards {
           id: promptCards
           Layout.fillWidth: true
-          root: root
+          root: studioRoot
           panelRoot: root.panelRoot
         }
 
         StudioParameters {
           Layout.fillWidth: true
-          root: root
+          root: studioRoot
           panelRoot: root.panelRoot
         }
 
         StudioReferenceCard {
           Layout.fillWidth: true
           Layout.fillHeight: true
-          root: root
+          root: studioRoot
           panelRoot: root.panelRoot
         }
       }
@@ -175,7 +176,7 @@ Item {
       StudioPreviewCanvas {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        root: root
+        root: studioRoot
         panelRoot: root.panelRoot
       }
     }
@@ -183,7 +184,7 @@ Item {
     // FOOTER CONTEXTUAL HELP & BOTTOM ACTION BAR
     StudioActionBar {
       Layout.fillWidth: true
-      root: root
+      root: studioRoot
       panelRoot: root.panelRoot
     }
   }
